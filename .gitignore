@@ -1,0 +1,10 @@
+# OS / editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# env
+.env
+.env.*
+!.env.example
