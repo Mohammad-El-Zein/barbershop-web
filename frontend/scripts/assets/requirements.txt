@@ -1,0 +1,6 @@
+# Python deps for the asset pipeline (matte.py, backdrop.py, turntable.py). Use a venv.
+rembg[cpu]>=2.0.85
+opencv-python-headless>=4.10
+imageio-ffmpeg>=0.6   # ffmpeg binary for video input / minterpolate
+numpy
+pillow

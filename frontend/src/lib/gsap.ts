@@ -10,6 +10,10 @@ if (typeof window !== "undefined") {
   // Mobile browsers resize the viewport when the URL bar shows/hides;
   // ignoring that avoids a jarring refresh of the pinned scene mid-scroll.
   ScrollTrigger.config({ ignoreMobileResize: true });
+  // Dev only: expose GSAP for debugging / automated scroll tests.
+  if (process.env.NODE_ENV !== "production") {
+    (window as unknown as { __gsap: unknown }).__gsap = { gsap, ScrollTrigger };
+  }
 }
 
 export { gsap, ScrollTrigger, useGSAP };

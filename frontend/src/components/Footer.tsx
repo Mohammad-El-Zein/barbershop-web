@@ -1,3 +1,4 @@
+import { useLocale, useTranslations } from "next-intl";
 import { siteConfig } from "@/config/site.config";
 import { CopyrightYear } from "./CopyrightYear";
 import { Logo } from "./Logo";
@@ -5,18 +6,26 @@ import { NewsletterForm } from "./NewsletterForm";
 
 const { footer, contact, brand } = siteConfig;
 
-/** Regular (unpinned) footer after the scroll scene. */
+/**
+ * Regular (unpinned) footer after the scroll scene. Section titles are h2
+ * (top-level page sections), styled as eyebrows. Follows the site theme
+ * (ivory in light mode), uses the shared page gutter, and marks where the nav
+ * switches from "over the scene" to "over the page" (data-after-scene).
+ */
 export function Footer() {
+  const t = useTranslations();
+  const locale = useLocale();
+
   return (
-    <footer className="relative z-10 border-t border-gold/20 bg-[#070707]">
+    <footer data-after-scene className="relative z-10 border-t border-gold/25 bg-surface text-ink">
       {/* gold hairline glow */}
       <div className="pointer-events-none absolute inset-x-0 -top-px mx-auto h-px max-w-3xl bg-gradient-to-r from-transparent via-gold to-transparent" />
 
-      <div className="mx-auto grid max-w-[1400px] gap-12 px-5 py-16 md:grid-cols-12 md:px-10 md:py-24">
+      <div className="grid gap-12 px-[var(--gutter)] py-16 md:grid-cols-12 md:py-24">
         <div className="md:col-span-4">
           <Logo />
-          <p className="mt-5 max-w-xs text-sm leading-relaxed text-muted">{brand.description}</p>
-          <ul className="mt-6 flex gap-3" aria-label="Social media">
+          <p className="mt-5 max-w-xs text-sm leading-relaxed text-muted">{t("footer.description")}</p>
+          <ul className="mt-6 flex gap-3" aria-label={t("footer.social")}>
             {footer.socials.map((s) => (
               <li key={s.label}>
                 <a
@@ -24,7 +33,7 @@ export function Footer() {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label={s.label}
-                  className="flex h-10 w-10 items-center justify-center rounded-full border border-white/15 text-ink/80 transition-colors hover:border-gold hover:text-gold"
+                  className="flex h-10 w-10 items-center justify-center rounded-full border border-ink/20 text-ink/80 transition-colors hover:border-gold-text hover:text-gold-text"
                 >
                   <SocialIcon name={s.icon} />
                 </a>
@@ -34,13 +43,13 @@ export function Footer() {
         </div>
 
         {footer.columns.map((col) => (
-          <nav key={col.title} aria-label={col.title} className="md:col-span-2">
-            <h3 className="eyebrow">{col.title}</h3>
+          <nav key={col.titleKey} aria-label={t(col.titleKey)} className="md:col-span-2">
+            <h2 className="eyebrow">{t(col.titleKey)}</h2>
             <ul className="mt-5 space-y-3">
               {col.links.map((l) => (
-                <li key={l.label}>
-                  <a href={l.href} className="text-sm text-ink/75 transition-colors hover:text-gold">
-                    {l.label}
+                <li key={l.labelKey}>
+                  <a href={l.href} className="text-sm text-ink/80 transition-colors hover:text-gold-text">
+                    {t(l.labelKey)}
                   </a>
                 </li>
               ))}
@@ -49,44 +58,44 @@ export function Footer() {
         ))}
 
         <div id={contact.anchor} className="scroll-mt-24 md:col-span-4">
-          <h3 className="eyebrow">Visit us · Downtown</h3>
-          <address className="mt-5 space-y-1 text-sm not-italic text-ink/80">
+          <h2 className="eyebrow">{t("footer.visit")}</h2>
+          <address className="mt-5 space-y-1 text-sm not-italic text-ink/85">
             {contact.addressLines.map((l) => (
               <div key={l}>{l}</div>
             ))}
             <div className="pt-2">
-              <a href={`tel:${contact.phone.replace(/\s/g, "")}`} className="hover:text-gold">
+              <a href={`tel:${contact.phone.replace(/\s/g, "")}`} className="hover:text-gold-text">
                 {contact.phone}
               </a>
             </div>
             <div>
-              <a href={`mailto:${contact.email}`} className="hover:text-gold">
+              <a href={`mailto:${contact.email}`} className="hover:text-gold-text">
                 {contact.email}
               </a>
             </div>
           </address>
           <ul className="mt-4 space-y-1 text-xs text-muted">
-            {contact.hours.map((h) => (
+            {(t.raw("footer.hours") as string[]).map((h) => (
               <li key={h}>{h}</li>
             ))}
           </ul>
 
-          <h3 className="eyebrow mt-10">{footer.newsletter.title}</h3>
-          <p className="mt-2 text-sm text-muted">{footer.newsletter.text}</p>
+          <h2 className="eyebrow mt-10">{t("footer.newsletter.title")}</h2>
+          <p className="mt-2 text-sm text-muted">{t("footer.newsletter.text")}</p>
           <NewsletterForm />
         </div>
       </div>
 
-      <div className="border-t border-white/10">
-        <div className="mx-auto flex max-w-[1400px] flex-col items-start justify-between gap-3 px-5 py-6 text-xs text-ink/50 md:flex-row md:items-center md:px-10">
+      <div className="border-t border-line">
+        <div className="flex flex-col items-start justify-between gap-3 px-[var(--gutter)] py-6 text-xs text-muted md:flex-row md:items-center">
           <p>
-            © <CopyrightYear /> {brand.name}. All rights reserved.
+            © <CopyrightYear /> {brand.name}. {t("footer.rights")}
           </p>
           <ul className="flex gap-6">
             {footer.legal.map((l) => (
-              <li key={l.label}>
-                <a href={l.href} className="hover:text-gold">
-                  {l.label}
+              <li key={l.labelKey}>
+                <a href={`/${locale}${l.href}`} className="hover:text-gold-text">
+                  {t(l.labelKey)}
                 </a>
               </li>
             ))}

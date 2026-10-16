@@ -1,18 +1,22 @@
 /**
  * SITE CONFIG — the single place to rebrand / reuse this template.
  *
- * Everything the landing page renders (brand, nav, chapter copy, scroll ranges,
- * scene assets, frame sequence, footer) comes from this file. The choreography
- * of each chapter "stage" (how objects move) lives in code and is selected via
- * `chapter.stage`; the content, assets and timing live here.
+ * Structure, assets, colours and timing live here. All visible TEXT lives in
+ * messages/<locale>.json; this file only references message keys (e.g.
+ * "chapters.hero"), so a new client = new config values + new message files.
+ *
+ * The choreography of each chapter "stage" (how objects move) lives in code and
+ * is selected via `chapter.stage`.
  *
  * Anything marked PLACEHOLDER must be replaced before going live.
  */
+import turntableManifest from "../../public/scene/chair-turntable/manifest.json";
 
 // ─────────────────────────────────────────────────────────────── types ──
 
 export type Cta = {
-  label: string;
+  /** Message key of the label, e.g. "cta.book". */
+  labelKey: string;
   /** "book" opens the booking flow, anything else is treated as an href / anchor. */
   action: "book" | string;
   variant: "primary" | "ghost";
@@ -28,21 +32,29 @@ export type SceneImage = {
 
 export type Product = SceneImage & {
   id: string;
-  /** 0..1 — higher = closer to camera: moves faster, appears larger. */
+  /**
+   * 0..1 — distance to the camera. Higher = closer: drawn on top, moves faster,
+   * stronger parallax. Below 0.4 the object is also slightly blurred (depth of field).
+   */
   depth: number;
-  /** Resting position inside the stage, in % of stage width/height (center of the object). */
+  /** Resting position of the object's center inside the stage box, in % of its width/height. */
   x: number;
   y: number;
-  /** Width as % of the stage box width. */
+  /** Visible width as % of the stage box width (images are trimmed cut-outs). */
   size: number;
-  /** Resting rotation in degrees. */
+  /** Extra resting rotation in degrees. */
   rotate: number;
+  /**
+   * Slot on the ellipse around the chair in the "orbit" chapter, in degrees
+   * (0 = right, 90 = front/below, 180 = left, 270 = behind/above). Keep slots
+   * within ±40° of 0 or 180 so products stay at the sides of the chair.
+   */
+  orbitAngle: number;
 };
 
 export type ServiceCard = {
-  title: string;
-  text: string;
-  price: string;
+  /** Message namespace with title / text / price, e.g. "services.haircut". */
+  messageKey: string;
   image: SceneImage;
   cta: Cta;
 };
@@ -50,33 +62,54 @@ export type ServiceCard = {
 /**
  * Stage presets (choreography implemented in components/scene/timeline.ts):
  * hero      – hero object (chair) in the dark shop
- * products  – hero object leaves, products fly in with parallax
+ * products  – hero object fades back, products fly in as one composed cluster
  * services  – glass service cards slide up, staggered
  * feature   – one big feature object (scissors) scales & rotates across the stage
- * orbit     – hero object returns, products orbit around it
+ * orbit     – hero object returns, products circle at its sides
  * cta       – hero object with a glowing animated gold ring
  */
 export type StagePreset = "hero" | "products" | "services" | "feature" | "orbit" | "cta";
 
 export type Chapter = {
   id: string;
+  /** Message namespace with label / eyebrow / headline[] / body, e.g. "chapters.hero". */
+  messageKey: string;
   /** Optional anchor (e.g. "services") so nav links can jump to this chapter. */
   anchor?: string;
-  /** Short label for the section dots. */
-  label: string;
   stage: StagePreset;
-  eyebrow?: string;
-  /** Headline lines — each line gets its own masked reveal. */
-  headline: string[];
   /** Index of the headline line rendered with the gold gradient (optional). */
   accentLine?: number;
-  body?: string;
   ctas?: Cta[];
   /** [start, end] as fractions (0..1) of the pinned scroll length. Must be contiguous. */
   range: [number, number];
 };
 
-export type FooterColumn = { title: string; links: { label: string; href: string }[] };
+/**
+ * A stretch of the pinned scroll during which the chair turntable plays.
+ * `from`/`to` are scroll fractions (same scale as chapter ranges);
+ * `frames` are positions in the sequence (0 = first frame, 1 = last frame),
+ * so the ranges stay valid when a new video yields a different frame count.
+ * Outside all segments the chair holds the last reached frame.
+ */
+export type TurntableSegment = { from: number; to: number; frames: [number, number] };
+
+export type Palette = {
+  bg: string;
+  /** Secondary surface (footer, cards on page backgrounds). */
+  surface: string;
+  text: string;
+  muted: string;
+  /** Decorative gold (lines, glows, button fill). */
+  gold: string;
+  goldDeep: string;
+  /** Gold for TEXT and outlines — must reach WCAG AA (4.5:1) on bg and surface. */
+  goldText: string;
+  /** Hairlines / borders. */
+  line: string;
+};
+
+export type NavItem = { labelKey: string; href: string };
+export type FooterColumn = { titleKey: string; links: NavItem[] };
 
 // ────────────────────────────────────────────────────────────── config ──
 
@@ -85,27 +118,56 @@ export const siteConfig = {
     name: "THE BARBER NEWS",
     /** Short form shown on small screens. */
     shortName: "TBN",
-    tagline: "Barbershop · Downtown",
-    description:
-      "Premium barbershop for precision haircuts, beard sculpting and styling. Book your appointment online.",
-    locale: "en",
   },
 
+  /** PLACEHOLDER: production origin, used for canonical / hreflang URLs. */
+  siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
+
+  /**
+   * Colour tokens for both themes (injected as CSS variables by the layout).
+   * The pinned cinematic scene always uses `dark` (dark photography).
+   * Contrast (checked): light text 15.4:1, muted 6.0:1, goldText 5.6:1 on bg / 5.1:1 on surface.
+   */
   theme: {
-    background: "#0a0a0a",
-    gold: "#c9a45c",
-    goldDeep: "#8a6d2f",
-    text: "#f2efe9",
+    dark: {
+      bg: "#0a0a0a",
+      surface: "#070707",
+      text: "#f2efe9",
+      muted: "rgb(242 239 233 / 0.62)",
+      gold: "#c9a45c",
+      goldDeep: "#8a6d2f",
+      goldText: "#c9a45c",
+      line: "rgb(242 239 233 / 0.12)",
+    },
+    light: {
+      bg: "#f6f1e7",
+      surface: "#efe6d6",
+      text: "#1d1a17",
+      muted: "rgb(29 26 23 / 0.70)",
+      gold: "#c9a45c",
+      goldDeep: "#8a6d2f",
+      goldText: "#7a5a1c",
+      line: "rgb(29 26 23 / 0.14)",
+    },
+  } satisfies Record<"dark" | "light", Palette>,
+
+  /** Development helpers. Never rendered in production builds. */
+  debug: {
+    /**
+     * Show small file-name badges (e.g. "chair.webp") on every scene asset as a
+     * DOM overlay. Only rendered when NODE_ENV !== "production".
+     */
+    showPlaceholderLabels: false,
   },
 
   nav: [
-    { label: "Home", href: "#home" },
-    { label: "Services", href: "#services" },
-    { label: "Downtown", href: "#downtown" },
-    { label: "About", href: "#about" },
-  ],
+    { labelKey: "nav.home", href: "#home" },
+    { labelKey: "nav.services", href: "#services" },
+    { labelKey: "nav.downtown", href: "#downtown" },
+    { labelKey: "nav.about", href: "#about" },
+  ] satisfies NavItem[],
 
-  bookCta: { label: "Book Appointment", action: "book", variant: "primary" } satisfies Cta,
+  bookCta: { labelKey: "cta.book", action: "book", variant: "primary" } satisfies Cta,
 
   /** Pinned scene settings. */
   scene: {
@@ -116,36 +178,67 @@ export const siteConfig = {
 
     backdrop: {
       src: "/scene/backdrop.webp",
-      alt: "Dark barbershop interior",
+      alt: "",
       width: 2560,
       height: 1440,
     } satisfies SceneImage,
 
+    /**
+     * The chair. With the turntable enabled this is frame 0 of the sequence
+     * (written by scripts/assets/turntable.py --poster), used before the canvas
+     * draws, as fallback, and for prefers-reduced-motion.
+     */
     heroObject: {
       src: "/scene/chair.webp",
-      alt: "Classic barber chair",
-      width: 1200,
-      height: 1400,
+      alt: "Barber chair",
+      width: turntableManifest.sets[0].width,
+      height: turntableManifest.sets[0].height,
     } satisfies SceneImage,
+
+    /**
+     * Scroll-driven chair rotation (image sequence on <canvas>), generated by
+     * scripts/assets/turntable.py. Swap the input video and re-run the script —
+     * no code changes needed.
+     */
+    turntable: {
+      enabled: true,
+      base: "/scene/chair-turntable",
+      manifest: turntableManifest,
+      /** Frames loaded behind the loading screen; the rest stream in afterwards. */
+      eagerFrames: 12,
+      segments: [
+        // chapter 1 → 2: the chair turns away while the products fly in
+        { from: 0.035, to: 0.155, frames: [0, 1] },
+        // chapter 5 → 6: the chair turns back to face you and settles in the gold ring
+        { from: 0.79, to: 0.9, frames: [1, 0] },
+      ] satisfies TurntableSegment[],
+    },
 
     featureObject: {
       src: "/scene/scissors-large.webp",
       alt: "Barber scissors",
-      width: 1600,
-      height: 1600,
+      width: 901,
+      height: 901,
     } satisfies SceneImage,
 
+    /**
+     * Grooming products. In the "products" chapter they form one composed cluster
+     * around the chair's focal point (center of the stage box): large clipper
+     * middle-left, scissors on the diagonal, comb behind the centre (silhouetted
+     * against the gold spotlight), bottle small in front. Width/height = the
+     * trimmed cut-out's pixel size.
+     */
     products: [
-      { id: "clipper", src: "/scene/clipper.webp", alt: "Hair clipper", width: 800, height: 800, depth: 0.9, x: 30, y: 30, size: 26, rotate: -14 },
-      { id: "comb", src: "/scene/comb.webp", alt: "Comb", width: 800, height: 800, depth: 0.45, x: 74, y: 22, size: 22, rotate: 22 },
-      { id: "scissors", src: "/scene/scissors.webp", alt: "Scissors", width: 800, height: 800, depth: 0.7, x: 70, y: 70, size: 24, rotate: 32 },
-      { id: "bottle", src: "/scene/bottle.webp", alt: "Grooming oil bottle", width: 800, height: 800, depth: 0.3, x: 36, y: 74, size: 19, rotate: -6 },
+      { id: "clipper", src: "/scene/clipper.webp", alt: "Hair clipper", width: 278, height: 704, depth: 0.8, x: 36, y: 52, size: 24, rotate: -14, orbitAngle: 150 },
+      { id: "scissors", src: "/scene/scissors.webp", alt: "Scissors", width: 372, height: 877, depth: 0.6, x: 61, y: 45, size: 22, rotate: 18, orbitAngle: 30 },
+      { id: "comb", src: "/scene/comb.webp", alt: "Comb", width: 650, height: 839, depth: 0.35, x: 50, y: 30, size: 28, rotate: -6, orbitAngle: 215 },
+      { id: "bottle", src: "/scene/bottle.webp", alt: "Grooming oil bottle", width: 320, height: 801, depth: 0.95, x: 73, y: 71, size: 13, rotate: 0, orbitAngle: 325 },
     ] satisfies Product[],
 
     /**
-     * Optional technique A: scroll-scrubbed image sequence drawn on <canvas>
-     * behind the layered objects. Enable once you have frames in /public/frames
-     * (see scripts/extract-frames.*). Frame i is `${path}${pad(i)}.${ext}`, 1-based.
+     * Optional technique A: scroll-scrubbed full-frame image sequence drawn on
+     * <canvas> behind the layered objects (see scripts/extract-frames.*).
+     * Frame i is `${path}${pad(i)}.${ext}`, 1-based.
      */
     frames: {
       enabled: false,
@@ -161,124 +254,73 @@ export const siteConfig = {
   chapters: [
     {
       id: "hero",
+      messageKey: "chapters.hero",
       anchor: "home",
-      label: "Home",
       stage: "hero",
-      eyebrow: "Barbershop · Est. 2024",
-      headline: ["Precision.", "Style.", "Confidence."],
       accentLine: 1,
-      body: "Classic craft meets modern style. Sharp cuts, clean fades and a chair that is always worth the wait.",
       ctas: [
-        { label: "Book Appointment", action: "book", variant: "primary" },
-        { label: "Explore Services", action: "#services", variant: "ghost" },
+        { labelKey: "cta.book", action: "book", variant: "primary" },
+        { labelKey: "cta.explore", action: "#services", variant: "ghost" },
       ],
       range: [0, 0.14],
     },
-    {
-      id: "signature",
-      label: "Experience",
-      stage: "products",
-      eyebrow: "Signature Experience",
-      headline: ["Every detail", "is deliberate."],
-      accentLine: 1,
-      body: "Hot towels, straight razors and premium products, chosen by barbers who obsess over the finish.",
-      range: [0.14, 0.32],
-    },
-    {
-      id: "services",
-      anchor: "services",
-      label: "Services",
-      stage: "services",
-      eyebrow: "Services",
-      headline: ["Crafted", "for you."],
-      accentLine: 1,
-      body: "From a sharp everyday cut to the full grooming ritual.",
-      range: [0.32, 0.5],
-    },
-    {
-      id: "craft",
-      anchor: "about",
-      label: "The Craft",
-      stage: "feature",
-      eyebrow: "About us",
-      headline: ["The", "Craft."],
-      accentLine: 1,
-      body: "Trained hands, honest advice and techniques passed down through generations of barbers.",
-      range: [0.5, 0.66],
-    },
-    {
-      id: "premium",
-      label: "Premium",
-      stage: "orbit",
-      eyebrow: "Premium Grooming Experience",
-      headline: ["More than", "a haircut."],
-      accentLine: 1,
-      body: "Consultation, wash, cut, beard, hot towel and styling. Sit back, we take care of the rest.",
-      range: [0.66, 0.84],
-    },
+    { id: "signature", messageKey: "chapters.signature", stage: "products", accentLine: 1, range: [0.14, 0.32] },
+    { id: "services", messageKey: "chapters.services", anchor: "services", stage: "services", accentLine: 1, range: [0.32, 0.5] },
+    { id: "craft", messageKey: "chapters.craft", anchor: "about", stage: "feature", accentLine: 1, range: [0.5, 0.66] },
+    { id: "premium", messageKey: "chapters.premium", stage: "orbit", accentLine: 1, range: [0.66, 0.84] },
     {
       id: "cta",
-      label: "Book",
+      messageKey: "chapters.cta",
       stage: "cta",
-      eyebrow: "Your chair is waiting",
-      headline: ["Your next look", "starts here."],
       accentLine: 1,
-      body: "Pick a service, choose your barber and book a time that suits you in under a minute.",
-      ctas: [{ label: "Book Appointment", action: "book", variant: "primary" }],
+      ctas: [{ labelKey: "cta.book", action: "book", variant: "primary" }],
       range: [0.84, 1],
     },
   ] satisfies Chapter[],
 
   services: [
     {
-      title: "Haircut",
-      text: "Consultation, precision cut and finish. Fades, scissor cuts, classics.",
-      price: "from €35",
-      image: { src: "/scene/service-haircut.webp", alt: "Haircut", width: 800, height: 600 },
-      cta: { label: "Book", action: "book", variant: "ghost" },
+      messageKey: "services.haircut",
+      image: { src: "/scene/service-haircut.webp", alt: "", width: 1280, height: 800 },
+      cta: { labelKey: "cta.bookShort", action: "book", variant: "ghost" },
     },
     {
-      title: "Beard Sculpting",
-      text: "Shape, line-up and hot towel treatment with straight-razor finish.",
-      price: "from €25",
-      image: { src: "/scene/service-beard.webp", alt: "Beard sculpting", width: 800, height: 600 },
-      cta: { label: "Book", action: "book", variant: "ghost" },
+      messageKey: "services.beard",
+      image: { src: "/scene/service-beard.webp", alt: "", width: 1280, height: 800 },
+      cta: { labelKey: "cta.bookShort", action: "book", variant: "ghost" },
     },
     {
-      title: "Premium Styling",
-      text: "Cut, beard, wash and styling. The complete grooming ritual.",
-      price: "from €60",
-      image: { src: "/scene/service-styling.webp", alt: "Premium styling", width: 800, height: 600 },
-      cta: { label: "Book", action: "book", variant: "ghost" },
+      messageKey: "services.styling",
+      image: { src: "/scene/service-styling.webp", alt: "", width: 1280, height: 800 },
+      cta: { labelKey: "cta.bookShort", action: "book", variant: "ghost" },
     },
   ] satisfies ServiceCard[],
 
-  /** PLACEHOLDER contact data. Replace with the client's real details. */
+  /** PLACEHOLDER contact data. Replace with the client's real details. Opening hours are in the messages. */
   contact: {
     anchor: "downtown",
     addressLines: ["Musterstraße 1 (placeholder)", "10115 Berlin"],
     phone: "+49 30 0000000",
     email: "hello@example.com",
-    hours: ["Mon–Fri 09:00–20:00", "Sat 09:00–18:00", "Sun closed"],
   },
 
   footer: {
     columns: [
       {
-        title: "Explore",
+        titleKey: "footer.explore",
         links: [
-          { label: "Home", href: "#home" },
-          { label: "Services", href: "#services" },
-          { label: "About", href: "#about" },
-          { label: "Downtown", href: "#downtown" },
+          { labelKey: "nav.home", href: "#home" },
+          { labelKey: "nav.services", href: "#services" },
+          { labelKey: "nav.about", href: "#about" },
+          { labelKey: "nav.downtown", href: "#downtown" },
         ],
       },
       {
-        title: "Services",
+        titleKey: "footer.services",
         links: [
-          { label: "Haircut", href: "#services" },
-          { label: "Beard Sculpting", href: "#services" },
-          { label: "Premium Styling", href: "#services" },
+          { labelKey: "services.haircut.title", href: "#services" },
+          { labelKey: "services.beard.title", href: "#services" },
+          { labelKey: "services.styling.title", href: "#services" },
         ],
       },
     ] satisfies FooterColumn[],
@@ -288,15 +330,11 @@ export const siteConfig = {
       { label: "Facebook", href: "https://facebook.com/", icon: "facebook" },
       { label: "TikTok", href: "https://tiktok.com/", icon: "tiktok" },
     ] as const,
-    /** Legal pages are built in phase 4. */
+    /** Legal pages are built in phase 4. Paths are prefixed with the locale at render time. */
     legal: [
-      { label: "Impressum", href: "/impressum" },
-      { label: "Datenschutz", href: "/datenschutz" },
-    ],
-    newsletter: {
-      title: "Stay sharp",
-      text: "Offers and new barbers, at most once a month.",
-    },
+      { labelKey: "footer.legal.impressum", href: "/impressum" },
+      { labelKey: "footer.legal.privacy", href: "/datenschutz" },
+    ] satisfies NavItem[],
   },
 };
 

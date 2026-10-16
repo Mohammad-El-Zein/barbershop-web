@@ -1,21 +1,38 @@
 @import "tailwindcss";
 
-/* Theme tokens. Brand colors are also in site.config.ts and injected on <html>
-   as CSS variables by layout.tsx, so rebranding only touches the config. */
+/* Light/dark via the "light" class on <html> (next-themes). */
+@custom-variant light (&:where(.light, .light *));
+
+/*
+ * Colour tokens (--bg, --surface, --text, --muted, --gold, --gold-deep, --gold-text,
+ * --line) are generated from site.config.ts by src/config/theme-css.ts and injected
+ * by the root layout, for :root (dark), html.light and .scene-dark.
+ */
 :root {
-  --bg: #0a0a0a;
-  --gold: #c9a45c;
-  --gold-deep: #8a6d2f;
-  --text: #f2efe9;
-  --muted: rgb(242 239 233 / 0.62);
+  /* Layout: one page gutter shared by nav, scene text, scroll cue and footer,
+     so every left edge lines up. */
+  --gutter: clamp(24px, 5vw, 96px);
+  --nav-h: 72px;
+  /* Scene text column: never wider than 40% of the viewport (minus the gutter). */
+  --text-col: min(calc(40vw - var(--gutter)), 640px);
+  /* Width available to a headline (used by the auto-fit below). */
+  --col-w: var(--text-col);
+}
+@media (max-width: 767px) {
+  :root {
+    --col-w: calc(100vw - 2 * var(--gutter));
+  }
 }
 
 @theme inline {
   --color-bg: var(--bg);
-  --color-gold: var(--gold);
-  --color-gold-deep: var(--gold-deep);
+  --color-surface: var(--surface);
   --color-ink: var(--text);
   --color-muted: var(--muted);
+  --color-gold: var(--gold);
+  --color-gold-deep: var(--gold-deep);
+  --color-gold-text: var(--gold-text);
+  --color-line: var(--line);
   --font-sans: var(--font-inter);
   --font-display: var(--font-anton);
 }
@@ -23,7 +40,6 @@
 html {
   background: var(--bg);
   color: var(--text);
-  color-scheme: dark;
 }
 
 body {
@@ -56,129 +72,160 @@ html.lenis body {
   overscroll-behavior: contain;
 }
 
-/* ─────────────────────────────────────────────── typography ── */
+/*
+ * Component classes live in @layer components so Tailwind utilities (which are in
+ * @layer utilities) can override them, e.g. "btn hidden md:inline-flex".
+ * Unlayered CSS would beat every utility regardless of specificity.
+ */
+@layer components {
+  /* ─────────────────────────────────────────────── typography ── */
 
-.display {
-  font-family: var(--font-anton), "Oswald", Impact, sans-serif;
-  text-transform: uppercase;
-  letter-spacing: 0.01em;
-  line-height: 0.92;
-  font-weight: 400; /* Anton only ships one (already heavy) weight */
-}
-
-.eyebrow {
-  font-size: 0.75rem;
-  letter-spacing: 0.32em;
-  text-transform: uppercase;
-  color: var(--gold);
-  font-weight: 600;
-}
-
-.text-gold-gradient {
-  background: linear-gradient(100deg, #f1d796 0%, var(--gold) 40%, var(--gold-deep) 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
-/* Masked line reveal: each line slides inside an overflow-hidden wrapper. */
-.line-mask {
-  display: block;
-  overflow: hidden;
-  /* room for descenders / Anton's tall caps so the mask doesn't clip glyphs */
-  padding-block: 0.04em;
-  margin-block: -0.04em;
-}
-.line-mask > .line {
-  display: block;
-  will-change: transform;
-}
-
-/* ─────────────────────────────────────────────── buttons ── */
-
-.btn {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.6rem;
-  height: 3rem;
-  padding-inline: 1.6rem;
-  font-size: 0.78rem;
-  font-weight: 600;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  border-radius: 999px;
-  transition:
-    background-color 0.3s ease,
-    color 0.3s ease,
-    border-color 0.3s ease,
-    box-shadow 0.3s ease,
-    transform 0.3s ease;
-  white-space: nowrap;
-  cursor: pointer;
-}
-@media (max-width: 767px) {
-  .btn {
-    height: 2.75rem;
-    padding-inline: 1.1rem;
-    font-size: 0.68rem;
-    letter-spacing: 0.16em;
+  .display {
+    font-family: var(--font-anton), "Oswald", Impact, sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.01em;
+    line-height: 0.92;
+    font-weight: 400; /* Anton only ships one (already heavy) weight */
   }
-}
-.btn:focus-visible {
-  outline: 2px solid var(--gold);
-  outline-offset: 3px;
-}
-.btn-primary {
-  color: #120d05;
-  background: linear-gradient(120deg, #e6c983 0%, var(--gold) 45%, var(--gold-deep) 100%);
-  box-shadow:
-    0 0 0 1px rgb(201 164 92 / 0.5),
-    0 10px 40px -10px rgb(201 164 92 / 0.55);
-}
-.btn-primary:hover {
-  transform: translateY(-1px);
-  box-shadow:
-    0 0 0 1px rgb(241 215 150 / 0.8),
-    0 14px 50px -8px rgb(201 164 92 / 0.75);
-}
-.btn-ghost {
-  color: var(--text);
-  border: 1px solid rgb(242 239 233 / 0.25);
-  background: rgb(255 255 255 / 0.02);
-}
-.btn-ghost:hover {
-  border-color: var(--gold);
-  color: var(--gold);
-}
-.btn-outline-gold {
-  color: var(--gold);
-  border: 1px solid var(--gold);
-  height: 2.5rem;
-  padding-inline: 1.2rem;
-  font-size: 0.7rem;
-}
-.btn-outline-gold:hover {
-  background: var(--gold);
-  color: #0a0a0a;
-}
-.btn-lg {
-  height: 3.75rem;
-  padding-inline: 2.4rem;
-  font-size: 0.85rem;
-}
 
-/* ─────────────────────────────────────────────── glass card ── */
+  /*
+   * Headline auto-fit: the normal fluid size, capped so the longest line
+   * (--fit = its character count, set inline) fits the column. Anton uppercase
+   * averages ~0.44em per character; 0.46 leaves a small safety margin.
+   * Keeps long German lines ("DEIN NÄCHSTER LOOK") inside the 40vw column.
+   */
+  .headline-fit {
+    font-size: min(clamp(2.25rem, 5.4vw, 6rem), calc(var(--col-w) / (var(--fit, 10) * 0.46)));
+  }
 
-.glass {
-  background: linear-gradient(160deg, rgb(255 255 255 / 0.09), rgb(255 255 255 / 0.02));
-  border: 1px solid rgb(201 164 92 / 0.28);
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.08),
-    0 30px 60px -30px rgb(0 0 0 / 0.9);
-  backdrop-filter: blur(14px) saturate(130%);
-  -webkit-backdrop-filter: blur(14px) saturate(130%);
+  .eyebrow {
+    font-size: 0.75rem;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    color: var(--gold-text);
+    font-weight: 600;
+  }
+
+  .text-gold-gradient {
+    background: linear-gradient(100deg, #f1d796 0%, var(--gold) 40%, var(--gold-deep) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* Masked line reveal: each line slides vertically inside an overflow-hidden
+     wrapper. Only translateY is animated, so text never leaves the left edge. */
+  .line-mask {
+    display: block;
+    overflow: hidden;
+    /* room above for umlaut dots (Ä Ö Ü sit ~0.15em above Anton's cap height)
+       and a little below; negative margins keep the line spacing unchanged */
+    padding-block: 0.2em 0.06em;
+    margin-block: -0.2em -0.06em;
+  }
+  .line-mask > .line {
+    display: block;
+    will-change: transform;
+    /* Extend the line's own box over the umlaut dots: gold lines paint their text
+       with background-clip:text, which only covers the element's box — without
+       this, the dots of Ä Ö Ü above the box would be transparent. */
+    padding-top: 0.2em;
+    margin-top: -0.2em;
+  }
+
+  /* ─────────────────────────────────────────────── buttons ── */
+
+  .btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    height: 3rem;
+    padding-inline: 1.4rem;
+    font-size: 0.76rem;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    border-radius: 999px;
+    transition:
+      background-color 0.3s ease,
+      color 0.3s ease,
+      border-color 0.3s ease,
+      box-shadow 0.3s ease,
+      transform 0.3s ease;
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  /* Narrower desktops (e.g. 1280): keep two hero CTAs on one row inside the 40vw column. */
+  @media (min-width: 768px) and (max-width: 1439px) {
+    .btn {
+      padding-inline: 1.15rem;
+      letter-spacing: 0.14em;
+    }
+  }
+  @media (max-width: 767px) {
+    .btn {
+      height: 2.75rem;
+      padding-inline: 1.1rem;
+      font-size: 0.68rem;
+      letter-spacing: 0.16em;
+    }
+  }
+  .btn:focus-visible {
+    outline: 2px solid var(--gold-text);
+    outline-offset: 3px;
+  }
+  .btn-primary {
+    color: #120d05;
+    background: linear-gradient(120deg, #e6c983 0%, var(--gold) 45%, var(--gold-deep) 100%);
+    box-shadow:
+      0 0 0 1px rgb(201 164 92 / 0.5),
+      0 10px 40px -10px rgb(201 164 92 / 0.55);
+  }
+  .btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow:
+      0 0 0 1px rgb(241 215 150 / 0.8),
+      0 14px 50px -8px rgb(201 164 92 / 0.75);
+  }
+  .btn-ghost {
+    color: var(--text);
+    border: 1px solid color-mix(in srgb, var(--text) 25%, transparent);
+    background: color-mix(in srgb, var(--text) 2%, transparent);
+  }
+  .btn-ghost:hover {
+    border-color: var(--gold-text);
+    color: var(--gold-text);
+  }
+  .btn-outline-gold {
+    color: var(--gold-text);
+    border: 1px solid var(--gold-text);
+    height: 2.5rem;
+    padding-inline: 1.2rem;
+    font-size: 0.7rem;
+  }
+  .btn-outline-gold:hover {
+    background: var(--gold-text);
+    color: var(--bg);
+  }
+  .btn-lg {
+    height: 3.75rem;
+    padding-inline: 2.4rem;
+    font-size: 0.85rem;
+  }
+
+  /* ─────────────────────────────────────────────── glass card ── */
+
+  .glass {
+    background: linear-gradient(160deg, rgb(255 255 255 / 0.09), rgb(255 255 255 / 0.02));
+    border: 1px solid rgb(201 164 92 / 0.28);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.08),
+      0 30px 60px -30px rgb(0 0 0 / 0.9);
+    backdrop-filter: blur(14px) saturate(130%);
+    -webkit-backdrop-filter: blur(14px) saturate(130%);
+  }
 }
 
 /* ─────────────────────────────────────────────── cinematic overlays ── */
@@ -201,6 +248,9 @@ html.lenis body {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   animation: grain 0.9s steps(6) infinite;
   will-change: transform;
+}
+html.light .grain {
+  opacity: 0.045;
 }
 @keyframes grain {
   0% { transform: translate(0, 0); }

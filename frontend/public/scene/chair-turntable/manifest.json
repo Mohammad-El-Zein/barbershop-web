@@ -1,0 +1,31 @@
+{
+  "frames": 88,
+  "width": 1273,
+  "height": 1358,
+  "pattern": "{dir}/{index:03d}.webp",
+  "crossfade": false,
+  "sets": [
+    {
+      "height": 960,
+      "width": 900,
+      "dir": "960",
+      "bytes": 4341250
+    },
+    {
+      "height": 540,
+      "width": 506,
+      "dir": "540",
+      "bytes": 2231790
+    }
+  ],
+  "source": {
+    "file": "chair-turn.gif",
+    "frames": 30,
+    "size": [
+      640,
+      360
+    ],
+    "interp": "rife"
+  },
+  "generated": "2026-10-16 00:22"
+}

@@ -1,0 +1,117 @@
+{
+  "meta": {
+    "title": "THE BARBER NEWS – Barbershop Downtown | Book online",
+    "description": "Premium barbershop for precision haircuts, beard sculpting and styling. Choose your barber and book your appointment online in under a minute.",
+    "ogLocale": "en_US"
+  },
+  "nav": {
+    "label": "Main",
+    "home": "Home",
+    "services": "Services",
+    "downtown": "Downtown",
+    "about": "About",
+    "skip": "Skip to content",
+    "menuOpen": "Open menu",
+    "menuClose": "Close menu",
+    "homeLink": "{brand}, home"
+  },
+  "language": {
+    "label": "Choose language",
+    "de": "Deutsch",
+    "en": "English"
+  },
+  "theme": {
+    "toggle": "Toggle theme",
+    "toLight": "Switch to light theme",
+    "toDark": "Switch to dark theme"
+  },
+  "cta": {
+    "book": "Book Appointment",
+    "explore": "Explore Services",
+    "bookShort": "Book"
+  },
+  "scene": {
+    "label": "{brand} — introduction",
+    "scroll": "Scroll to explore",
+    "chapters": "Chapters",
+    "goTo": "Go to {label}",
+    "loading": "Loading",
+    "loadingStatus": "Loading, {pct} percent"
+  },
+  "chapters": {
+    "hero": {
+      "label": "Home",
+      "eyebrow": "Barbershop · Est. 2024",
+      "headline": ["Precision.", "Style.", "Confidence."],
+      "body": "Classic craft meets modern style. Sharp cuts, clean fades and a chair that is always worth the wait."
+    },
+    "signature": {
+      "label": "Experience",
+      "eyebrow": "Signature Experience",
+      "headline": ["Every detail", "is deliberate."],
+      "body": "Hot towels, straight razors and premium products, chosen by barbers who obsess over the finish."
+    },
+    "services": {
+      "label": "Services",
+      "eyebrow": "Services",
+      "headline": ["Crafted", "for you."],
+      "body": "From a sharp everyday cut to the full grooming ritual."
+    },
+    "craft": {
+      "label": "The Craft",
+      "eyebrow": "About us",
+      "headline": ["The", "Craft."],
+      "body": "Trained hands, honest advice and techniques passed down through generations of barbers."
+    },
+    "premium": {
+      "label": "Premium",
+      "eyebrow": "Premium Grooming Experience",
+      "headline": ["More than", "a haircut."],
+      "body": "Consultation, wash, cut, beard, hot towel and styling. Sit back, we take care of the rest."
+    },
+    "cta": {
+      "label": "Book",
+      "eyebrow": "Your chair is waiting",
+      "headline": ["Your next look", "starts here."],
+      "body": "Pick a service, choose your barber and book a time that suits you in under a minute."
+    }
+  },
+  "services": {
+    "haircut": {
+      "title": "Haircut",
+      "text": "Consultation, precision cut and finish. Fades, scissor cuts, classics.",
+      "price": "from €35"
+    },
+    "beard": {
+      "title": "Beard Sculpting",
+      "text": "Shape, line-up and hot towel treatment with straight-razor finish.",
+      "price": "from €25"
+    },
+    "styling": {
+      "title": "Premium Styling",
+      "text": "Cut, beard, wash and styling. The complete grooming ritual.",
+      "price": "from €60"
+    }
+  },
+  "footer": {
+    "description": "Premium barbershop for precision haircuts, beard sculpting and styling. Book your appointment online.",
+    "social": "Social media",
+    "explore": "Explore",
+    "services": "Services",
+    "visit": "Visit us · Downtown",
+    "hours": ["Mon–Fri 09:00–20:00", "Sat 09:00–18:00", "Sun closed"],
+    "newsletter": {
+      "title": "Stay sharp",
+      "text": "Offers and new barbers, at most once a month.",
+      "emailLabel": "Email address",
+      "placeholder": "your@email.com",
+      "subscribe": "Subscribe",
+      "thanks": "Thanks! (Demo: the newsletter is not connected yet.)"
+    },
+    "rights": "All rights reserved.",
+    "legal": {
+      "impressum": "Legal notice",
+      "privacy": "Privacy policy"
+    }
+  }
+}

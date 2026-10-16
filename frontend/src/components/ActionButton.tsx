@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import type { Cta } from "@/config/site.config";
 import { openBooking } from "@/lib/booking";
 import { scrollToTarget } from "@/lib/scroll";
@@ -14,12 +15,14 @@ type Props = {
 
 /** Renders a config CTA: "book" opens the booking flow, "#x" scrolls, anything else is a link. */
 export function ActionButton({ cta, size = "md", className = "", source }: Props) {
+  const t = useTranslations();
+  const label = t(cta.labelKey);
   const cls = `btn ${cta.variant === "primary" ? "btn-primary" : "btn-ghost"} ${size === "lg" ? "btn-lg" : ""} ${className}`;
 
   if (cta.action === "book") {
     return (
       <button type="button" className={cls} onClick={() => openBooking(source)}>
-        {cta.label}
+        {label}
         {cta.variant === "primary" && <Arrow />}
       </button>
     );
@@ -33,7 +36,7 @@ export function ActionButton({ cta, size = "md", className = "", source }: Props
         if (scrollToTarget(cta.action)) e.preventDefault();
       }}
     >
-      {cta.label}
+      {label}
     </a>
   );
 }

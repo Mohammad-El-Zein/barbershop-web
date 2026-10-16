@@ -9,7 +9,7 @@ export function Logo({ className = "" }: { className?: string }) {
         <circle cx="18" cy="18" r="3" stroke="currentColor" strokeWidth="1.6" />
         <path d="M8.2 16 19 3M15.8 16 5 3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
       </svg>
-      <span className="display text-[1.15rem] tracking-[0.14em] text-ink">{siteConfig.brand.name}</span>
+      <span className="display whitespace-nowrap text-[1.15rem] tracking-[0.14em] text-ink">{siteConfig.brand.name}</span>
     </span>
   );
 }

@@ -1,0 +1,117 @@
+{
+  "meta": {
+    "title": "THE BARBER NEWS – Barbershop Downtown | Termin online buchen",
+    "description": "Premium-Barbershop für präzise Haarschnitte, Bart-Styling und Grooming. Wähl deinen Barber und buch deinen Termin online – in unter einer Minute.",
+    "ogLocale": "de_DE"
+  },
+  "nav": {
+    "label": "Hauptnavigation",
+    "home": "Start",
+    "services": "Leistungen",
+    "downtown": "Standort",
+    "about": "Über uns",
+    "skip": "Zum Inhalt springen",
+    "menuOpen": "Menü öffnen",
+    "menuClose": "Menü schließen",
+    "homeLink": "{brand}, Startseite"
+  },
+  "language": {
+    "label": "Sprache wählen",
+    "de": "Deutsch",
+    "en": "English"
+  },
+  "theme": {
+    "toggle": "Design wechseln",
+    "toLight": "Helles Design aktivieren",
+    "toDark": "Dunkles Design aktivieren"
+  },
+  "cta": {
+    "book": "Termin buchen",
+    "explore": "Leistungen ansehen",
+    "bookShort": "Buchen"
+  },
+  "scene": {
+    "label": "{brand} – Einführung",
+    "scroll": "Scroll dich rein",
+    "chapters": "Kapitel",
+    "goTo": "Zu: {label}",
+    "loading": "Lädt",
+    "loadingStatus": "Wird geladen, {pct} Prozent"
+  },
+  "chapters": {
+    "hero": {
+      "label": "Start",
+      "eyebrow": "Barbershop · seit 2024",
+      "headline": ["Präzision.", "Stil.", "Haltung."],
+      "body": "Klassisches Handwerk trifft modernen Style. Saubere Fades, scharfe Konturen – und ein Stuhl, auf den sich das Warten lohnt."
+    },
+    "signature": {
+      "label": "Erlebnis",
+      "eyebrow": "Das Signature-Erlebnis",
+      "headline": ["Jedes Detail", "sitzt."],
+      "body": "Heiße Tücher, Rasiermesser und Premium-Produkte – ausgewählt von Barbern, die für das perfekte Finish brennen."
+    },
+    "services": {
+      "label": "Leistungen",
+      "eyebrow": "Leistungen",
+      "headline": ["Gemacht", "für dich."],
+      "body": "Vom schnellen Schnitt für jeden Tag bis zum kompletten Grooming-Ritual."
+    },
+    "craft": {
+      "label": "Handwerk",
+      "eyebrow": "Über uns",
+      "headline": ["Echtes", "Handwerk."],
+      "body": "Geübte Hände, ehrliche Beratung und Techniken, die seit Generationen von Barber zu Barber weitergegeben werden."
+    },
+    "premium": {
+      "label": "Premium",
+      "eyebrow": "Premium Grooming",
+      "headline": ["Mehr als", "ein Schnitt."],
+      "body": "Beratung, Waschen, Schneiden, Bart, heißes Tuch und Styling. Lehn dich zurück – um den Rest kümmern wir uns."
+    },
+    "cta": {
+      "label": "Buchen",
+      "eyebrow": "Dein Platz wartet",
+      "headline": ["Dein nächster Look", "beginnt hier."],
+      "body": "Leistung wählen, Barber aussuchen, Wunschzeit sichern – in unter einer Minute gebucht."
+    }
+  },
+  "services": {
+    "haircut": {
+      "title": "Haarschnitt",
+      "text": "Beratung, Präzisionsschnitt und Finish. Fades, Scherenschnitte, Klassiker.",
+      "price": "ab 35 €"
+    },
+    "beard": {
+      "title": "Bart-Styling",
+      "text": "Konturen, Line-up und heißes Tuch – mit Rasiermesser-Finish.",
+      "price": "ab 25 €"
+    },
+    "styling": {
+      "title": "Premium-Paket",
+      "text": "Schnitt, Bart, Waschen und Styling. Das komplette Grooming-Ritual.",
+      "price": "ab 60 €"
+    }
+  },
+  "footer": {
+    "description": "Premium-Barbershop für präzise Haarschnitte, Bart-Styling und Grooming. Termine ganz einfach online buchen.",
+    "social": "Social Media",
+    "explore": "Entdecken",
+    "services": "Leistungen",
+    "visit": "Besuch uns · Downtown",
+    "hours": ["Mo–Fr 09:00–20:00", "Sa 09:00–18:00", "So geschlossen"],
+    "newsletter": {
+      "title": "Bleib scharf",
+      "text": "Angebote und neue Barber – höchstens einmal im Monat.",
+      "emailLabel": "E-Mail-Adresse",
+      "placeholder": "deine@email.de",
+      "subscribe": "Abonnieren",
+      "thanks": "Danke! (Demo: Der Newsletter ist noch nicht angebunden.)"
+    },
+    "rights": "Alle Rechte vorbehalten.",
+    "legal": {
+      "impressum": "Impressum",
+      "privacy": "Datenschutz"
+    }
+  }
+}

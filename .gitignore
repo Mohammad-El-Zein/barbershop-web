@@ -3,8 +3,35 @@
 Thumbs.db
 .idea/
 .vscode/
+*.iml
 
-# env
+# env (secrets) — only the documented example is committed
 .env
 .env.*
 !.env.example
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+
+# Java / Maven (backend)
+target/
+*.class
+.mvn/wrapper/maven-wrapper.jar
+
+# raw source assets (large; the processed results live in frontend/public/scene)
+assets-raw/
+
+# local verification screenshots
+screenshots/
+
+# Python: bytecode, virtualenvs, asset-pipeline work folders
+__pycache__/
+*.pyc
+.venv/
+venv/
+imgenv/
+turntable-work/
+tt-work/

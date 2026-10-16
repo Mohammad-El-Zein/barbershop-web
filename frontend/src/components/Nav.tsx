@@ -1,14 +1,31 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { siteConfig } from "@/config/site.config";
 import { openBooking } from "@/lib/booking";
+import { ScrollTrigger } from "@/lib/gsap";
 import { scrollToTarget } from "@/lib/scroll";
+import { LanguageSwitcher } from "./LanguageSwitcher";
 import { Logo } from "./Logo";
+import { ThemeToggle } from "./ThemeToggle";
 
-/** Slim fixed top navigation with a mobile menu. */
-export function Nav() {
+/**
+ * Slim fixed top navigation with a mobile menu, theme toggle and language switcher.
+ *
+ * Readability over both backgrounds:
+ * - over the cinematic scene (always dark): dark tokens (.scene-dark); in dark
+ *   theme a soft gradient, in light theme a dark glass bar
+ * - over page content (footer, later pages): a glass bar in the current theme
+ * The switch happens when the first element marked [data-after-scene] reaches the nav.
+ *
+ * Horizontal padding is the shared page gutter (--gutter), so the logo's left
+ * edge matches the scene text column in every chapter.
+ */
+export function Nav({ hasScene = true }: { hasScene?: boolean }) {
+  const t = useTranslations();
   const [open, setOpen] = useState(false);
+  const [overPage, setOverPage] = useState(!hasScene);
 
   useEffect(() => {
     if (!open) return;
@@ -17,76 +34,120 @@ export function Nav() {
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
+  useEffect(() => {
+    if (!hasScene) return;
+    const after = document.querySelector("[data-after-scene]");
+    if (!after) return;
+    const st = ScrollTrigger.create({
+      trigger: after,
+      start: "top top+=72",
+      // footer = last element: its bottom never passes the viewport top, so the
+      // trigger stays active down to the last pixel ("max" would deactivate there)
+      end: "bottom top",
+      // refresh after the scene's pin so the position includes the pin spacing
+      refreshPriority: -1,
+      onToggle: (self) => setOverPage(self.isActive),
+    });
+    return () => st.kill();
+  }, [hasScene]);
+
   const go = (e: React.MouseEvent, href: string) => {
     if (scrollToTarget(href)) e.preventDefault();
     setOpen(false);
   };
 
+  const overScene = !overPage;
+
   return (
-    <header className="fixed inset-x-0 top-0 z-50">
+    <header data-nav-surface={overScene ? "scene" : "page"} className={`fixed inset-x-0 top-0 z-50 text-ink ${overScene ? "scene-dark" : ""}`}>
       <a
         href="#main"
         className="sr-only-focusable absolute left-4 top-3 z-10 rounded bg-gold px-3 py-2 text-sm text-black"
       >
-        Skip to content
+        {t("nav.skip")}
       </a>
-      {/* soft top gradient so links stay readable over the stage */}
-      <div className="pointer-events-none absolute inset-0 h-28 bg-gradient-to-b from-black/80 via-black/30 to-transparent" />
-      <nav
-        aria-label="Main"
-        className="relative mx-auto flex h-[72px] max-w-[1600px] items-center justify-between px-5 md:px-10"
+
+      {/* backgrounds (cross-faded) */}
+      <div
+        aria-hidden="true"
+        className={`pointer-events-none absolute inset-x-0 top-0 transition-opacity duration-300 ${overScene ? "opacity-100" : "opacity-0"}`}
       >
-        <a href="#home" onClick={(e) => go(e, "#home")} aria-label={`${siteConfig.brand.name}, home`}>
+        {/* dark theme: soft gradient — light theme: dark glass bar */}
+        <div className="h-28 bg-gradient-to-b from-black/85 via-black/40 to-transparent light:h-[var(--nav-h)] light:border-b light:border-white/10 light:bg-[rgb(10_10_10/0.72)] light:bg-none light:backdrop-blur-md" />
+      </div>
+      <div
+        aria-hidden="true"
+        className={`pointer-events-none absolute inset-x-0 top-0 h-[var(--nav-h)] border-b border-line bg-[color-mix(in_srgb,var(--bg)_86%,transparent)] backdrop-blur-md transition-opacity duration-300 ${
+          overScene ? "opacity-0" : "opacity-100"
+        }`}
+      />
+
+      <nav
+        aria-label={t("nav.label")}
+        className="relative flex h-[var(--nav-h)] items-center justify-between gap-4 px-[var(--gutter)]"
+      >
+        <a
+          href="#home"
+          data-nav-logo
+          onClick={(e) => go(e, "#home")}
+          aria-label={t("nav.homeLink", { brand: siteConfig.brand.name })}
+          className="min-w-0"
+        >
           <Logo />
         </a>
 
-        <div className="hidden items-center gap-10 md:flex">
-          <ul className="flex items-center gap-8">
+        <div className="flex items-center gap-3 lg:gap-8">
+          <ul className="hidden items-center gap-6 lg:flex xl:gap-8">
             {siteConfig.nav.map((item) => (
               <li key={item.href}>
                 <a
                   href={item.href}
                   onClick={(e) => go(e, item.href)}
-                  className="text-[0.72rem] font-medium uppercase tracking-[0.24em] text-ink/75 transition-colors hover:text-gold focus-visible:text-gold focus-visible:outline-none"
+                  className="text-[0.72rem] font-medium uppercase tracking-[0.24em] text-ink/75 transition-colors hover:text-gold-text focus-visible:text-gold-text focus-visible:outline-none"
                 >
-                  {item.label}
+                  {t(item.labelKey)}
                 </a>
               </li>
             ))}
           </ul>
-          <button type="button" className="btn btn-outline-gold" onClick={() => openBooking("nav")}>
-            {siteConfig.bookCta.label}
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* phones: the language switcher lives in the mobile menu (bar width) */}
+            <LanguageSwitcher className="hidden sm:flex" />
+            <ThemeToggle />
+          </div>
+          <button type="button" className="btn btn-outline-gold hidden md:inline-flex" onClick={() => openBooking("nav")}>
+            {t(siteConfig.bookCta.labelKey)}
+          </button>
+          <button
+            type="button"
+            className="relative -mr-2 flex h-10 w-10 shrink-0 items-center justify-center lg:hidden"
+            aria-expanded={open}
+            aria-controls="mobile-menu"
+            aria-label={open ? t("nav.menuClose") : t("nav.menuOpen")}
+            onClick={() => setOpen((o) => !o)}
+          >
+            <span className={`absolute h-px w-6 bg-ink transition-transform ${open ? "rotate-45" : "-translate-y-1.5"}`} />
+            <span className={`absolute h-px w-6 bg-ink transition-opacity ${open ? "opacity-0" : ""}`} />
+            <span className={`absolute h-px w-6 bg-ink transition-transform ${open ? "-rotate-45" : "translate-y-1.5"}`} />
           </button>
         </div>
-
-        <button
-          type="button"
-          className="relative flex h-10 w-10 items-center justify-center md:hidden"
-          aria-expanded={open}
-          aria-controls="mobile-menu"
-          aria-label={open ? "Close menu" : "Open menu"}
-          onClick={() => setOpen((o) => !o)}
-        >
-          <span className={`absolute h-px w-6 bg-ink transition-transform ${open ? "rotate-45" : "-translate-y-1.5"}`} />
-          <span className={`absolute h-px w-6 bg-ink transition-opacity ${open ? "opacity-0" : ""}`} />
-          <span className={`absolute h-px w-6 bg-ink transition-transform ${open ? "-rotate-45" : "translate-y-1.5"}`} />
-        </button>
       </nav>
 
       <div
         id="mobile-menu"
         hidden={!open}
-        className="relative border-t border-white/10 bg-black/95 px-5 pb-8 pt-4 backdrop-blur md:hidden"
+        className="relative border-t border-line bg-[color-mix(in_srgb,var(--bg)_96%,transparent)] px-[var(--gutter)] pb-8 pt-4 backdrop-blur lg:hidden"
       >
+        <LanguageSwitcher className="mb-2 flex sm:hidden" />
         <ul className="flex flex-col">
           {siteConfig.nav.map((item) => (
             <li key={item.href}>
               <a
                 href={item.href}
                 onClick={(e) => go(e, item.href)}
-                className="display block py-3 text-3xl text-ink hover:text-gold"
+                className="display block py-3 text-3xl text-ink hover:text-gold-text"
               >
-                {item.label}
+                {t(item.labelKey)}
               </a>
             </li>
           ))}
@@ -99,7 +160,7 @@ export function Nav() {
             openBooking("nav-mobile");
           }}
         >
-          {siteConfig.bookCta.label}
+          {t(siteConfig.bookCta.labelKey)}
         </button>
       </div>
     </header>
