@@ -36,10 +36,11 @@ Step "2. Availability $Date, haircut + beard (75 min), one column per barber"
 $day = Api GET "/api/public/$TENANT/availability?services=$HAIRCUT,$BEARD&date=$Date"
 "durationMin = $($day.Body.durationMin), slot step = $($day.Body.slotStepMin) min"
 foreach ($c in $day.Body.barbers) {
-    "  {0,-5} {1,2} free slots: {2} ..." -f $c.name, $c.slots.Count, (($c.slots | Select-Object -First 6 | ForEach-Object time) -join ", ")
+    $free = @($c.slots | Where-Object available)
+    "  {0,-5} {1,2} free / {2,2} total: {3} ..." -f $c.name, $free.Count, $c.slots.Count, (($free | Select-Object -First 6 | ForEach-Object time) -join ", ")
 }
 "  any barber: $($day.Body.anyBarber.Count) start times"
-$slot = ($day.Body.barbers | Where-Object staffId -eq $LUCA).slots | Where-Object { $_.time -ge "10:00" } | Select-Object -First 1
+$slot = ($day.Body.barbers | Where-Object staffId -eq $LUCA).slots | Where-Object { $_.available -and $_.time -ge "10:00" } | Select-Object -First 1
 if (-not $slot) { throw "Luca has no free slot on $Date - pass another date with -Date" }
 
 Step "3. Price preview (guest)"

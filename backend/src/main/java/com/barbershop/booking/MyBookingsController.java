@@ -2,6 +2,7 @@ package com.barbershop.booking;
 
 import com.barbershop.auth.CurrentUser;
 import com.barbershop.booking.BookingDtos.BookingView;
+import com.barbershop.booking.BookingDtos.PaymentLinkView;
 import com.barbershop.booking.BookingDtos.ReasonRequest;
 import com.barbershop.common.config.OpenApiConfig;
 import com.barbershop.loyalty.LoyaltyService;
@@ -28,11 +29,14 @@ import org.springframework.web.bind.annotation.RestController;
 public class MyBookingsController {
 
     private final BookingService bookings;
+    private final BookingLinkService links;
     private final LoyaltyService loyalty;
     private final TenantService tenants;
 
-    public MyBookingsController(BookingService bookings, LoyaltyService loyalty, TenantService tenants) {
+    public MyBookingsController(BookingService bookings, BookingLinkService links, LoyaltyService loyalty,
+                               TenantService tenants) {
         this.bookings = bookings;
+        this.links = links;
         this.loyalty = loyalty;
         this.tenants = tenants;
     }
@@ -54,6 +58,12 @@ public class MyBookingsController {
     public BookingView cancel(CurrentUser user, @PathVariable("id") UUID id,
                               @Valid @RequestBody(required = false) ReasonRequest req) {
         return bookings.cancelMine(user, id, req == null ? null : req.reason());
+    }
+
+    @PostMapping("/bookings/{id}/payment-link")
+    @Operation(summary = "\"Pay now\": fresh single-use link to the deposit payment page (only while AWAITING_PAYMENT)")
+    public PaymentLinkView paymentLink(CurrentUser user, @PathVariable("id") UUID id) {
+        return links.paymentLinkForOwner(user.tenantId(), user.userId(), id);
     }
 
     @GetMapping("/loyalty")

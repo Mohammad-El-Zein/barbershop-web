@@ -40,7 +40,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private static final Pattern AUTH_MAIL_POST =
             Pattern.compile("^/api/public/[^/]+/auth/(register|forgot-password|resend-verification)$");
     private static final Pattern TOKEN_POST = Pattern.compile(
-            "^/api/public/(manage|barber-decision|payments)/[^/]+/[a-z-]+$|^/api/public/auth/(verify-email|reset-password)$");
+            "^/api/public/(manage|barber-decision|payments|booking-status)/[^/]+/[a-z-]+$|^/api/public/auth/(verify-email|reset-password)$");
     private static final String REFRESH_POST = "/api/auth/refresh";
 
     private final AppProperties.RateLimit config;

@@ -236,10 +236,11 @@ PaymentLedger                          payment rows + payment_event audit trail 
 |---|---|
 | `GET /api/public/{tenant}` | Shop info and customer-facing booking rules (deposit, refund cutoff, lead time …) |
 | `GET /api/public/{tenant}/services`, `GET …/staff?service=` | Services and barbers |
-| `GET /api/public/{tenant}/availability?services=a,b&date=` | One day for **all barbers**: `barbers[]` (one column each, only those offering all services) and `anyBarber[]` |
+| `GET /api/public/{tenant}/availability?services=a,b&date=` | One day for **all barbers**: `barbers[]` (one column each, only those offering all services; every schedule time with `available` true/false, taken = false) and `anyBarber[]` (free only) |
 | `GET /api/public/{tenant}/availability/days?services=&staff=&from=&to=` | Days with free slots |
 | `POST /api/public/{tenant}/bookings/price-preview` | Total, loyalty discount (logged-in customers), deposit, due at shop |
-| `POST /api/public/{tenant}/bookings` | Request (guest or logged-in). `201 PENDING_BARBER`; `409` slot taken; `422` invalid slot |
+| `POST /api/public/{tenant}/bookings` | Request (guest or logged-in). `201 PENDING_BARBER`; `409` slot taken; `422` invalid slot — the response carries a one-time `statusToken` |
+| `GET /api/public/booking-status/{token}`, `POST …/payment-link` | Status page right after booking (read-only, reusable until a week after the appointment); a fresh single-use payment link while AWAITING_PAYMENT |
 | `…/manage/{token}`, `…/barber-decision/{token}`, `…/payments/{token}` | Email-link pages, see above |
 | `POST /api/public/{tenant}/auth/register` · `…/resend-verification` · `…/forgot-password` | Always `202` |
 | `POST /api/public/auth/verify-email` · `…/reset-password` | Token from the email |
@@ -258,6 +259,7 @@ PaymentLedger                          payment rows + payment_event audit trail 
 |---|---|
 | `GET`, `PATCH /api/me` | Profile |
 | `GET /api/me/bookings?scope=upcoming\|past`, `GET …/{id}`, `POST …/{id}/cancel` | My bookings |
+| `POST /api/me/bookings/{id}/payment-link` | "Pay now": fresh payment link while AWAITING_PAYMENT |
 | `GET /api/me/loyalty` | Loyalty state |
 | `GET /api/me/export`, `POST /api/me/delete` | GDPR |
 

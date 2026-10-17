@@ -9,6 +9,7 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
@@ -240,6 +241,17 @@ class AccountIT extends AbstractIntegrationTest {
         assertThat(created.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         assertThat(created.getBody()).containsEntry("customerEmail", email).containsEntry("customerName", "Max Test");
         String id = (String) created.getBody().get("id");
+
+        // "Pay now" in my bookings: only once the barber accepted, and only for my own booking
+        assertThat(call(HttpMethod.POST, "/api/me/bookings/" + id + "/payment-link", null, "de", access).getBody())
+                .containsEntry("code", "booking.not_awaiting_payment");
+        call(HttpMethod.POST, "/api/admin/bookings/" + id + "/accept", null, "de", adminToken());
+        Map<String, Object> link = call(HttpMethod.POST, "/api/me/bookings/" + id + "/payment-link", null, "de",
+                access).getBody();
+        assertThat((String) link.get("url")).contains("/de/pay/");
+        assertThat(get("/api/public/payments/" + link.get("token"), "de").getBody()).containsEntry("status", "UNPAID");
+        assertThat(call(HttpMethod.POST, "/api/me/bookings/" + UUID.randomUUID() + "/payment-link", null, "de", access)
+                .getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
 
         ResponseEntity<Map<String, Object>> export = get("/api/me/export", "de", access);
         assertThat(export.getHeaders().getFirst(HttpHeaders.CONTENT_DISPOSITION)).contains("attachment");

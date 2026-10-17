@@ -29,7 +29,9 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -83,12 +85,19 @@ public class AvailabilityService {
         ZoneId zone = tenant.zone();
 
         List<Slot> slots = slots(tenant, duration, staff, date, date, false);
+        // every start time the barber's schedule allows (ignoring bookings): the ones that are
+        // not free anymore are listed with available=false, so the UI can grey them out
+        List<Slot> schedule = slots(tenant, duration, staff, date, date, true);
         List<BarberColumn> columns = staff.stream()
-                .map(s -> new BarberColumn(s.getId(), s.getName(), s.getPhotoUrl(), slots.stream()
-                        .filter(slot -> slot.staffIds().contains(s.getId()))
-                        .map(slot -> new SlotView(at(slot.start(), zone), at(slot.end(), zone),
-                                HH_MM.format(slot.start().atZone(zone))))
-                        .toList()))
+                .map(s -> {
+                    Set<Instant> free = slots.stream().filter(slot -> slot.staffIds().contains(s.getId()))
+                            .map(Slot::start).collect(Collectors.toSet());
+                    return new BarberColumn(s.getId(), s.getName(), s.getPhotoUrl(), schedule.stream()
+                            .filter(slot -> slot.staffIds().contains(s.getId()))
+                            .map(slot -> new SlotView(at(slot.start(), zone), at(slot.end(), zone),
+                                    HH_MM.format(slot.start().atZone(zone)), free.contains(slot.start())))
+                            .toList());
+                })
                 .toList();
         List<AnySlotView> any = slots.stream()
                 .map(s -> new AnySlotView(at(s.start(), zone), at(s.end(), zone), HH_MM.format(s.start().atZone(zone)),
@@ -207,8 +216,11 @@ public class AvailabilityService {
 
     // ── views ────────────────────────────────────────────────────────────────
 
-    /** start/end carry the shop timezone's offset; time is the local "HH:mm" label. */
-    public record SlotView(OffsetDateTime start, OffsetDateTime end, String time) {}
+    /**
+     * start/end carry the shop timezone's offset; time is the local "HH:mm" label.
+     * available=false: within the barber's schedule but already taken (shown greyed out).
+     */
+    public record SlotView(OffsetDateTime start, OffsetDateTime end, String time, boolean available) {}
 
     public record AnySlotView(OffsetDateTime start, OffsetDateTime end, String time, List<UUID> staffIds) {}
 

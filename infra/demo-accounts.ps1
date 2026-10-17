@@ -26,7 +26,7 @@ $admin = Login-Admin
 
 function Free-Slot([string]$Staff, [string]$From = "09:00") {
     $day = Api GET "/api/public/$TENANT/availability?services=$HAIRCUT&date=$Date"
-    $s = ($day.Body.barbers | Where-Object staffId -eq $Staff).slots | Where-Object { $_.time -ge $From } | Select-Object -First 1
+    $s = ($day.Body.barbers | Where-Object staffId -eq $Staff).slots | Where-Object { $_.available -and $_.time -ge $From } | Select-Object -First 1
     if (-not $s) { throw "no free slot on $Date for $Staff - pass -Date" }
     return $s.start
 }

@@ -97,8 +97,14 @@ class PublicApiIT extends AbstractIntegrationTest {
         assertThat(premium).containsEntry("durationMin", 120);
         // a booked combination blocks the whole 75 minutes
         book(booking(List.of(HAIRCUT, BEARD), MO, at(tuesday, "10:00"), uniqueEmail(), "de"));
-        assertThat(columns(get(BASE + "/availability?services=" + BEARD + "&date=" + tuesday, "de").getBody())
-                .get(MO.toString())).doesNotContain("10:00", "10:45", "11:00").contains("11:15");
+        Map<String, Object> beardDay = get(BASE + "/availability?services=" + BEARD + "&date=" + tuesday, "de").getBody();
+        assertThat(columns(beardDay).get(MO.toString())).doesNotContain("10:00", "10:45", "11:00").contains("11:15");
+        // … and the taken times stay in Mo's column, greyed out (available=false), but not in "any barber" for Mo
+        List<Map<String, Object>> moSlots = ((List<Map<String, Object>>) beardDay.get("barbers")).stream()
+                .filter(c -> MO.toString().equals(c.get("staffId")))
+                .flatMap(c -> ((List<Map<String, Object>>) c.get("slots")).stream()).toList();
+        assertThat(moSlots).anySatisfy(s -> assertThat(s).containsEntry("time", "10:00").containsEntry("available", false));
+        assertThat(anyBarber(beardDay).get("10:00")).doesNotContain(MO.toString());
     }
 
     @Test
@@ -250,6 +256,7 @@ class PublicApiIT extends AbstractIntegrationTest {
         Map<String, List<String>> result = new LinkedHashMap<>();
         for (Map<String, Object> c : (List<Map<String, Object>>) day.get("barbers")) {
             result.put((String) c.get("staffId"), ((List<Map<String, Object>>) c.get("slots")).stream()
+                    .filter(s -> Boolean.TRUE.equals(s.get("available")))
                     .map(s -> (String) s.get("time")).toList());
         }
         return result;

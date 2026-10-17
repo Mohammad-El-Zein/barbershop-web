@@ -11,5 +11,10 @@ public enum TokenPurpose {
     /** Guest/customer views or cancels their booking. */
     BOOKING_MANAGE,
     /** Customer opens the (demo) payment page for the deposit. */
-    PAYMENT
+    PAYMENT,
+    /**
+     * Read-only status page right after booking (returned once in the booking response).
+     * Not single-use; it can only read the booking and mint a new payment link.
+     */
+    BOOKING_STATUS
 }

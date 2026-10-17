@@ -98,7 +98,18 @@ public final class BookingDtos {
                               String customerName, String customerEmail, String customerPhone, String lang,
                               String note, PriceView price, LoyaltyStatus loyalty, PaymentInfo payment,
                               OffsetDateTime barberDeadline, String statusReason, Actions actions,
-                              OffsetDateTime createdAt) {}
+                              OffsetDateTime createdAt, String statusToken) {
+
+        /** The creation response carries the read-only status link token (only then; it is never stored raw). */
+        public BookingView withStatusToken(String token) {
+            return new BookingView(id, status, services, staff, start, end, durationMin, timezone, customerName,
+                    customerEmail, customerPhone, lang, note, price, loyalty, payment, barberDeadline, statusReason,
+                    actions, createdAt, token);
+        }
+    }
+
+    /** A fresh single-use link to the deposit payment page. */
+    public record PaymentLinkView(String token, String url) {}
 
     /** Barber / admin view: everything incl. contact data, lifecycle timestamps and allowed transitions. */
     public record BookingAdminView(UUID id, BookingStatus status, BookingSource source, List<ServiceLine> services,

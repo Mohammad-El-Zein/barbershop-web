@@ -4,6 +4,7 @@ import com.barbershop.auth.CurrentUser;
 import com.barbershop.booking.BookingDtos.BookingView;
 import com.barbershop.booking.BookingDtos.CreateBookingRequest;
 import com.barbershop.booking.BookingDtos.DecisionView;
+import com.barbershop.booking.BookingDtos.PaymentLinkView;
 import com.barbershop.booking.BookingDtos.PricePreview;
 import com.barbershop.booking.BookingDtos.PricePreviewRequest;
 import com.barbershop.booking.BookingDtos.ReasonRequest;
@@ -53,6 +54,20 @@ public class PublicBookingController {
                                               Locale locale) {
         BookingView created = bookings.create(tenant, req, user, locale);
         return ResponseEntity.created(URI.create("/api/me/bookings/" + created.id())).body(created);
+    }
+
+    // ── status page right after booking (/[locale]/booking/status/[token]) ──
+
+    @GetMapping("/booking-status/{token}")
+    @Operation(summary = "Live status for the status page (statusToken from the creation response; changes nothing)")
+    public BookingView status(@PathVariable("token") String token) {
+        return links.statusPage(token);
+    }
+
+    @PostMapping("/booking-status/{token}/payment-link")
+    @Operation(summary = "Fresh single-use link to the deposit payment page (only while AWAITING_PAYMENT)")
+    public PaymentLinkView statusPaymentLink(@PathVariable("token") String token) {
+        return links.paymentLinkFromStatus(token);
     }
 
     // ── customer manage link (/[locale]/booking/manage/[token]) ─────────────

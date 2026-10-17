@@ -57,7 +57,7 @@ public class BookingViews {
                 at(b.getEndTime(), zone), b.durationMin(), t.getTimezone(), b.getCustomerName(), b.getCustomerEmail(),
                 b.getCustomerPhone(), b.getLocale(), b.getCustomerNote(), price(b, lang), b.getLoyaltyStatus(),
                 payment(b, payment, zone, lang), at(b.getBarberDeadlineAt(), zone), b.getStatusReason(),
-                actions(b, t, payment), at(b.getCreatedAt(), zone));
+                actions(b, t, payment), at(b.getCreatedAt(), zone), null);
     }
 
     public BookingAdminView admin(Booking b, Tenant t, Lang lang, Actor viewer) {

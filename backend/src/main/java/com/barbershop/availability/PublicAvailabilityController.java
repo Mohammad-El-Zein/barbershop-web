@@ -26,8 +26,9 @@ public class PublicAvailabilityController {
     }
 
     @GetMapping
-    @Operation(summary = "Free slots of one day for ALL barbers at once (one column per barber) plus the merged "
-            + "'any barber' list. services = comma-separated service ids; duration = sum of all services.")
+    @Operation(summary = "One day for ALL barbers at once: a column per barber with every start time of their "
+            + "schedule (available=false = taken) plus the merged 'any barber' list (free only). "
+            + "services = comma-separated service ids; duration = sum of all services.")
     public DayView day(@PathVariable("tenant") String tenant,
                        @RequestParam("services") List<UUID> serviceIds,
                        @RequestParam("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {

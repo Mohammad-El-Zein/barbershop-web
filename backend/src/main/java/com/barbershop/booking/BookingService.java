@@ -202,11 +202,12 @@ public class BookingService {
         // 3) insert; the exclusion constraint is the final word under concurrency
         for (Staff staff : free) {
             try {
-                Booking saved = writeTx.execute(tx -> insertRequest(tenant, staff, account, start, services, customer,
-                        req.note()));
+                Inserted inserted = writeTx.execute(tx -> insertRequest(tenant, staff, account, start, services,
+                        customer, req.note()));
+                Booking saved = inserted.booking();
                 log.info("Booking request {} created: tenant={} staff={} start={} services={}", saved.getId(),
                         tenant.getSlug(), staff.getId(), start, services.size());
-                return views.customer(saved, tenant, Messages.currentLang());
+                return views.customer(saved, tenant, Messages.currentLang()).withStatusToken(inserted.statusToken());
             } catch (DataIntegrityViolationException e) {
                 if (!isOverlap(e)) throw e;
                 log.info("Slot {} for staff {} was taken concurrently, trying next candidate", start, staff.getId());
@@ -215,7 +216,10 @@ public class BookingService {
         throw ApiException.conflict("booking.slot_taken");
     }
 
-    private Booking insertRequest(Tenant tenant, Staff staff, AppUser account, Instant start,
+    /** The new booking plus its read-only status link token (raw, only in the creation response). */
+    private record Inserted(Booking booking, String statusToken) {}
+
+    private Inserted insertRequest(Tenant tenant, Staff staff, AppUser account, Instant start,
                                   List<BarberService> services, Customer c, String note) {
         BookingPolicy policy = tenant.policy();
         Instant now = Instant.now(clock);
@@ -235,8 +239,11 @@ public class BookingService {
         String manage = lifecycle.issueManageToken(b);
         String decision = tokens.issue(tenant.getId(), TokenPurpose.BARBER_DECISION, b.getId(), null, null,
                 b.getBarberDeadlineAt()).raw();
+        // read-only status page link: valid until a week after the appointment
+        String status = tokens.issue(tenant.getId(), TokenPurpose.BOOKING_STATUS, b.getId(),
+                account == null ? null : account.getId(), null, b.getEndTime().plus(Duration.ofDays(7))).raw();
         events.publishEvent(new Requested(b.getId(), manage, decision));
-        return b;
+        return new Inserted(b, status);
     }
 
     // ── create (manual, admin) ───────────────────────────────────────────────

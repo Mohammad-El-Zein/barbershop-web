@@ -93,7 +93,7 @@ $me = "max-" + [guid]::NewGuid().ToString().Substring(0, 6) + "@example.com"; $m
 
 ```powershell
 $day = (Api GET "/api/public/$TENANT/availability?services=$HAIRCUT,$BEARD&date=$date").Body
-$day.barbers | ForEach-Object { "{0}: {1}" -f $_.name, (($_.slots | Select-Object -First 8 | ForEach-Object time) -join ' ') }
+$day.barbers | ForEach-Object { "{0}: {1}" -f $_.name, (($_.slots | Where-Object available | Select-Object -First 8 | ForEach-Object time) -join ' ') }
 "any barber: " + (($day.anyBarber | Select-Object -First 8 | ForEach-Object { "$($_.time)($($_.staffIds.Count))" }) -join ' ')
 
 (Api POST "/api/public/$TENANT/bookings/price-preview" @{ serviceIds = @($HAIRCUT, $BEARD) }).Body.price | ConvertTo-Json
@@ -102,7 +102,7 @@ $day.barbers | ForEach-Object { "{0}: {1}" -f $_.name, (($_.slots | Select-Objec
 ### 4.2 Request a booking (guest)
 
 ```powershell
-$start = (($day.barbers | Where-Object staffId -eq $LUCA).slots | Select-Object -First 1).start
+$start = (($day.barbers | Where-Object staffId -eq $LUCA).slots | Where-Object available | Select-Object -First 1).start
 $r = Api POST "/api/public/$TENANT/bookings" @{ serviceIds = @($HAIRCUT, $BEARD); staffId = $LUCA; start = $start;
       customerName = "Max Mustermann"; customerEmail = $me; customerPhone = "+49 151 2345678"; lang = "en";
       consent = $true; note = "Please not too short" }

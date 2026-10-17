@@ -2,11 +2,13 @@ package com.barbershop.booking;
 
 import com.barbershop.booking.BookingDtos.BookingView;
 import com.barbershop.booking.BookingDtos.DecisionView;
+import com.barbershop.booking.BookingDtos.PaymentLinkView;
 import com.barbershop.booking.BookingDtos.StaffRef;
 import com.barbershop.booking.BookingLifecycle.Scope;
 import com.barbershop.common.error.ApiException;
 import com.barbershop.common.i18n.Lang;
 import com.barbershop.common.i18n.Messages;
+import com.barbershop.payment.PaymentLedger;
 import com.barbershop.tenant.Tenant;
 import com.barbershop.tenant.TenantService;
 import com.barbershop.token.ActionToken;
@@ -16,6 +18,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,16 +42,19 @@ public class BookingLinkService {
     private final BookingViews views;
     private final LoyaltyNotes loyaltyNotes;
     private final TenantService tenants;
+    private final PaymentLedger ledger;
     private final Clock clock;
 
     public BookingLinkService(ActionTokenService tokens, BookingRepository bookings, BookingLifecycle lifecycle,
-                              BookingViews views, LoyaltyNotes loyaltyNotes, TenantService tenants, Clock clock) {
+                              BookingViews views, LoyaltyNotes loyaltyNotes, TenantService tenants,
+                              PaymentLedger ledger, Clock clock) {
         this.tokens = tokens;
         this.bookings = bookings;
         this.lifecycle = lifecycle;
         this.views = views;
         this.loyaltyNotes = loyaltyNotes;
         this.tenants = tenants;
+        this.ledger = ledger;
         this.clock = clock;
     }
 
@@ -66,6 +72,43 @@ public class BookingLinkService {
         lifecycle.cancel(t.getBookingId(), Actor.CUSTOMER, Scope.ANY, reason, null);
         Booking b = load(t);
         return views.customer(b, tenants.require(b.getTenantId()), Messages.currentLang());
+    }
+
+    // ── status page right after booking (read-only link) ─────────────────────
+
+    /** GET: the live status for the status page. The link is reusable; only expiry ends it. */
+    @Transactional(readOnly = true)
+    public BookingView statusPage(String rawToken) {
+        Booking b = statusBooking(rawToken);
+        return views.customer(b, tenants.require(b.getTenantId()), Messages.currentLang());
+    }
+
+    /** POST: a fresh single-use payment link while the booking awaits the deposit. */
+    @Transactional
+    public PaymentLinkView paymentLinkFromStatus(String rawToken) {
+        return paymentLink(lifecycle.lockForPayment(statusBooking(rawToken).getId()));
+    }
+
+    /** The same for a logged-in customer's own booking ("pay now" in my bookings). */
+    @Transactional
+    public PaymentLinkView paymentLinkForOwner(UUID tenantId, UUID userId, UUID bookingId) {
+        Booking b = lifecycle.lockForPayment(bookingId);
+        if (!tenantId.equals(b.getTenantId()) || !userId.equals(b.getUserId())) {
+            throw ApiException.notFound("booking.not_found");
+        }
+        return paymentLink(b);
+    }
+
+    private PaymentLinkView paymentLink(Booking b) {
+        if (b.getStatus() != BookingStatus.AWAITING_PAYMENT) throw ApiException.conflict("booking.not_awaiting_payment");
+        String raw = ledger.issuePaymentLink(b);
+        return new PaymentLinkView(raw, ledger.paymentPageUrl(b, raw));
+    }
+
+    private Booking statusBooking(String rawToken) {
+        ActionToken t = tokens.find(TokenPurpose.BOOKING_STATUS, rawToken);
+        if (t.isExpired(Instant.now(clock))) throw ApiException.gone("token.expired");
+        return load(t);
     }
 
     // ── barber accept / decline link ─────────────────────────────────────────

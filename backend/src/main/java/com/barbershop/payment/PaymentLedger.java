@@ -79,6 +79,26 @@ public class PaymentLedger {
         return new PaymentLink(p, token.raw(), created.paymentUrl());
     }
 
+    /**
+     * A fresh single-use link to the payment page of an UNPAID deposit (for the status page
+     * and "my bookings" — the first link only went out by email). Expires with the deadline.
+     */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public String issuePaymentLink(Booking b) {
+        Payment p = payments.findByBookingId(b.getId())
+                .filter(x -> x.getStatus() == PaymentStatus.UNPAID)
+                .orElseThrow(() -> ApiException.conflict("booking.not_awaiting_payment"));
+        if (b.getPaymentDeadlineAt() == null || !Instant.now(clock).isBefore(b.getPaymentDeadlineAt())) {
+            throw ApiException.conflict("booking.not_awaiting_payment");
+        }
+        return tokens.issue(b.getTenantId(), TokenPurpose.PAYMENT, b.getId(), b.getUserId(), p.getId(),
+                b.getPaymentDeadlineAt()).raw();
+    }
+
+    public String paymentPageUrl(Booking b, String rawToken) {
+        return links.pay(b.lang(), rawToken);
+    }
+
     @Transactional(readOnly = true)
     public Optional<Payment> findForBooking(UUID bookingId) {
         return payments.findByBookingId(bookingId);

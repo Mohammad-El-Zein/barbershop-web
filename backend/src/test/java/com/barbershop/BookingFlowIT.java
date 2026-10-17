@@ -120,6 +120,46 @@ class BookingFlowIT extends AbstractIntegrationTest {
         assertThat(lucaTimes(tuesday, HAIRCUT)).doesNotContain("10:00", "10:30", "11:00").contains("11:15");
     }
 
+    // ── status page (right after booking, no email needed) ───────────────────
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void theStatusLinkFollowsTheBookingAndCanStartThePayment() throws Exception {
+        String email = uniqueEmail();
+        Map<String, Object> created = book(booking(HAIRCUT, MO, at(next(DayOfWeek.SATURDAY), "11:00"), email, "en"))
+                .getBody();
+        String status = (String) created.get("statusToken");
+        assertThat(status).hasSize(43);
+        String id = (String) created.get("id");
+
+        assertThat(get("/api/public/booking-status/" + status, "en").getBody()).containsEntry("status", "PENDING_BARBER")
+                .doesNotContainKey("statusToken"); // only the creation response carries it
+        // no payment link before the barber accepted
+        assertThat(post("/api/public/booking-status/" + status + "/payment-link", null).getBody())
+                .containsEntry("code", "booking.not_awaiting_payment");
+
+        post("/api/public/barber-decision/" + tokenFromMail(ADMIN_EMAIL, nameFor(email), DECISION_LINK) + "/accept",
+                null);
+        Map<String, Object> awaiting = get("/api/public/booking-status/" + status, "en").getBody();
+        assertThat(awaiting).containsEntry("status", "AWAITING_PAYMENT");
+        assertThat((Map<String, Object>) awaiting.get("payment")).containsEntry("status", "UNPAID");
+
+        // "Pay" on the status page: a fresh single-use link, same payment
+        Map<String, Object> link = post("/api/public/booking-status/" + status + "/payment-link", null).getBody();
+        assertThat((String) link.get("url")).endsWith("/en/pay/" + link.get("token"));
+        assertThat(post("/api/public/payments/" + link.get("token") + "/simulate", null).getBody())
+                .containsEntry("bookingStatus", "CONFIRMED");
+        // the email's payment link is dead now (the payment is done)
+        String emailPay = tokenFromMail(email, "accepted", PAY_LINK);
+        assertThat(get("/api/public/payments/" + emailPay, "en").getBody()).containsEntry("code", "token.used")
+                .containsEntry("paymentStatus", "PAID");
+        assertThat(get("/api/public/booking-status/" + status, "en").getBody()).containsEntry("status", "CONFIRMED");
+        assertThat(jdbc.queryForObject("select count(*) from payment where booking_id = ?::uuid", Long.class, id))
+                .isEqualTo(1);
+        assertThat(get("/api/public/booking-status/" + "A".repeat(43), "en").getBody())
+                .containsEntry("code", "token.invalid");
+    }
+
     // ── decline ──────────────────────────────────────────────────────────────
 
     @Test
@@ -349,6 +389,7 @@ class BookingFlowIT extends AbstractIntegrationTest {
         return ((List<Map<String, Object>>) body.get("barbers")).stream()
                 .filter(c -> LUCA.toString().equals(c.get("staffId")))
                 .flatMap(c -> ((List<Map<String, Object>>) c.get("slots")).stream())
+                .filter(s -> Boolean.TRUE.equals(s.get("available")))
                 .map(s -> (String) s.get("time")).toList();
     }
 

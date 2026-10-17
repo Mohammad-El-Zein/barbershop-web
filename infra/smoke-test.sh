@@ -49,8 +49,8 @@ token_from_mail() {
 
 step "Availability $DATE: haircut + beard, one column per barber"
 req GET "/api/public/$TENANT/availability?services=$HAIRCUT,$BEARD&date=$DATE"
-echo "$BODY" | json 'j.barbers.map(b=>b.name+": "+b.slots.slice(0,6).map(s=>s.time).join(" ")+" …").join("\n")'
-START=$(echo "$BODY" | json "j.barbers.find(b=>b.staffId==='$LUCA').slots.find(s=>s.time>='10:00').start")
+echo "$BODY" | json 'j.barbers.map(b=>b.name+": "+b.slots.filter(s=>s.available).slice(0,6).map(s=>s.time).join(" ")+" …").join("\n")'
+START=$(echo "$BODY" | json "j.barbers.find(b=>b.staffId==='$LUCA').slots.find(s=>s.available&&s.time>='10:00').start")
 
 step "Request: Luca $START ($CUSTOMER)"
 req POST "/api/public/$TENANT/bookings" "{\"serviceIds\":[\"$HAIRCUT\",\"$BEARD\"],\"staffId\":\"$LUCA\",\"start\":\"$START\",\"customerName\":\"Max Mustermann\",\"customerEmail\":\"$CUSTOMER\",\"customerPhone\":\"+49 151 2345678\",\"lang\":\"en\",\"consent\":true}"
