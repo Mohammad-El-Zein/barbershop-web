@@ -1,0 +1,5 @@
+# Profile `demo`: additionally loads the demo barbershop "The Barber News"
+# (db/demo/R__demo_tenant.sql). Leave this profile off for real client deployments.
+spring:
+  flyway:
+    locations: classpath:db/migration,classpath:db/demo

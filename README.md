@@ -5,8 +5,25 @@ Monorepo:
 | Folder | What | Status |
 |---|---|---|
 | `frontend/` | Next.js 16 (App Router) + TypeScript + Tailwind 4 + GSAP/ScrollTrigger + Lenis | Phase 1 ✅ |
-| `backend/` | Java 21 + Spring Boot 3 REST API, PostgreSQL, Flyway | Phase 2 |
-| `infra/` | Docker, docker-compose, CI, deployment | Phase 4 |
+| `backend/` | Java 21 + Spring Boot 3 REST API, PostgreSQL, Flyway | Phase 2 ✅ |
+| `infra/` | Docker, docker-compose, CI, deployment | local stack ✅, production in Phase 4 |
+
+## Backend quick start
+
+Needs Docker. Details are in [`backend/README.md`](backend/README.md).
+
+```bash
+cp infra/.env.example infra/.env                         # set DB password, JWT secret, admin login
+docker compose -f infra/docker-compose.yml up -d --build # Postgres + API + Mailpit
+./infra/smoke-test.sh                                    # curl walkthrough of the main endpoints
+cd backend && ./mvnw verify                              # unit + Testcontainers integration tests
+```
+
+| What | URL |
+|---|---|
+| API | http://localhost:8080 |
+| Swagger UI | http://localhost:8080/swagger-ui.html |
+| Mailpit | http://localhost:8025 |
 
 ## Frontend quick start
 

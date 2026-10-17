@@ -1,0 +1,106 @@
+# ─────────────────────────────────────────────────────────────────────────
+# All environment-specific values come from environment variables
+# (see infra/.env.example). Secrets have NO defaults: the app refuses to
+# start without APP_JWT_SECRET.
+# ─────────────────────────────────────────────────────────────────────────
+spring:
+  application:
+    name: barbershop-backend
+  threads:
+    virtual:
+      enabled: true
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/barbershop}
+    username: ${DB_USERNAME:barbershop}
+    password: ${DB_PASSWORD:}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate          # schema is owned by Flyway
+    # NOTE: deliberately no hibernate.jdbc.time_zone. Instants (timestamptz) are
+    # always stored as UTC by Hibernate 6; that property would also shift
+    # LocalTime working hours by the JVM zone offset (09:00 → 10:00 in Berlin).
+  flyway:
+    locations: classpath:db/migration
+  mail:
+    host: ${SMTP_HOST:localhost}
+    port: ${SMTP_PORT:1025}
+    username: ${SMTP_USERNAME:}
+    password: ${SMTP_PASSWORD:}
+    properties:
+      mail.smtp.auth: ${SMTP_AUTH:false}
+      mail.smtp.starttls.enable: ${SMTP_STARTTLS:false}
+      mail.smtp.connectiontimeout: 5000
+      mail.smtp.timeout: 10000
+      mail.smtp.writetimeout: 10000
+  messages:
+    basename: messages
+    encoding: UTF-8
+    fallback-to-system-locale: false   # unknown locale → messages.properties (German)
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    default-property-inclusion: non_null
+  mvc:
+    problemdetails:
+      enabled: true
+  thymeleaf:
+    check-template-location: false
+
+server:
+  port: 8080
+  # trust X-Forwarded-* only from internal proxies (Tomcat RemoteIpValve defaults),
+  # so the rate limiter sees the real client IP behind the reverse proxy
+  forward-headers-strategy: native
+  error:
+    include-message: never
+    include-stacktrace: never
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+  default-produces-media-type: application/json
+
+app:
+  # where the website runs (links in emails point here)
+  frontend-base-url: ${APP_FRONTEND_BASE_URL:http://localhost:3000}
+  cors:
+    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:3000}
+  jwt:
+    secret: ${APP_JWT_SECRET}         # required, ≥ 32 bytes
+    ttl: ${APP_JWT_TTL:PT8H}
+    issuer: barbershop-backend
+  admin:
+    # bootstrap admin, created on startup if missing (never hardcoded in the repo)
+    email: ${APP_ADMIN_EMAIL:}
+    password: ${APP_ADMIN_PASSWORD:}
+    tenant: ${APP_ADMIN_TENANT:the-barber-news}
+  mail:
+    from: ${APP_MAIL_FROM:The Barber News <no-reply@example.com>}
+  booking:
+    slot-step: ${APP_BOOKING_SLOT_STEP:PT15M}          # grid for slot start times
+    min-notice: ${APP_BOOKING_MIN_NOTICE:PT1H}         # earliest bookable = now + notice
+    max-days-ahead: ${APP_BOOKING_MAX_DAYS_AHEAD:60}
+    cancel-cutoff: ${APP_BOOKING_CANCEL_CUTOFF:PT2H}   # online cancellation until 2h before
+    auto-confirm: ${APP_BOOKING_AUTO_CONFIRM:true}     # false → PENDING until an admin confirms
+  rate-limit:
+    enabled: ${APP_RATE_LIMIT_ENABLED:true}
+    bookings:                       # POST /api/public/{tenant}/bookings per client IP
+      capacity: ${APP_RATE_LIMIT_BOOKINGS:10}
+      period: PT1M
+    login:                          # POST /api/admin/auth/login per client IP
+      capacity: ${APP_RATE_LIMIT_LOGIN:5}
+      period: PT1M
