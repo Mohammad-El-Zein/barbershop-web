@@ -112,9 +112,9 @@ public abstract class AbstractIntegrationTest {
         jdbc.update("delete from time_off");
         jdbc.update("""
                 update tenant set barber_response_min = 720, payment_deadline_min = 1440,
-                  deadline_before_start_min = 120, deposit_cents = 1000, refund_cutoff_min = 1440,
+                  deadline_before_start_min = 120, deposit_cents = 1000, refund_cutoff_min = 1440, online_cancel_cutoff_min = 120,
                   loyalty_threshold = 10, loyalty_percent = 50, slot_step_min = 15, buffer_min = 0,
-                  min_lead_min = 120, max_days_ahead = 60, auto_complete_after_min = 120, reminder_before_min = 1440
+                  min_lead_min = 240, max_days_ahead = 60, auto_complete_after_min = 120, reminder_before_min = 1440
                 where id = ?""", TENANT_ID);
         MAIL.purgeEmailFromAllMailboxes();
     }

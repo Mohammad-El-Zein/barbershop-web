@@ -247,6 +247,11 @@ class AccountIT extends AbstractIntegrationTest {
         assertThat((List<?>) export.getBody().get("bookings")).hasSize(1);
         assertThat(export.getBody()).containsKeys("loyalty", "payments", "consentAt", "consentVersion");
 
+        // 1 h before the start: too late for online cancellation, but account deletion still cancels it
+        moveBookingTo(id, fromNow(Duration.ofHours(1)));
+        assertThat(call(HttpMethod.POST, "/api/me/bookings/" + id + "/cancel", null, "de", access).getBody())
+                .containsEntry("code", "booking.cancel_too_late");
+
         assertThat(errors(call(HttpMethod.POST, "/api/me/delete", Map.of("password", "wrong-wrong-wrong"), "de",
                 access))).containsKey("password");
         assertThat(call(HttpMethod.POST, "/api/me/delete", Map.of("password", PASSWORD), "de", access)

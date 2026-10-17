@@ -94,12 +94,13 @@ public class BookingMails {
                 .preheader(msg(l, "mail.confirmed.preheader", t.getName()))
                 .paragraph(msg(l, intro));
         summary(m, b, t, l, true);
+        Instant onlineCancelUntil = b.getStartTime().minus(t.policy().onlineCancelCutoff());
         if (depositPaid) {
             Instant refundUntil = b.getStartTime().minus(t.policy().refundCutoff());
-            m.note(msg(l, "mail.confirmed.cancel_info", instant(refundUntil, t, l)));
+            m.note(msg(l, "mail.confirmed.cancel_info", instant(refundUntil, t, l), instant(onlineCancelUntil, t, l)));
             if (demo) m.notice(msg(l, "mail.demo_note"), "demo");
         } else {
-            m.note(msg(l, "mail.confirmed.cancel_info.no_deposit"));
+            m.note(msg(l, "mail.confirmed.cancel_info.no_deposit", instant(onlineCancelUntil, t, l)));
         }
         m.note(msg(l, "mail.confirmed.ics"))
                 .button(msg(l, "mail.button.manage_booking"), links.manage(l, manageToken), false);

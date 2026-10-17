@@ -30,6 +30,10 @@ public class BookingPolicy {
     @Column(name = "refund_cutoff_min", nullable = false)
     private int refundCutoffMin = 1440;
 
+    /** Customers can cancel online until this long before the start (default 2 h); then: contact the shop. */
+    @Column(name = "online_cancel_cutoff_min", nullable = false)
+    private int onlineCancelCutoffMin = 120;
+
     @Column(name = "loyalty_threshold", nullable = false)
     private int loyaltyThreshold = 10;
 
@@ -43,9 +47,9 @@ public class BookingPolicy {
     @Column(name = "buffer_min", nullable = false)
     private int bufferMin = 0;
 
-    /** Earliest online booking = now + lead time (default 2 h). */
+    /** Earliest online booking = now + lead time (default 4 h). */
     @Column(name = "min_lead_min", nullable = false)
-    private int minLeadMin = 120;
+    private int minLeadMin = 240;
 
     @Column(name = "max_days_ahead", nullable = false)
     private int maxDaysAhead = 60;
@@ -61,6 +65,7 @@ public class BookingPolicy {
     public Duration paymentDeadline() { return Duration.ofMinutes(paymentDeadlineMin); }
     public Duration deadlineBeforeStart() { return Duration.ofMinutes(deadlineBeforeStartMin); }
     public Duration refundCutoff() { return Duration.ofMinutes(refundCutoffMin); }
+    public Duration onlineCancelCutoff() { return Duration.ofMinutes(onlineCancelCutoffMin); }
     public Duration slotStep() { return Duration.ofMinutes(slotStepMin); }
     public Duration buffer() { return Duration.ofMinutes(bufferMin); }
     public Duration minLead() { return Duration.ofMinutes(minLeadMin); }
@@ -77,6 +82,8 @@ public class BookingPolicy {
     public void setDepositCents(int v) { this.depositCents = v; }
     public int getRefundCutoffMin() { return refundCutoffMin; }
     public void setRefundCutoffMin(int v) { this.refundCutoffMin = v; }
+    public int getOnlineCancelCutoffMin() { return onlineCancelCutoffMin; }
+    public void setOnlineCancelCutoffMin(int v) { this.onlineCancelCutoffMin = v; }
     public int getLoyaltyThreshold() { return loyaltyThreshold; }
     public void setLoyaltyThreshold(int v) { this.loyaltyThreshold = v; }
     public int getLoyaltyPercent() { return loyaltyPercent; }

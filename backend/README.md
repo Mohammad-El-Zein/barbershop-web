@@ -29,8 +29,8 @@ docker compose -f infra/docker-compose.yml up -d --build
 **Tests** (need Docker for Testcontainers):
 
 ```bash
-./mvnw test      # 59 unit tests: state machine, pricing/loyalty/deposit, refund rule, deadlines, availability, .ics
-./mvnw verify    # + 60 integration tests against Postgres + GreenMail (full flows, races, jobs, accounts …)
+./mvnw test      # 62 unit tests: state machine, pricing/loyalty/deposit, refund rule, deadlines, availability, .ics
+./mvnw verify    # + 62 integration tests against Postgres + GreenMail (full flows, races, jobs, accounts …)
 ```
 
 ---
@@ -82,6 +82,10 @@ stateDiagram-v2
   | Customer, ≥ 24 h before the appointment (exactly 24 h counts) | Refunded |
   | Customer, later | Forfeited (kept) |
   | Shop (barber / admin) | Always refunded. An admin can pass `refund=false`. |
+
+  Customers can cancel **online until 2 h before** the start (`onlineCancelCutoffMin`); later the API answers
+  `409 booking.cancel_too_late` ("please contact the shop"). Account deletion still cancels open bookings,
+  under the normal refund rule.
   | NO_SHOW | Forfeited |
 
   Admins can also refund afterwards with `POST /api/admin/bookings/{id}/refund`.
@@ -292,11 +296,12 @@ Errors are RFC 9457 problem details with a stable `code` and a localized `detail
 | `deadlineBeforeStartMin` | 120 (both deadlines end ≥ 2 h before the appointment) |
 | `depositCents` | 1000 |
 | `refundCutoffMin` | 1440 |
+| `onlineCancelCutoffMin` | 120 (customers cancel online until 2 h before; later: contact the shop) |
 | `loyaltyThreshold` | 10 |
 | `loyaltyPercent` | 50 |
 | `slotStepMin` | 15 |
 | `bufferMin` | 0 |
-| `minLeadMin` | 120 |
+| `minLeadMin` | 240 (bookable from 4 h ahead) |
 | `maxDaysAhead` | 60 |
 | `autoCompleteAfterMin` | 120 |
 | `reminderBeforeMin` | 1440 |

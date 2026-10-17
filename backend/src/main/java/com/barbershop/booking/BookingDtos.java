@@ -83,8 +83,14 @@ public final class BookingDtos {
 
     public record PaymentInfo(PaymentStatus status, MoneyView amount, OffsetDateTime deadline, boolean demoMode) {}
 
-    /** What the caller may do next (drives buttons in the frontend). */
-    public record Actions(boolean canCancel, boolean refundIfCancelledNow, OffsetDateTime refundableUntil) {}
+    /**
+     * What the caller may do next (drives buttons in the frontend).
+     * canCancel: online cancellation is still possible (open status, before cancellableUntil).
+     * cancellableUntil: start − online cancel cutoff (default 2 h); later: contact the shop.
+     * refundableUntil: start − refund cutoff (default 24 h); later the deposit is kept.
+     */
+    public record Actions(boolean canCancel, OffsetDateTime cancellableUntil, boolean refundIfCancelledNow,
+                          OffsetDateTime refundableUntil) {}
 
     /** Customer view (manage link, "my bookings", creation response). */
     public record BookingView(UUID id, BookingStatus status, List<ServiceLine> services, StaffRef staff,

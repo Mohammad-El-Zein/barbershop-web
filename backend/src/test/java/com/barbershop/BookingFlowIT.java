@@ -273,6 +273,31 @@ class BookingFlowIT extends AbstractIntegrationTest {
 
     @Test
     @SuppressWarnings("unchecked")
+    void onlineCancellationEndsTwoHoursBeforeTheStart_thenContactTheShop() throws Exception {
+        String email = uniqueEmail();
+        String id = confirmedBooking(email, LUCA, at(next(DayOfWeek.MONDAY), "15:00"), "en");
+        String manage = tokenFromMail(email, "Appointment confirmed", MANAGE_LINK);
+        assertThat(text(mailTo(email, "Appointment confirmed"))).contains("Online cancellation is possible until");
+        moveBookingTo(id, fromNow(Duration.ofMinutes(90)));
+
+        Map<String, Object> actions = (Map<String, Object>) get("/api/public/manage/" + manage, "en").getBody()
+                .get("actions");
+        assertThat(actions).containsEntry("canCancel", false).containsKey("cancellableUntil");
+
+        ResponseEntity<Map<String, Object>> late = call(HttpMethod.POST, "/api/public/manage/" + manage + "/cancel",
+                null, "en", null);
+        assertThat(late.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        assertThat(late.getBody()).containsEntry("code", "booking.cancel_too_late")
+                .containsEntry("detail", "Online cancellation is only possible up to 2 hours before the appointment. "
+                        + "Please contact the shop directly.");
+        assertThat(status(id)).isEqualTo("CONFIRMED"); // nothing changed, and the link is still usable
+        // the shop itself can still cancel (and then always refunds)
+        call(HttpMethod.POST, "/api/admin/bookings/" + id + "/cancel", null, "de", adminToken());
+        assertThat(paymentStatus(id)).isEqualTo("REFUNDED");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
     void cancelLessThan24HoursAheadForfeitsTheDeposit() throws Exception {
         String email = uniqueEmail();
         String id = confirmedBooking(email, MO, at(next(DayOfWeek.MONDAY), "12:00"), "en");

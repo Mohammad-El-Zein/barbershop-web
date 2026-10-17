@@ -423,7 +423,7 @@ public class BookingService {
         List<Booking> all = bookings.findByUserIdOrderByStartTimeDesc(userId);
         for (Booking b : all) {
             if (b.getStatus().isOpen() && now.isBefore(b.getStartTime())) {
-                lifecycle.cancel(b.getId(), Actor.CUSTOMER, Scope.tenant(tenantId), "account deleted", null);
+                lifecycle.cancel(b.getId(), Actor.CUSTOMER, Scope.tenant(tenantId), "account deleted", null, false);
             }
         }
         all.forEach(b -> b.anonymise(placeholderName));

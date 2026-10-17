@@ -110,13 +110,15 @@ public class BookingViews {
     /** Can the customer still cancel, and would the deposit come back if they did it now? */
     public Actions actions(Booking b, Tenant t, Payment payment) {
         Instant now = Instant.now(clock);
-        boolean canCancel = b.getStatus().isOpen() && now.isBefore(b.getStartTime());
+        boolean canCancel = b.getStatus().isOpen()
+                && BookingRules.onlineCancellable(now, b.getStartTime(), t.policy().onlineCancelCutoff());
+        OffsetDateTime cancellableUntil = at(b.getStartTime().minus(t.policy().onlineCancelCutoff()), t.zone());
         boolean paid = payment != null && payment.getStatus() == PaymentStatus.PAID;
         boolean refundNow = paid && BookingRules.depositRefundable(Actor.CUSTOMER, now, b.getStartTime(),
                 t.policy().refundCutoff());
         OffsetDateTime refundableUntil = b.getDepositCents() > 0
                 ? at(b.getStartTime().minus(t.policy().refundCutoff()), t.zone()) : null;
-        return new Actions(canCancel, refundNow, refundableUntil);
+        return new Actions(canCancel, cancellableUntil, refundNow, refundableUntil);
     }
 
     private PaymentInfo payment(Booking b, Payment p, ZoneId zone, Lang lang) {

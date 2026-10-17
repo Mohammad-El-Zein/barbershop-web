@@ -30,9 +30,9 @@ public class TenantController {
     }
 
     /** The customer-relevant part of the booking policy (for texts like "10 € deposit, free cancellation up to 24 h"). */
-    public record BookingRules(int depositCents, int refundCutoffMin, int barberResponseMin, int paymentDeadlineMin,
-                               int minLeadMin, int maxDaysAhead, int slotStepMin, int loyaltyThreshold,
-                               int loyaltyPercent, boolean demoPayments) {}
+    public record BookingRules(int depositCents, int refundCutoffMin, int onlineCancelCutoffMin,
+                               int barberResponseMin, int paymentDeadlineMin, int minLeadMin, int maxDaysAhead,
+                               int slotStepMin, int loyaltyThreshold, int loyaltyPercent, boolean demoPayments) {}
 
     public record TenantView(String slug, String name, String timezone, String defaultLocale, String currency,
                              String logoUrl, Map<String, Object> theme, BookingRules bookingRules) {
@@ -40,8 +40,9 @@ public class TenantController {
             BookingPolicy p = t.policy();
             return new TenantView(t.getSlug(), t.getName(), t.getTimezone(), t.getDefaultLocale(), t.getCurrency(),
                     t.getLogoUrl(), t.getTheme(), new BookingRules(p.getDepositCents(), p.getRefundCutoffMin(),
-                    p.getBarberResponseMin(), p.getPaymentDeadlineMin(), p.getMinLeadMin(), p.getMaxDaysAhead(),
-                    p.getSlotStepMin(), p.getLoyaltyThreshold(), p.getLoyaltyPercent(), demo));
+                    p.getOnlineCancelCutoffMin(), p.getBarberResponseMin(), p.getPaymentDeadlineMin(),
+                    p.getMinLeadMin(), p.getMaxDaysAhead(), p.getSlotStepMin(), p.getLoyaltyThreshold(),
+                    p.getLoyaltyPercent(), demo));
         }
     }
 }

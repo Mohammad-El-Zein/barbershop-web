@@ -54,6 +54,33 @@ class BookingRulesTest {
     }
 
     @Nested
+    class OnlineCancellation {
+
+        private final Instant start = NOW.plus(Duration.ofDays(1));
+
+        @Test
+        void possibleUntilTwoHoursBeforeTheStart() {
+            assertThat(BookingRules.onlineCancellable(start.minus(Duration.ofHours(5)), start, H2)).isTrue();
+            assertThat(BookingRules.onlineCancellable(start.minus(H2).minusSeconds(1), start, H2)).isTrue();
+        }
+
+        @Test
+        void exactlyTwoHoursBeforeOrLaterIsTooLate() {
+            assertThat(BookingRules.onlineCancellable(start.minus(H2), start, H2)).isFalse();
+            assertThat(BookingRules.onlineCancellable(start.minus(Duration.ofMinutes(30)), start, H2)).isFalse();
+            assertThat(BookingRules.onlineCancellable(start.plusSeconds(1), start, H2)).isFalse();
+        }
+
+        @Test
+        void independentOfTheRefundRule() {
+            // 5 h before: online cancellation still works, but the deposit is no longer refundable
+            Instant fiveHoursBefore = start.minus(Duration.ofHours(5));
+            assertThat(BookingRules.onlineCancellable(fiveHoursBefore, start, H2)).isTrue();
+            assertThat(BookingRules.depositRefundable(Actor.CUSTOMER, fiveHoursBefore, start, H24)).isFalse();
+        }
+    }
+
+    @Nested
     class RefundRule {
 
         private final Instant start = NOW.plus(Duration.ofDays(2));

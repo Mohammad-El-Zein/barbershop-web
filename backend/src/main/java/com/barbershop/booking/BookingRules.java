@@ -40,6 +40,15 @@ public final class BookingRules {
         return !cancelledAt.isAfter(start.minus(cutoff));
     }
 
+    /**
+     * Can the customer still cancel online? Until {@code cutoff} (default 2 h) before the
+     * start — exactly 2 h before is too late. After that they have to contact the shop.
+     * (Independent of the refund rule: cancelling 5 h before works online, but the deposit is kept.)
+     */
+    public static boolean onlineCancellable(Instant now, Instant start, Duration cutoff) {
+        return now.isBefore(start.minus(cutoff));
+    }
+
     private static Instant min(Instant a, Instant b) {
         return a.isBefore(b) ? a : b;
     }

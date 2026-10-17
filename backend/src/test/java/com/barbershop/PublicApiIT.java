@@ -29,7 +29,7 @@ class PublicApiIT extends AbstractIntegrationTest {
         assertThat(shop).containsEntry("name", "The Barber News").containsEntry("timezone", "Europe/Berlin");
         assertThat((Map<String, Object>) shop.get("bookingRules"))
                 .containsEntry("depositCents", 1000).containsEntry("refundCutoffMin", 1440)
-                .containsEntry("minLeadMin", 120).containsEntry("loyaltyThreshold", 10)
+                .containsEntry("minLeadMin", 240).containsEntry("onlineCancelCutoffMin", 120).containsEntry("loyaltyThreshold", 10)
                 .containsEntry("loyaltyPercent", 50).containsEntry("demoPayments", true);
     }
 
@@ -99,6 +99,18 @@ class PublicApiIT extends AbstractIntegrationTest {
         book(booking(List.of(HAIRCUT, BEARD), MO, at(tuesday, "10:00"), uniqueEmail(), "de"));
         assertThat(columns(get(BASE + "/availability?services=" + BEARD + "&date=" + tuesday, "de").getBody())
                 .get(MO.toString())).doesNotContain("10:00", "10:45", "11:00").contains("11:15");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void nothingCanBeBookedWithinTheFourHourLeadTime() {
+        java.time.Instant earliest = java.time.Instant.now().plus(java.time.Duration.ofHours(4));
+        for (int d = 0; d <= 1; d++) { // today and tomorrow: both may be inside the lead time
+            LocalDate day = LocalDate.now(BERLIN).plusDays(d);
+            Map<String, Object> body = get(BASE + "/availability?services=" + HAIRCUT + "&date=" + day, "de").getBody();
+            assertThat((List<Map<String, Object>>) body.get("anyBarber")).allSatisfy(s ->
+                    assertThat(OffsetDateTime.parse((String) s.get("start")).toInstant()).isAfterOrEqualTo(earliest));
+        }
     }
 
     @Test

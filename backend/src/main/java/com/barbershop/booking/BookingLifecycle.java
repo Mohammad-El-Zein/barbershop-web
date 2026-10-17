@@ -148,16 +148,33 @@ public class BookingLifecycle {
      * → CANCELLED from PENDING_BARBER / AWAITING_PAYMENT / CONFIRMED. A paid deposit is
      * refunded if the shop cancels or the customer cancels at least {@code refund_cutoff}
      * before the appointment; otherwise it is forfeited. Admins may override the decision
-     * with {@code refundOverride}. Customers can only cancel before the appointment starts.
+     * with {@code refundOverride}. Customers can cancel online only until
+     * {@code online_cancel_cutoff} (default 2 h) before the start — later the API answers
+     * 409 {@code booking.cancel_too_late} ("please contact the shop").
      */
     @Transactional
     public CancelResult cancel(UUID bookingId, Actor actor, Scope scope, String reason, Boolean refundOverride) {
+        return cancel(bookingId, actor, scope, reason, refundOverride, true);
+    }
+
+    /**
+     * @param enforceOnlineCutoff false only for account deletion: the customer's open bookings
+     *                            are cancelled even close to the start (normal refund rule applies)
+     */
+    @Transactional
+    public CancelResult cancel(UUID bookingId, Actor actor, Scope scope, String reason, Boolean refundOverride,
+                               boolean enforceOnlineCutoff) {
         Booking b = lock(bookingId, scope);
         Instant now = now();
-        if (actor == Actor.CUSTOMER && !now.isBefore(b.getStartTime()) && b.getStatus().isOpen()) {
-            throw ApiException.conflict("booking.cancel_too_late");
-        }
         BookingPolicy policy = policy(b);
+        if (actor == Actor.CUSTOMER && b.getStatus().isOpen()) {
+            boolean tooLate = enforceOnlineCutoff
+                    ? !BookingRules.onlineCancellable(now, b.getStartTime(), policy.onlineCancelCutoff())
+                    : !now.isBefore(b.getStartTime());
+            if (tooLate) {
+                throw ApiException.conflict("booking.cancel_too_late", policy.onlineCancelCutoff().toHours());
+            }
+        }
         boolean refund = actor == Actor.ADMIN && refundOverride != null
                 ? refundOverride
                 : BookingRules.depositRefundable(actor, now, b.getStartTime(), policy.refundCutoff());

@@ -44,6 +44,7 @@ public class AdminSettingsController {
         p.setDeadlineBeforeStartMin(req.deadlineBeforeStartMin());
         p.setDepositCents(req.depositCents());
         p.setRefundCutoffMin(req.refundCutoffMin());
+        p.setOnlineCancelCutoffMin(req.onlineCancelCutoffMin());
         p.setLoyaltyThreshold(req.loyaltyThreshold());
         p.setLoyaltyPercent(req.loyaltyPercent());
         p.setSlotStepMin(req.slotStepMin());
@@ -61,6 +62,7 @@ public class AdminSettingsController {
             @NotNull @Min(0) Integer deadlineBeforeStartMin,
             @NotNull @Min(0) Integer depositCents,
             @NotNull @Min(0) Integer refundCutoffMin,
+            @NotNull @Min(0) Integer onlineCancelCutoffMin,
             @NotNull @Min(1) Integer loyaltyThreshold,
             @NotNull @Min(0) @Max(100) Integer loyaltyPercent,
             @NotNull @Min(5) @Max(120) Integer slotStepMin,
@@ -72,7 +74,8 @@ public class AdminSettingsController {
 
         static PolicyDto of(BookingPolicy p) {
             return new PolicyDto(p.getBarberResponseMin(), p.getPaymentDeadlineMin(), p.getDeadlineBeforeStartMin(),
-                    p.getDepositCents(), p.getRefundCutoffMin(), p.getLoyaltyThreshold(), p.getLoyaltyPercent(),
+                    p.getDepositCents(), p.getRefundCutoffMin(), p.getOnlineCancelCutoffMin(), p.getLoyaltyThreshold(),
+                    p.getLoyaltyPercent(),
                     p.getSlotStepMin(), p.getBufferMin(), p.getMinLeadMin(), p.getMaxDaysAhead(),
                     p.getAutoCompleteAfterMin(), p.getReminderBeforeMin());
         }
