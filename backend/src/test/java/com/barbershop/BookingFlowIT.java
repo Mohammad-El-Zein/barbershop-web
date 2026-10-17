@@ -109,6 +109,8 @@ class BookingFlowIT extends AbstractIntegrationTest {
         assertThat(attachmentNames(confirmed)).containsExactly("appointment.ics");
         MimeMessage barberPaid = mailTo(ADMIN_EMAIL, "Anzahlung erhalten: " + nameFor(email));
         assertThat(text(barberPaid)).contains("10 € Anzahlung bezahlt", "Haarschnitt + Bart-Styling", "10:00–11:15");
+        // the barber sees the exact amount still to collect — no "ab" prefix
+        assertThat(text(barberPaid)).contains("Im Laden zu zahlen: 50 €").doesNotContain("Im Laden zu zahlen: ab");
 
         assertThat(jdbc.queryForList("select e.type from payment_event e join payment p on p.id = e.payment_id "
                 + "where p.booking_id = ?::uuid order by e.created_at", String.class, id))

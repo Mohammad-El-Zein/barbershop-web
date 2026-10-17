@@ -183,7 +183,7 @@ public class BookingMails {
                 .row(msg(l, "mail.label.services"), b.serviceNames(l))
                 .strongRow(msg(l, "mail.label.time"), when(b, t, l))
                 .strongRow(msg(l, "mail.label.deposit"), msg(l, "mail.barber.paid.deposit", money(b.getDepositCents(), b, l)))
-                .row(msg(l, "mail.label.due_at_shop"), money(b.getAmountDueAtShopCents(), b, l, b.isPriceFrom()));
+                .row(msg(l, "mail.label.due_at_shop"), money(b.getAmountDueAtShopCents(), b, l)); // exact amount, never "ab"/"from"
         if (demo) m.notice(msg(l, "mail.demo_note"), "demo");
         return m;
     }
