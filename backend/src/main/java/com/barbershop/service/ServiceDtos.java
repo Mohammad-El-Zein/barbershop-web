@@ -1,6 +1,6 @@
 package com.barbershop.service;
 
-import com.barbershop.service.PriceFormatter.PriceView;
+import com.barbershop.service.PriceFormatter.CatalogPrice;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -14,7 +14,7 @@ public final class ServiceDtos {
     private ServiceDtos() {}
 
     /** Public, localized view (name/description in the request's language). */
-    public record ServiceView(UUID id, String name, String description, int durationMin, PriceView price) {}
+    public record ServiceView(UUID id, String name, String description, int durationMin, CatalogPrice price) {}
 
     /** Admin view with both languages for editing. */
     public record ServiceAdminView(UUID id, String nameDe, String nameEn, String descriptionDe, String descriptionEn,

@@ -22,9 +22,9 @@ public class PriceFormatter {
         this.messages = messages;
     }
 
-    public PriceView view(int amountCents, String currencyCode, boolean from, Lang lang) {
+    public CatalogPrice view(int amountCents, String currencyCode, boolean from, Lang lang) {
         BigDecimal amount = BigDecimal.valueOf(amountCents).movePointLeft(2);
-        return new PriceView(amountCents, amount, currencyCode, from, format(amountCents, currencyCode, from, lang));
+        return new CatalogPrice(amountCents, amount, currencyCode, from, format(amountCents, currencyCode, from, lang));
     }
 
     public String format(int amountCents, String currencyCode, boolean from, Lang lang) {
@@ -39,6 +39,10 @@ public class PriceFormatter {
         return from ? messages.get(lang.locale(), "price.from") + " " + price : price;
     }
 
-    /** Price as returned by the API: raw cents for calculations, a formatted string for display. */
-    public record PriceView(int amountCents, BigDecimal amount, String currency, boolean from, String formatted) {}
+    /**
+     * A catalogue price as returned by the API: raw cents for calculations, a formatted string for
+     * display. (Not "PriceView": that name is the booking price breakdown, and OpenAPI schemas are
+     * named by the simple class name.)
+     */
+    public record CatalogPrice(int amountCents, BigDecimal amount, String currency, boolean from, String formatted) {}
 }

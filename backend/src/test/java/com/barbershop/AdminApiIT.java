@@ -268,7 +268,16 @@ class AdminApiIT extends AbstractIntegrationTest {
                 "/api/public/payments/{token}/simulate", "/api/public/manage/{token}/cancel",
                 "/api/public/{tenant}/auth/register", "/api/auth/refresh", "/api/me/bookings", "/api/me/export",
                 "/api/barber/requests", "/api/admin/bookings/{id}/refund", "/api/admin/customers",
-                "/api/admin/settings");
+                "/api/admin/settings", "/api/public/booking-status/{token}");
+        // schemas are named by simple class name — two records with the same name would merge silently
+        // (the frontend's generated types depend on this): the catalogue price is its own schema
+        Map<String, Object> schemas = (Map<String, Object>) ((Map<String, Object>) docs.getBody().get("components"))
+                .get("schemas");
+        Map<String, Object> serviceView = (Map<String, Object>) schemas.get("ServiceView");
+        assertThat(((Map<String, Object>) ((Map<String, Object>) serviceView.get("properties")).get("price")).get("$ref"))
+                .isEqualTo("#/components/schemas/CatalogPrice");
+        assertThat((Map<String, Object>) ((Map<String, Object>) schemas.get("PriceView")).get("properties"))
+                .containsKeys("total", "deposit", "amountDueAtShop");
     }
 
     // ── helpers ──────────────────────────────────────────────────────────────
