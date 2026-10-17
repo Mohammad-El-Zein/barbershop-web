@@ -20,7 +20,10 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
  * Token-bucket rate limiting per client IP for the abuse-prone public POSTs:
- * creating bookings and admin login. Buckets live in a bounded, expiring cache
+ * creating bookings, login, the endpoints that send emails (register, forgot
+ * password, resend verification), email-link actions and the token refresh.
+ * (Login additionally locks an account after repeated failures, see AuthService.)
+ * Buckets live in a bounded, expiring cache
  * (no unbounded memory growth). Over the limit → 429 problem detail with
  * Retry-After. The client IP is the request's remote address; behind the
  * reverse proxy Tomcat's RemoteIpValve resolves X-Forwarded-For from trusted
@@ -33,7 +36,12 @@ import org.springframework.web.filter.OncePerRequestFilter;
 public class RateLimitFilter extends OncePerRequestFilter {
 
     private static final Pattern BOOKING_POST = Pattern.compile("^/api/public/[^/]+/bookings/?$");
-    private static final String LOGIN_POST = "/api/admin/auth/login";
+    private static final Pattern LOGIN_POST = Pattern.compile("^/api/auth/[^/]+/login$");
+    private static final Pattern AUTH_MAIL_POST =
+            Pattern.compile("^/api/public/[^/]+/auth/(register|forgot-password|resend-verification)$");
+    private static final Pattern TOKEN_POST = Pattern.compile(
+            "^/api/public/(manage|barber-decision|payments)/[^/]+/[a-z-]+$|^/api/public/auth/(verify-email|reset-password)$");
+    private static final String REFRESH_POST = "/api/auth/refresh";
 
     private final AppProperties.RateLimit config;
     private final ProblemFactory problems;
@@ -72,7 +80,10 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private Route limitFor(HttpServletRequest request) {
         String path = request.getRequestURI();
         if (BOOKING_POST.matcher(path).matches()) return new Route("bookings", config.bookings());
-        if (LOGIN_POST.equals(path)) return new Route("login", config.login());
+        if (LOGIN_POST.matcher(path).matches()) return new Route("login", config.login());
+        if (AUTH_MAIL_POST.matcher(path).matches()) return new Route("auth-mail", config.authMail());
+        if (TOKEN_POST.matcher(path).matches()) return new Route("token", config.tokenActions());
+        if (REFRESH_POST.equals(path)) return new Route("refresh", config.refresh());
         return null;
     }
 

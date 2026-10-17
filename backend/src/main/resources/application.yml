@@ -2,6 +2,8 @@
 # All environment-specific values come from environment variables
 # (see infra/.env.example). Secrets have NO defaults: the app refuses to
 # start without APP_JWT_SECRET.
+# Per-shop booking rules (deadlines, deposit, loyalty, slot grid, lead time)
+# live on the tenant row and are edited via PUT /api/admin/settings.
 # ─────────────────────────────────────────────────────────────────────────
 spring:
   application:
@@ -17,6 +19,9 @@ spring:
     open-in-view: false
     hibernate:
       ddl-auto: validate          # schema is owned by Flyway
+    properties:
+      # booking items / staff of a page of bookings are loaded in batches (no N+1)
+      hibernate.default_batch_fetch_size: 50
     # NOTE: deliberately no hibernate.jdbc.time_zone. Instants (timestamptz) are
     # always stored as UTC by Hibernate 6; that property would also shift
     # LocalTime working hours by the JVM zone offset (09:00 → 10:00 in Berlin).
@@ -74,6 +79,14 @@ springdoc:
     operations-sorter: method
   default-produces-media-type: application/json
 
+# ── Payments ────────────────────────────────────────────────────────────
+# Only "demo" exists (no real money, no card fields). The app refuses to start
+# with the `prod` profile and the demo provider unless allow-in-prod=true.
+payment:
+  provider: ${PAYMENT_PROVIDER:demo}
+  demo:
+    allow-in-prod: ${PAYMENT_DEMO_ALLOW_IN_PROD:false}
+
 app:
   # where the website runs (links in emails point here)
   frontend-base-url: ${APP_FRONTEND_BASE_URL:http://localhost:3000}
@@ -81,8 +94,31 @@ app:
     allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:3000}
   jwt:
     secret: ${APP_JWT_SECRET}         # required, ≥ 32 bytes
-    ttl: ${APP_JWT_TTL:PT8H}
+    access-ttl: ${APP_JWT_ACCESS_TTL:PT15M}
     issuer: barbershop-backend
+  auth:
+    refresh-ttl: ${APP_REFRESH_TTL:P30D}
+    refresh-cookie-name: bs_refresh
+    refresh-cookie-path: /api/auth   # the cookie is only sent to refresh/logout
+    cookie-secure: ${APP_COOKIE_SECURE:false}   # true behind HTTPS (prod profile sets it)
+    cookie-same-site: Strict
+    max-failed-logins: 5
+    lockout: PT15M
+    email-verify-ttl: PT24H
+    password-reset-ttl: PT1H
+    barber-invite-ttl: PT72H
+    min-password-length: 10
+    consent-version: privacy-2026-10
+  tokens:
+    secret: ${APP_TOKEN_SECRET:}       # empty → derived from APP_JWT_SECRET
+  links:
+    book: /{lang}/booking
+    manage: /{lang}/booking/manage/{token}
+    pay: /{lang}/pay/{token}
+    barber-decision: /{lang}/barber/requests/{token}
+    verify-email: /{lang}/account/verify/{token}
+    reset-password: /{lang}/account/reset-password/{token}
+    account: /{lang}/account
   admin:
     # bootstrap admin, created on startup if missing (never hardcoded in the repo)
     email: ${APP_ADMIN_EMAIL:}
@@ -91,16 +127,27 @@ app:
   mail:
     from: ${APP_MAIL_FROM:The Barber News <no-reply@example.com>}
   booking:
-    slot-step: ${APP_BOOKING_SLOT_STEP:PT15M}          # grid for slot start times
-    min-notice: ${APP_BOOKING_MIN_NOTICE:PT1H}         # earliest bookable = now + notice
-    max-days-ahead: ${APP_BOOKING_MAX_DAYS_AHEAD:60}
-    cancel-cutoff: ${APP_BOOKING_CANCEL_CUTOFF:PT2H}   # online cancellation until 2h before
-    auto-confirm: ${APP_BOOKING_AUTO_CONFIRM:true}     # false → PENDING until an admin confirms
+    max-services: 5
+    # open (PENDING_BARBER / AWAITING_PAYMENT) requests per email address — anti-spam
+    max-open-requests-per-email: ${APP_BOOKING_MAX_OPEN_REQUESTS:3}
+  jobs:
+    enabled: ${APP_JOBS_ENABLED:true}
+    interval: ${APP_JOBS_INTERVAL:PT1M}
+    batch-size: 200
   rate-limit:
     enabled: ${APP_RATE_LIMIT_ENABLED:true}
     bookings:                       # POST /api/public/{tenant}/bookings per client IP
       capacity: ${APP_RATE_LIMIT_BOOKINGS:10}
       period: PT1M
-    login:                          # POST /api/admin/auth/login per client IP
+    login:                          # POST /api/auth/{tenant}/login per client IP
       capacity: ${APP_RATE_LIMIT_LOGIN:5}
+      period: PT1M
+    auth-mail:                      # register / forgot-password / resend-verification
+      capacity: ${APP_RATE_LIMIT_AUTH_MAIL:5}
+      period: PT10M
+    token-actions:                  # POSTs on email-link tokens (accept/decline/pay/cancel)
+      capacity: ${APP_RATE_LIMIT_TOKEN_ACTIONS:20}
+      period: PT1M
+    refresh:
+      capacity: ${APP_RATE_LIMIT_REFRESH:30}
       period: PT1M

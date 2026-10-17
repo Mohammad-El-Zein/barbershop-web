@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:lang="${m.lang().code()}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="supported-color-schemes" content="dark">
+  <title th:text="${m.subject()}">Barbershop</title>
+</head>
+<!-- Email-safe markup: tables + inline styles. Dark/gold to match the website.
+     One layout for every email; the content comes from MailContent. -->
+<body style="margin:0;padding:0;background:#0a0a0a;font-family:Helvetica,Arial,sans-serif;color:#f2efe9;">
+<!-- preheader: the preview line in the inbox -->
+<div th:if="${m.preheader() != null}" th:text="${m.preheader()}"
+     style="display:none;max-height:0;overflow:hidden;opacity:0;color:#0a0a0a;">preview</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#0a0a0a;">
+  <tr>
+    <td align="center" style="padding:32px 16px;">
+      <table role="presentation" width="560" cellpadding="0" cellspacing="0"
+             style="max-width:560px;width:100%;background:#141210;border:1px solid #3a2f1c;border-radius:12px;">
+        <!-- brand -->
+        <tr>
+          <td style="padding:28px 32px 4px;">
+            <div style="font-size:20px;letter-spacing:3px;font-weight:bold;color:#c9a45c;text-transform:uppercase;"
+                 th:text="${m.shopName()}">THE BARBER NEWS</div>
+            <div style="height:2px;width:48px;background:#c9a45c;margin-top:12px;"></div>
+          </td>
+        </tr>
+        <!-- greeting + text -->
+        <tr>
+          <td style="padding:20px 32px 0;font-size:15px;line-height:1.6;">
+            <p th:if="${m.greeting() != null}" style="margin:0 0 12px;" th:text="${m.greeting()}">Hallo Max,</p>
+            <p th:each="p : ${m.paragraphs()}" style="margin:0 0 14px;" th:text="${p}">Text</p>
+          </td>
+        </tr>
+        <!-- summary -->
+        <tr th:if="${!m.rows().isEmpty()}">
+          <td style="padding:8px 32px 0;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+                   style="border-top:1px solid #3a2f1c;font-size:14px;">
+              <tr th:each="r : ${m.rows()}">
+                <td style="padding:10px 12px 10px 0;color:#a39b8c;width:40%;vertical-align:top;border-bottom:1px solid #2a2418;"
+                    th:text="${r.label()}">Label</td>
+                <td style="padding:10px 0;vertical-align:top;border-bottom:1px solid #2a2418;"
+                    th:style="'padding:10px 0;vertical-align:top;border-bottom:1px solid #2a2418;'
+                              + (${r.strong()} ? 'font-weight:bold;color:#e6c88a;' : '')
+                              + (${r.struck()} ? 'text-decoration:line-through;color:#a39b8c;' : '')"
+                    th:text="${r.value()}">Value</td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        <!-- notes after the summary (deadline, how to cancel …) -->
+        <tr th:if="${!m.notes().isEmpty()}">
+          <td style="padding:18px 32px 0;font-size:14px;line-height:1.6;color:#d9d2c5;">
+            <p th:each="p : ${m.notes()}" style="margin:0 0 10px;" th:text="${p}">Note</p>
+          </td>
+        </tr>
+        <!-- notices (demo mode, refund info …) -->
+        <tr th:each="n : ${m.notices()}">
+          <td style="padding:18px 32px 0;">
+            <div th:style="${n.kind() == 'demo'}
+                    ? 'padding:12px 14px;border:1px dashed #c9a45c;border-radius:8px;color:#e6c88a;font-size:13px;line-height:1.5;letter-spacing:.3px;'
+                    : (${n.kind() == 'warn'}
+                        ? 'padding:12px 14px;border:1px solid #7a3b2e;background:#2a1612;border-radius:8px;color:#f0c4b8;font-size:13px;line-height:1.5;'
+                        : 'padding:12px 14px;border:1px solid #3a2f1c;background:#1b1813;border-radius:8px;color:#d9d2c5;font-size:13px;line-height:1.5;')"
+                 th:text="${n.text()}">Notice</div>
+          </td>
+        </tr>
+        <!-- buttons -->
+        <tr th:if="${!m.buttons().isEmpty()}">
+          <td style="padding:26px 32px 0;">
+            <th:block th:each="b : ${m.buttons()}">
+              <a th:href="${b.url()}" href="#" th:text="${b.label()}"
+                 th:style="${b.primary()}
+                    ? 'display:inline-block;margin:0 10px 10px 0;padding:13px 26px;background:#c9a45c;border-radius:999px;color:#120d05;text-decoration:none;font-size:13px;letter-spacing:1px;text-transform:uppercase;font-weight:bold;'
+                    : 'display:inline-block;margin:0 10px 10px 0;padding:12px 25px;border:1px solid #c9a45c;border-radius:999px;color:#c9a45c;text-decoration:none;font-size:13px;letter-spacing:1px;text-transform:uppercase;'">Button</a>
+            </th:block>
+          </td>
+        </tr>
+        <tr th:if="${!m.afterButtons().isEmpty()}">
+          <td style="padding:8px 32px 0;font-size:13px;line-height:1.6;color:#a39b8c;">
+            <p th:each="p : ${m.afterButtons()}" style="margin:0 0 10px;" th:text="${p}">Hint</p>
+          </td>
+        </tr>
+        <!-- signature -->
+        <tr>
+          <td style="padding:26px 32px 28px;font-size:14px;line-height:1.6;color:#a39b8c;white-space:pre-line;"
+              th:text="${m.signature()}">Bis bald!</td>
+        </tr>
+      </table>
+      <p th:if="${m.footer() != null}" style="max-width:560px;margin:16px auto 0;font-size:11px;line-height:1.5;color:#6f675a;"
+         th:text="${m.footer()}">Diese E-Mail wurde automatisch versendet.</p>
+    </td>
+  </tr>
+</table>
+</body>
+</html>

@@ -1,7 +1,6 @@
 package com.barbershop.staff;
 
-import static com.barbershop.auth.AdminPrincipal.tenantId;
-
+import com.barbershop.auth.CurrentUser;
 import com.barbershop.common.config.OpenApiConfig;
 import com.barbershop.staff.StaffDtos.TimeOffRequest;
 import com.barbershop.staff.StaffDtos.TimeOffView;
@@ -17,8 +16,6 @@ import java.util.List;
 import java.util.UUID;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -47,23 +44,23 @@ public class AdminTimeOffController {
     @GetMapping
     @Operation(summary = "Time off overlapping [from, to) — default: now … +90 days")
     public List<TimeOffView> list(
-            @AuthenticationPrincipal Jwt jwt,
+            CurrentUser admin,
             @RequestParam(name = "from", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime from,
             @RequestParam(name = "to", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime to) {
         Instant f = from != null ? from.toInstant() : Instant.now(clock).truncatedTo(ChronoUnit.DAYS);
         Instant t = to != null ? to.toInstant() : f.plus(90, ChronoUnit.DAYS);
-        return directory.timeOff(tenantId(jwt), f, t);
+        return directory.timeOff(admin.tenantId(), f, t);
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public TimeOffView create(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody TimeOffRequest req) {
-        return directory.createTimeOff(tenantId(jwt), req);
+    public TimeOffView create(CurrentUser admin, @Valid @RequestBody TimeOffRequest req) {
+        return directory.createTimeOff(admin.tenantId(), req);
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@AuthenticationPrincipal Jwt jwt, @PathVariable("id") UUID id) {
-        directory.deleteTimeOff(tenantId(jwt), id);
+    public void delete(CurrentUser admin, @PathVariable("id") UUID id) {
+        directory.deleteTimeOff(admin.tenantId(), id);
     }
 }

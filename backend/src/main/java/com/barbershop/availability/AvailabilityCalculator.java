@@ -20,10 +20,12 @@ import java.util.UUID;
  * generated on a fixed grid from the start of each range ({@code step}, e.g.
  * 15 min). A candidate is a slot when
  * <ul>
- *   <li>the whole service ({@code duration}) fits before the range ends,</li>
- *   <li>it starts no earlier than {@code earliestStart} (now + minimum notice),</li>
- *   <li>and it overlaps none of the staff member's busy intervals
- *       (bookings, personal time off, shop-wide closures).</li>
+ *   <li>the whole appointment ({@code duration} = sum of all chosen services)
+ *       fits before the range ends,</li>
+ *   <li>it starts no earlier than {@code earliestStart} (now + lead time),</li>
+ *   <li>and [start, start + duration + buffer) overlaps none of the staff
+ *       member's busy intervals (bookings incl. their buffer, personal time off,
+ *       shop-wide closures).</li>
  * </ul>
  * Results of all staff are merged per start time; each slot lists who is free.
  *
@@ -46,25 +48,26 @@ public final class AvailabilityCalculator {
     /** One staff member's working ranges on that day and everything that blocks them. */
     public record StaffDay(UUID staffId, List<LocalRange> workingRanges, List<Interval> busy) {}
 
-    public record Request(LocalDate date, ZoneId zone, Duration duration, Duration step, Instant earliestStart,
-                          List<StaffDay> staff) {}
+    public record Request(LocalDate date, ZoneId zone, Duration duration, Duration buffer, Duration step,
+                          Instant earliestStart, List<StaffDay> staff) {}
 
-    /** A bookable start time and the staff members free for the whole service. */
+    /** A bookable start time and the staff members free for the whole appointment. */
     public record Slot(Instant start, Instant end, List<UUID> staffIds) {}
 
     public static List<Slot> compute(Request r) {
         if (r.duration().isZero() || r.duration().isNegative()) throw new IllegalArgumentException("duration");
         if (r.step().isZero() || r.step().isNegative()) throw new IllegalArgumentException("step");
+        if (r.buffer().isNegative()) throw new IllegalArgumentException("buffer");
 
+        Duration blocked = r.duration().plus(r.buffer());
         Map<Instant, List<UUID>> byStart = new TreeMap<>();
         for (StaffDay staff : r.staff()) {
             for (LocalRange range : staff.workingRanges()) {
                 Instant rangeStart = ZonedDateTime.of(r.date(), range.start(), r.zone()).toInstant();
                 Instant rangeEnd = ZonedDateTime.of(r.date(), range.end(), r.zone()).toInstant();
                 for (Instant t = rangeStart; !t.plus(r.duration()).isAfter(rangeEnd); t = t.plus(r.step())) {
-                    Instant end = t.plus(r.duration());
                     if (t.isBefore(r.earliestStart())) continue;
-                    if (isBusy(staff.busy(), t, end)) continue;
+                    if (isBusy(staff.busy(), t, t.plus(blocked))) continue;
                     byStart.computeIfAbsent(t, k -> new ArrayList<>()).add(staff.staffId());
                 }
             }

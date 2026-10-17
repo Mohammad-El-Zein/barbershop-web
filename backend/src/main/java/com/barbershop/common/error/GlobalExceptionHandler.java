@@ -12,6 +12,8 @@ import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.beans.TypeMismatchException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.PessimisticLockingFailureException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -51,7 +53,23 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(ApiException.class)
     public ResponseEntity<ProblemDetail> handleApi(ApiException ex, HttpServletRequest request) {
-        return respond(problem(ex.status(), ex.code(), request, ex.args()));
+        ProblemDetail p = problem(ex.status(), ex.code(), request, ex.args());
+        ex.properties().forEach(p::setProperty);
+        if (!ex.fieldErrors().isEmpty()) {
+            Locale locale = LocaleContextHolder.getLocale();
+            Map<String, String> errors = new LinkedHashMap<>();
+            ex.fieldErrors().forEach((field, code) -> errors.put(field,
+                    messageSource.getMessage(code, null, code, locale)));
+            problems.withErrors(p, errors);
+        }
+        return respond(p);
+    }
+
+    /** Two writers on the same booking/payment at the same moment (row lock timeout). */
+    @ExceptionHandler({PessimisticLockingFailureException.class, ObjectOptimisticLockingFailureException.class})
+    public ResponseEntity<ProblemDetail> handleLocking(RuntimeException ex, HttpServletRequest request) {
+        log.info("Concurrent modification on {}: {}", request.getRequestURI(), ex.getMessage());
+        return respond(problem(HttpStatus.CONFLICT, "request.concurrent_update", request));
     }
 
     /** Integrity violations that slip past the services (the booking overlap is handled in BookingService). */

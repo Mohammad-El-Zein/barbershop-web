@@ -1,6 +1,7 @@
 package com.barbershop.tenant;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
@@ -49,6 +50,10 @@ public class Tenant {
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
+    /** Booking rules of this shop (deadlines, deposit, loyalty, slot grid …). */
+    @Embedded
+    private BookingPolicy policy = new BookingPolicy();
+
     protected Tenant() {}
 
     public Tenant(UUID id, String name, String slug, String timezone) {
@@ -75,4 +80,5 @@ public class Tenant {
     public String getLogoUrl() { return logoUrl; }
     public Map<String, Object> getTheme() { return theme; }
     public Instant getCreatedAt() { return createdAt; }
+    public BookingPolicy policy() { return policy; }
 }

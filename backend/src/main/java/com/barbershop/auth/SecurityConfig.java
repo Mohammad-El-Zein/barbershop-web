@@ -23,13 +23,18 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 /**
  * Stateless API security:
  * <ul>
- *   <li>/api/public/** and the admin login are open (POSTs are rate-limited),</li>
- *   <li>/api/admin/** requires a valid admin JWT (role ADMIN),</li>
+ *   <li>/api/public/** (shop data, booking, email-link pages, register, password reset) and
+ *       /api/auth/** (login, refresh, logout — the refresh-cookie endpoints) are open;
+ *       /api/auth/password (change password) needs an access token,</li>
+ *   <li>/api/me/** needs any valid access token, /api/barber/** role BARBER,
+ *       /api/admin/** role ADMIN — always scoped to the token's tenant,</li>
  *   <li>API docs and health are open, everything else is denied,</li>
- *   <li>CORS only for the configured frontend origin(s),</li>
+ *   <li>CORS only for the configured frontend origin(s), with credentials (cookie),</li>
  *   <li>401/403 are localized problem details like every other error.</li>
  * </ul>
- * No cookies/sessions → no CSRF surface.
+ * Access tokens travel in the Authorization header (no CSRF surface). The only
+ * cookie is the refresh token: httpOnly, SameSite=Strict, path /api/auth, and
+ * {@link AuthController} additionally checks the Origin header.
  */
 @Configuration
 public class SecurityConfig {
@@ -45,11 +50,14 @@ public class SecurityConfig {
                 .cors(Customizer.withDefaults())
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/public/**", "/api/admin/auth/login").permitAll()
+                        .requestMatchers("/api/auth/password").authenticated()
+                        .requestMatchers("/api/public/**", "/api/auth/**").permitAll()
                         .requestMatchers("/actuator/health/**", "/actuator/info").permitAll()
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .requestMatchers("/error").permitAll()
-                        .requestMatchers("/api/admin/**").hasRole(AdminUser.ROLE_ADMIN)
+                        .requestMatchers("/api/admin/**").hasRole(Role.ADMIN.name())
+                        .requestMatchers("/api/barber/**").hasRole(Role.BARBER.name())
+                        .requestMatchers("/api/me/**").authenticated()
                         .anyRequest().denyAll())
                 .oauth2ResourceServer(rs -> rs
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(roleConverter()))
@@ -64,7 +72,7 @@ public class SecurityConfig {
     /** "role": "ADMIN" claim → ROLE_ADMIN authority. */
     private static JwtAuthenticationConverter roleConverter() {
         JwtGrantedAuthoritiesConverter authorities = new JwtGrantedAuthoritiesConverter();
-        authorities.setAuthoritiesClaimName(AdminPrincipal.ROLE_CLAIM);
+        authorities.setAuthoritiesClaimName(CurrentUser.ROLE_CLAIM);
         authorities.setAuthorityPrefix("ROLE_");
         JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
         converter.setJwtGrantedAuthoritiesConverter(authorities);
@@ -74,14 +82,19 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource(AppProperties props) {
         CorsConfiguration cors = new CorsConfiguration();
-        cors.setAllowedOrigins(props.cors().allowedOrigins().stream().map(String::trim).filter(s -> !s.isEmpty()).toList());
+        cors.setAllowedOrigins(allowedOrigins(props));
         cors.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         cors.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "Accept-Language"));
-        cors.setExposedHeaders(List.of("Location", "Retry-After", "Content-Language"));
+        cors.setExposedHeaders(List.of("Location", "Retry-After", "Content-Language", "Content-Disposition"));
+        cors.setAllowCredentials(true); // refresh cookie
         cors.setMaxAge(3600L);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/api/**", cors);
         return source;
+    }
+
+    static List<String> allowedOrigins(AppProperties props) {
+        return props.cors().allowedOrigins().stream().map(String::trim).filter(s -> !s.isEmpty()).toList();
     }
 
     @Bean

@@ -15,6 +15,7 @@ import com.barbershop.tenant.TenantService;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -59,9 +60,9 @@ public class StaffDirectory {
                 .toList();
     }
 
-    /** Active staff of the tenant who offer the given service (used by availability and booking). */
-    public List<Staff> activeOffering(UUID tenantId, UUID serviceId) {
-        Set<UUID> ids = new HashSet<>(staff.findStaffIdsOffering(serviceId));
+    /** Active staff of the tenant who offer ALL the given services (used by availability and booking). */
+    public List<Staff> activeOfferingAll(UUID tenantId, Collection<UUID> serviceIds) {
+        Set<UUID> ids = new HashSet<>(staff.findStaffIdsOfferingAll(serviceIds, new HashSet<>(serviceIds).size()));
         return staff.findByTenantIdAndActiveTrueOrderBySortOrderAscNameAsc(tenantId).stream()
                 .filter(s -> ids.contains(s.getId()))
                 .toList();

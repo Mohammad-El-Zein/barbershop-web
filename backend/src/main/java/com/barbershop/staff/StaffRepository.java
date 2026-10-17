@@ -1,5 +1,6 @@
 package com.barbershop.staff;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -29,6 +30,12 @@ public interface StaffRepository extends JpaRepository<Staff, UUID> {
 
     @Query(value = "select staff_id from staff_service where service_id = :serviceId", nativeQuery = true)
     List<UUID> findStaffIdsOffering(@Param("serviceId") UUID serviceId);
+
+    /** Staff offering ALL of the given services (count = number of distinct service ids). */
+    @Query(value = """
+            select staff_id from staff_service where service_id in (:serviceIds)
+            group by staff_id having count(distinct service_id) = :count""", nativeQuery = true)
+    List<UUID> findStaffIdsOfferingAll(@Param("serviceIds") Collection<UUID> serviceIds, @Param("count") long count);
 
     @Modifying
     @Query(value = "delete from staff_service where staff_id = :staffId", nativeQuery = true)

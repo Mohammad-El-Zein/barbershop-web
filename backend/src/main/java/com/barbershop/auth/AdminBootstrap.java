@@ -1,7 +1,10 @@
 package com.barbershop.auth;
 
 import com.barbershop.common.config.AppProperties;
+import com.barbershop.common.i18n.Lang;
 import com.barbershop.tenant.TenantRepository;
+import java.time.Clock;
+import java.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
@@ -13,7 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Creates the first admin from APP_ADMIN_EMAIL / APP_ADMIN_PASSWORD on startup
  * if it does not exist yet — credentials never live in the repository.
- * An existing admin is never modified (its password is not overwritten).
+ * An existing account is never modified (its password is not overwritten).
  */
 @Component
 public class AdminBootstrap implements ApplicationRunner {
@@ -22,16 +25,18 @@ public class AdminBootstrap implements ApplicationRunner {
     static final int MIN_PASSWORD_LENGTH = 12;
 
     private final AppProperties.AdminBootstrap config;
-    private final AdminUserRepository admins;
+    private final AppUserRepository users;
     private final TenantRepository tenants;
     private final PasswordEncoder passwordEncoder;
+    private final Clock clock;
 
-    public AdminBootstrap(AppProperties props, AdminUserRepository admins, TenantRepository tenants,
-                          PasswordEncoder passwordEncoder) {
+    public AdminBootstrap(AppProperties props, AppUserRepository users, TenantRepository tenants,
+                          PasswordEncoder passwordEncoder, Clock clock) {
         this.config = props.admin();
-        this.admins = admins;
+        this.users = users;
         this.tenants = tenants;
         this.passwordEncoder = passwordEncoder;
+        this.clock = clock;
     }
 
     @Override
@@ -48,12 +53,17 @@ public class AdminBootstrap implements ApplicationRunner {
                     MIN_PASSWORD_LENGTH);
             return;
         }
-        if (admins.findByEmailIgnoreCase(email).isPresent()) {
-            log.info("Bootstrap admin {} already exists (password unchanged)", email);
-            return;
-        }
         tenants.findBySlug(config.tenant()).ifPresentOrElse(tenant -> {
-            admins.save(new AdminUser(tenant.getId(), email.trim(), passwordEncoder.encode(password)));
+            if (users.findByTenantAndEmail(tenant.getId(), email.trim()).isPresent()) {
+                log.info("Bootstrap admin {} already exists (password unchanged)", email);
+                return;
+            }
+            Instant now = Instant.now(clock);
+            AppUser admin = new AppUser(tenant.getId(), Role.ADMIN, email.trim(), passwordEncoder.encode(password),
+                    "Admin", null, Lang.parse(tenant.getDefaultLocale()) != null
+                            ? Lang.parse(tenant.getDefaultLocale()) : Lang.DEFAULT, now);
+            admin.verifyEmail(now);
+            users.save(admin);
             log.info("Created bootstrap admin {} for tenant {}", email, tenant.getSlug());
         }, () -> log.warn("Bootstrap admin not created: tenant '{}' does not exist", config.tenant()));
     }

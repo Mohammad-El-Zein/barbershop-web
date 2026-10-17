@@ -21,8 +21,9 @@ import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 
 /**
- * Admin access tokens: HS256 JWTs signed with APP_JWT_SECRET (≥ 32 bytes).
- * Claims: sub = admin id, tenant, role, email, iss, iat, exp.
+ * Short-lived access tokens (default 15 min): HS256 JWTs signed with
+ * APP_JWT_SECRET (≥ 32 bytes). Claims: sub = user id, tenant, role, email,
+ * staff (barbers only), iss, iat, exp. Long sessions use the refresh cookie.
  */
 @Configuration
 public class JwtService {
@@ -53,20 +54,20 @@ public class JwtService {
         return decoder;
     }
 
-    public IssuedToken issue(AdminUser admin, JwtEncoder encoder) {
+    public IssuedToken issue(AppUser user, JwtEncoder encoder) {
         Instant now = Instant.now(clock);
-        Instant expiresAt = now.plus(config.ttl());
-        JwtClaimsSet claims = JwtClaimsSet.builder()
+        Instant expiresAt = now.plus(config.accessTtl());
+        JwtClaimsSet.Builder claims = JwtClaimsSet.builder()
                 .issuer(config.issuer())
-                .subject(admin.getId().toString())
+                .subject(user.getId().toString())
                 .issuedAt(now)
                 .expiresAt(expiresAt)
-                .claim(AdminPrincipal.TENANT_CLAIM, admin.getTenantId().toString())
-                .claim(AdminPrincipal.ROLE_CLAIM, admin.getRole())
-                .claim(AdminPrincipal.EMAIL_CLAIM, admin.getEmail())
-                .build();
-        String token = encoder.encode(JwtEncoderParameters.from(JwsHeader.with(MacAlgorithm.HS256).build(), claims))
-                .getTokenValue();
+                .claim(CurrentUser.TENANT_CLAIM, user.getTenantId().toString())
+                .claim(CurrentUser.ROLE_CLAIM, user.getRole().name())
+                .claim(CurrentUser.EMAIL_CLAIM, user.getEmail());
+        if (user.getStaffId() != null) claims.claim(CurrentUser.STAFF_CLAIM, user.getStaffId().toString());
+        String token = encoder.encode(JwtEncoderParameters.from(JwsHeader.with(MacAlgorithm.HS256).build(),
+                claims.build())).getTokenValue();
         return new IssuedToken(token, expiresAt);
     }
 

@@ -8,6 +8,7 @@ import com.barbershop.service.ServiceDtos.ServiceRequest;
 import com.barbershop.service.ServiceDtos.ServiceView;
 import com.barbershop.tenant.Tenant;
 import com.barbershop.tenant.TenantService;
+import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -46,6 +47,19 @@ public class ServiceCatalog {
         return services.findByIdAndTenantId(serviceId, tenantId)
                 .filter(BarberService::isActive)
                 .orElseThrow(() -> ApiException.notFound("service.not_found"));
+    }
+
+    /**
+     * The chosen services of one booking (e.g. haircut + beard), in the given order.
+     * 1 … {@code max} distinct active services of this tenant, otherwise 404/422.
+     */
+    public List<BarberService> requireActiveAll(UUID tenantId, List<UUID> serviceIds, int max) {
+        if (serviceIds == null || serviceIds.isEmpty()) throw ApiException.unprocessable("service.none_selected");
+        if (serviceIds.size() > max) throw ApiException.unprocessable("service.too_many", max);
+        if (new HashSet<>(serviceIds).size() != serviceIds.size()) {
+            throw ApiException.unprocessable("service.duplicate");
+        }
+        return serviceIds.stream().map(id -> requireActive(tenantId, id)).toList();
     }
 
     // ── admin ────────────────────────────────────────────────────────────────

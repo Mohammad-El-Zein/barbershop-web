@@ -58,6 +58,17 @@ services:
       SMTP_STARTTLS: ${SMTP_STARTTLS:-false}
       APP_MAIL_FROM: ${APP_MAIL_FROM:-The Barber News <no-reply@example.com>}
       APP_JWT_SECRET: ${APP_JWT_SECRET:?Set APP_JWT_SECRET in infra/.env (at least 32 characters)}
+      APP_TOKEN_SECRET: ${APP_TOKEN_SECRET:-}
+      APP_COOKIE_SECURE: ${APP_COOKIE_SECURE:-false}
+      APP_JOBS_ENABLED: ${APP_JOBS_ENABLED:-true}
+      # per-IP rate limits (defaults are production values; raise locally for lots of manual testing)
+      APP_RATE_LIMIT_BOOKINGS: ${APP_RATE_LIMIT_BOOKINGS:-10}
+      APP_RATE_LIMIT_LOGIN: ${APP_RATE_LIMIT_LOGIN:-5}
+      APP_RATE_LIMIT_AUTH_MAIL: ${APP_RATE_LIMIT_AUTH_MAIL:-5}
+      APP_RATE_LIMIT_TOKEN_ACTIONS: ${APP_RATE_LIMIT_TOKEN_ACTIONS:-20}
+      # DEMO payments only — refused with the prod profile unless explicitly allowed
+      PAYMENT_PROVIDER: ${PAYMENT_PROVIDER:-demo}
+      PAYMENT_DEMO_ALLOW_IN_PROD: ${PAYMENT_DEMO_ALLOW_IN_PROD:-false}
       APP_ADMIN_EMAIL: ${APP_ADMIN_EMAIL:-}
       APP_ADMIN_PASSWORD: ${APP_ADMIN_PASSWORD:-}
       APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:-http://localhost:3000}

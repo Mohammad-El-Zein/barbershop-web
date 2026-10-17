@@ -1,20 +1,22 @@
 # Backend — booking API
 
-The REST API for the barbershop template, built with:
+The REST API for the barbershop template:
 
-- Java 21, Spring Boot 3.5 and Maven.
-- PostgreSQL 17 with Flyway migrations.
-- Spring Security with JWT for the admin area.
-- Spring Mail with Thymeleaf templates for customer emails.
+- Java 21, Spring Boot 3.5, Maven
+- PostgreSQL 17 with Flyway migrations
+- Spring Security: short-lived JWT access tokens + rotating refresh token in an httpOnly cookie
+- Spring Mail + Thymeleaf: localized HTML + plain-text emails (DE/EN), Mailpit locally
+- **Payments: DEMO ONLY.** No real provider is connected. See [Payments](#payments-demo-only).
+
+Windows, no bash: **[TESTING-WINDOWS.md](TESTING-WINDOWS.md)** has copy-paste PowerShell commands and two
+end-to-end demo scripts (`infra/demo-flow.ps1`, `infra/demo-accounts.ps1`).
 
 ## Start
 
-**Recommended: the whole stack via docker compose.** This starts Postgres, Mailpit and the backend.
-
 ```bash
-cp infra/.env.example infra/.env          # then set the secrets (see below)
+cp infra/.env.example infra/.env          # set the secrets
 docker compose -f infra/docker-compose.yml up -d --build
-./infra/smoke-test.sh                     # end-to-end check with curl
+./infra/smoke-test.sh                     # bash walkthrough  (Windows: infra/demo-flow.ps1)
 ```
 
 | What | URL |
@@ -23,124 +25,332 @@ docker compose -f infra/docker-compose.yml up -d --build
 | Swagger UI | http://localhost:8080/swagger-ui.html (OpenAPI JSON: `/v3/api-docs`) |
 | Mailpit (all outgoing mail) | http://localhost:8025 |
 | Health | http://localhost:8080/actuator/health |
-| Postgres | `localhost:5432` (change it with `POSTGRES_HOST_PORT` if 5432 is taken) |
 
-**Run from the IDE or Maven.** Postgres and Mailpit come from compose, the app runs locally:
-
-```bash
-docker compose -f infra/docker-compose.yml up -d postgres mailpit
-# Use the same POSTGRES_PASSWORD as infra/.env:
-DB_PASSWORD=... SMTP_HOST=localhost APP_JWT_SECRET=$(openssl rand -base64 48) \
-APP_ADMIN_EMAIL=admin@example.com APP_ADMIN_PASSWORD=change-me-12chars \
-SPRING_PROFILES_ACTIVE=demo ./mvnw spring-boot:run
-```
-
-**Tests:** these need Docker for Testcontainers.
+**Tests** (need Docker for Testcontainers):
 
 ```bash
-./mvnw test      # unit tests (availability calculation, incl. DST)
-./mvnw verify    # + integration tests against a real Postgres (incl. concurrent double booking)
+./mvnw test      # 59 unit tests: state machine, pricing/loyalty/deposit, refund rule, deadlines, availability, .ics
+./mvnw verify    # + 60 integration tests against Postgres + GreenMail (full flows, races, jobs, accounts …)
 ```
 
-## Configuration
+---
 
-All configuration is set through environment variables. `infra/.env.example` documents every one of them.
+## Booking lifecycle
 
-| Variable | Meaning |
+```mermaid
+stateDiagram-v2
+    [*] --> PENDING_BARBER: online request
+    [*] --> CONFIRMED: walk-in / phone (admin, no deposit)
+    PENDING_BARBER --> AWAITING_PAYMENT: barber/admin accepts
+    PENDING_BARBER --> DECLINED: barber/admin declines
+    PENDING_BARBER --> EXPIRED: no answer in time (job)
+    PENDING_BARBER --> CANCELLED: customer / barber / admin
+    AWAITING_PAYMENT --> CONFIRMED: deposit paid (payment)
+    AWAITING_PAYMENT --> EXPIRED: not paid in time (job)
+    AWAITING_PAYMENT --> CANCELLED: customer / barber / admin
+    CONFIRMED --> COMPLETED: barber/admin, or job 2 h after the end
+    CONFIRMED --> NO_SHOW: barber/admin
+    CONFIRMED --> CANCELLED: customer / barber / admin
+    COMPLETED --> [*]
+    DECLINED --> [*]
+    EXPIRED --> [*]
+    CANCELLED --> [*]
+    NO_SHOW --> [*]
+```
+
+- **One place:** `booking/BookingStateMachine` holds the complete transition table (from × to × actor).
+  `Booking.transitionTo()` is the only status setter, and `BookingLifecycle` is the only service that calls it.
+  `BookingLifecycle` also does the side effects: loyalty, deposit refund/forfeit, invalidating email links,
+  and the events for the emails. Every transition locks the booking row (`SELECT … FOR UPDATE`), so a
+  barber's click, the expiry job and a payment can never race.
+- **Slot blocking:** PENDING_BARBER, AWAITING_PAYMENT, CONFIRMED (and COMPLETED) block the slot. This is
+  enforced by the database: `EXCLUDE USING gist (staff_id WITH =, tstzrange(start, end + buffer) WITH &&) WHERE status IN (…)`.
+  DECLINED, EXPIRED, CANCELLED and NO_SHOW free it.
+- **Deadlines (per tenant, defaults):**
+
+  | Deadline | Default |
+  |---|---|
+  | Barber answer | 12 h after the request, at the latest 2 h before the appointment |
+  | Deposit payment | 24 h after acceptance, at the latest 2 h before the appointment |
+
+- **Deposit:** 10.00 € by default. It is deducted in the shop: `price_total − loyalty_discount − deposit = amount_due_at_shop`.
+  The database enforces this equation with a CHECK constraint. With a deposit of 0 €, acceptance confirms the booking right away.
+- **Refund rule:**
+
+  | Who cancels | Deposit |
+  |---|---|
+  | Customer, ≥ 24 h before the appointment (exactly 24 h counts) | Refunded |
+  | Customer, later | Forfeited (kept) |
+  | Shop (barber / admin) | Always refunded. An admin can pass `refund=false`. |
+  | NO_SHOW | Forfeited |
+
+  Admins can also refund afterwards with `POST /api/admin/bookings/{id}/refund`.
+- **Scheduled job** (`BookingJobs`, every minute, safe with several instances):
+  1. Expire requests the barber did not answer in time.
+  2. Expire acceptances that were not paid in time.
+  3. Auto-complete CONFIRMED bookings 2 h after their end, unless they were marked NO_SHOW.
+  4. Send the reminder 24 h before the appointment.
+
+## Email links: GET shows, POST acts
+
+Email scanners open links automatically. So **no GET ever changes anything**: a link opens a frontend
+page that shows the booking, and only the page's confirm button sends a POST.
+
+| Email link | Frontend page | API |
+|---|---|---|
+| Barber "Accept" / "Decline" | `/[locale]/barber/requests/[token]?action=accept\|decline` | `GET /api/public/barber-decision/{token}`, `POST …/accept`, `POST …/decline` |
+| Customer "Pay now" | `/[locale]/pay/[token]` | `GET /api/public/payments/{token}`, `POST …/simulate`, `POST …/cancel` |
+| Customer "Manage / cancel" | `/[locale]/booking/manage/[token]` | `GET /api/public/manage/{token}`, `POST …/cancel` |
+| Confirm email | `/[locale]/account/verify/[token]` | `POST /api/public/auth/verify-email` |
+| Reset password / barber invite | `/[locale]/account/reset-password/[token]` | `POST /api/public/auth/reset-password` |
+
+How the tokens work:
+
+- 256 random bits. The database stores only `HMAC-SHA256(server key, purpose + ":" + token)`.
+- **Bound to their purpose:** a manage token is useless as a payment token.
+- **Single use:** a token is consumed in the same transaction as the action.
+- **Expiring:**
+
+  | Token | Valid until |
+  |---|---|
+  | Decision | The barber deadline |
+  | Payment | The payment deadline |
+  | Manage | The end of the appointment |
+  | Verify email | 24 h |
+  | Reset password | 1 h |
+  | Barber invite | 72 h |
+
+- **Used or expired** → `410` with `code` `token.used` or `token.expired`, a localized `detail`, and the current
+  `bookingStatus` (or `paymentStatus`), so the page can say e.g. "already accepted". **Unknown** → `404 token.invalid`.
+- Status changes invalidate stale links, e.g. a cancellation kills the open payment link.
+
+## Emails (DE/EN by the recipient's language; HTML + plain text; dark/gold)
+
+| To | When | Content |
+|---|---|---|
+| Customer | Request received | Summary; the barber answers by *deadline*; manage link |
+| Barber | New request | Customer, services, date/time, duration, note, loyalty info. At the end: **Accept** / **Decline** |
+| Customer | Accepted | Pay the 10 € deposit within X h. **Pay now**. Demo-mode note |
+| Customer | Declined | Barber's note. **Pick another time** |
+| Customer | Confirmed | "All set"; full summary (total, discount, deposit paid, due at the shop); how to cancel; **.ics**; demo note |
+| Barber | Payment received | Customer, services, time range, "10 € deposit paid" |
+| Customer / barber | Cancelled | Refund info: refunded (simulated in demo) / kept / nothing paid |
+| Customer | Refunded | After an admin refund override |
+| Customer | Expired | "Barber did not answer in time" or "not paid in time". **Book again** |
+| Customer | Reminder | 24 h before |
+| Account | Verify, reset, invite, "already registered" | |
+
+Barber emails go to the barber's own login. While a barber has no login yet, they go to the shop's admins.
+All emails share one layout (`templates/mail/layout.html`), built from `MailContent` in `mail/BookingMails` /
+`mail/AccountMails`. They are sent after the commit, asynchronously, so a mail failure never breaks a booking.
+
+## Accounts
+
+| Topic | Behaviour |
 |---|---|
-| `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` | Database connection |
-| `APP_JWT_SECRET` | HS256 key for admin tokens. **Required.** At least 32 bytes. |
-| `APP_ADMIN_EMAIL`, `APP_ADMIN_PASSWORD`, `APP_ADMIN_TENANT` | Creates the first admin on startup if it doesn't exist yet. The password must be at least 12 characters. An existing admin is never overwritten. |
-| `APP_CORS_ALLOWED_ORIGINS` | Comma-separated browser origins, e.g. the frontend |
-| `APP_FRONTEND_BASE_URL` | Base for the cancel links in emails: `{base}/{lang}/booking/cancel?token=…` |
-| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_AUTH`, `SMTP_STARTTLS` | Mail server (Mailpit locally) |
-| `APP_MAIL_FROM` | Sender address |
-| `SPRING_PROFILES_ACTIVE=demo` | Also loads the demo shop "The Barber News" |
+| Roles | CUSTOMER, BARBER and ADMIN, each scoped to one tenant. A BARBER login is linked to its staff profile. Admins create it with `POST /api/admin/staff/{id}/account`; the barber gets an invite email to set a password. |
+| Register / login | Register needs consent and is stored with its version. Then verify the email; login works only after verification. |
+| Sessions | Access token: JWT, 15 min, sent in the `Authorization` header. Refresh token: httpOnly cookie `bs_refresh`, `SameSite=Strict`, `Path=/api/auth`, 30 days. The cookie rotates on every refresh, and reusing an old cookie revokes the whole session family. The cookie endpoints also check the `Origin` header. |
+| Passwords | BCrypt (cost 12), minimum 10 characters. Forgot/reset ends all sessions. Changing the password ends all other sessions and returns a fresh one. |
+| No user enumeration | Register, forgot-password and resend-verification always return the same `202`. Unknown email, wrong password and locked account return the same `401`, and an unknown email still costs one BCrypt check. "Email not verified" (`403`) is only shown after a correct password. |
+| Brute force | Per-IP rate limits, plus a lockout of 15 min after 5 failed logins in a row. |
+| Guests | A guest gives name, email, phone and consent, and manages the booking only through the signed links in the emails. When the same email is registered **and verified**, earlier guest bookings are linked to the account. Completed ones count as loyalty visits. |
+| GDPR | `GET /api/me/export` returns a JSON download. `POST /api/me/delete` (password required) cancels open future bookings (normal refund rule), anonymises all bookings (name → "Gelöschter Kunde", contact data removed, dates and amounts kept), and deletes the account, its tokens and loyalty. |
 
-Booking rules are set under `app.booking.*` in `application.yml`:
+## Loyalty (accounts only)
 
-| Setting | Value |
-|---|---|
-| Slot grid | 15 min |
-| Minimum notice | 1 h |
-| Booking horizon | 60 days |
-| Cancellation cutoff | 2 h before the appointment |
-| Auto-confirm | on |
+- Every COMPLETED booking is one visit.
+- After **10** completed visits, the **next** booking gets **50 %** off the services. Threshold and percent are set per tenant.
+- **Reserved** when the booking is created, **released** on cancel/decline/expiry/no-show, **consumed** when COMPLETED.
+  Then the counter starts a new cycle (`visits − threshold`).
+- The account row is locked, so two parallel bookings can't both get the reward.
+- `GET /api/me/loyalty` returns `visitsInCurrentCycle`, `threshold`, `nextDiscountAvailable` and `discountReserved`.
+- Barbers see a one-line loyalty note in the request email and on the decision page.
 
-Rate limits are per IP: 10 booking POSTs per minute and 5 logins per minute.
+## Payments (DEMO ONLY)
 
-## Code structure (package by feature, `com.barbershop.*`)
+```
+PaymentProvider (interface)            selected by payment.provider (env PAYMENT_PROVIDER)
+├── createPayment(request) → providerRef + payment page URL
+├── refund(payment)
+└── parseEvent(payload, headers) → provider event (webhooks)
+DemoPaymentProvider                    the only implementation today ("demo")
+PaymentService.handlePaymentSucceeded(ref)   ← demo "Simulate payment" button AND future webhooks
+PaymentLedger                          payment rows + payment_event audit trail (refunds, forfeits, overrides)
+```
 
-| Package | Contents |
-|---|---|
-| `tenant` | Tenant (slug, domain, theme as jsonb, time zone) |
-| `service` | Services with DE/EN fields, price formatting ("ab 35 €" / "from €35") |
-| `staff` | Barbers, the services they offer, working hours, time off |
-| `availability` | `AvailabilityCalculator` (pure logic, unit-tested) and the service around it |
-| `booking` | Bookings, cancel tokens, admin list/filter, stats |
-| `auth` | Admin login, JWT, security config, bootstrap admin |
-| `mail` | Confirmation and cancellation emails (sent after the commit, async) |
-| `common` | Config, i18n (locale resolver, messages), error handling (RFC 9457), rate limiting |
+- **Flow:**
+  1. The barber accepts → payment `UNPAID` plus a single-use payment link.
+  2. The page `/[locale]/pay/[token]` shows the amount, a summary, the demo banner and two buttons:
+     **Simulate payment** and **Cancel**. There are no card fields anywhere.
+  3. `POST /api/public/payments/{token}/simulate` → `handlePaymentSucceeded`:
+     - **idempotent:** a second call returns `alreadyProcessed: true`, with no second email;
+     - **serialized:** the payment and booking rows are locked;
+     - **late payments:** a payment for an expired or cancelled booking is refunded instead of resurrecting it.
+- **Statuses:** `UNPAID`, `PAID`, `REFUNDED`, `FORFEITED`. Every change is recorded in `payment_event`.
+  Refunds are simulated ("refund simulated in demo mode") and the refund email says so.
+- **Safety guard:** with the `prod` profile and `payment.provider=demo`, the app **refuses to start**, unless
+  `payment.demo.allow-in-prod=true` (`PAYMENT_DEMO_ALLOW_IN_PROD=true`) is set explicitly.
+  In demo mode, payment emails carry a "DEMO MODE" note and `GET /api/public/{tenant}` returns `demoPayments: true`.
+- No Stripe dependency, no keys, no Stripe CLI container.
+
+### Adding a real provider later (e.g. Stripe)
+
+1. **Dependency and config.** Add `com.stripe:stripe-java`, plus `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET`
+   as environment variables. Never commit them.
+2. **`StripePaymentProvider implements PaymentProvider`**, with `id() = "stripe"` and `isDemo() = false`.
+   - `createPayment`: create a **Checkout Session** with
+     - `mode=payment` and one line item with the deposit amount,
+     - `metadata.bookingId`,
+     - `success_url` / `cancel_url` pointing back to `/[locale]/pay/[token]`,
+     - `expires_at` set to the payment deadline (Stripe allows 30 min to 24 h).
+
+     Return `session.id` as `providerRef` and `session.url` as the payment URL. Add a `payment_url` column, so
+     the pay page can show a "Pay" button that redirects there instead of "Simulate payment".
+   - `refund`: `Refund.create(payment_intent)`.
+   - `parseEvent`: `Webhook.constructEvent(payload, headers["stripe-signature"], webhookSecret)`. Map
+     `checkout.session.completed` (with `payment_status=paid`) to `ProviderEvent(event.id, PAYMENT_SUCCEEDED, session.id)`.
+3. **Register it** in `PaymentConfig` (`case "stripe" -> …`) and set `PAYMENT_PROVIDER=stripe`.
+4. **Webhook:** `POST /api/public/payments/webhook/stripe` already exists. It verifies the signature through the
+   provider and calls the same idempotent `handlePaymentSucceeded`. `payment_event.provider_event_id` is unique,
+   so Stripe's retries are applied once.
+5. **Stripe Connect (one account per shop):**
+   - Store `stripe_account_id` on the tenant and onboard each shop with Account Links (Express accounts).
+   - Either create the session on the connected account (direct charge, `Stripe-Account` header), or use
+     `payment_intent_data.transfer_data.destination` with an optional `application_fee_amount` (destination charge).
+   - Subscribe the Connect webhook endpoint.
+   - Refunds go to the same account.
+6. Remove `PAYMENT_DEMO_ALLOW_IN_PROD`. The guard then no longer matters.
 
 ## API overview
 
-`{tenant}` is the slug, e.g. `the-barber-news`.
+`{tenant}` is the shop slug, e.g. `the-barber-news`. Full schema: Swagger UI.
 
 **Public**
 
 | | |
 |---|---|
-| `GET /api/public/{tenant}` | Shop info |
-| `GET /api/public/{tenant}/services` | Active services |
-| `GET /api/public/{tenant}/staff?service=` | Barbers, optionally filtered by service |
-| `GET /api/public/{tenant}/availability?service=&staff=&date=` | Free slots of one day. Without `staff` it covers any barber. |
-| `GET /api/public/{tenant}/availability/days?service=&staff=&from=&to=` | Days that have free slots |
-| `POST /api/public/{tenant}/bookings` | Book: 201, 409 if the slot is taken, 422 if it isn't a valid slot |
-| `GET /api/public/bookings/{token}` | View a booking via its cancel token |
-| `DELETE /api/public/bookings/{token}` | Cancel (idempotent). 409 after the cutoff. |
+| `GET /api/public/{tenant}` | Shop info and customer-facing booking rules (deposit, refund cutoff, lead time …) |
+| `GET /api/public/{tenant}/services`, `GET …/staff?service=` | Services and barbers |
+| `GET /api/public/{tenant}/availability?services=a,b&date=` | One day for **all barbers**: `barbers[]` (one column each, only those offering all services) and `anyBarber[]` |
+| `GET /api/public/{tenant}/availability/days?services=&staff=&from=&to=` | Days with free slots |
+| `POST /api/public/{tenant}/bookings/price-preview` | Total, loyalty discount (logged-in customers), deposit, due at shop |
+| `POST /api/public/{tenant}/bookings` | Request (guest or logged-in). `201 PENDING_BARBER`; `409` slot taken; `422` invalid slot |
+| `…/manage/{token}`, `…/barber-decision/{token}`, `…/payments/{token}` | Email-link pages, see above |
+| `POST /api/public/{tenant}/auth/register` · `…/resend-verification` · `…/forgot-password` | Always `202` |
+| `POST /api/public/auth/verify-email` · `…/reset-password` | Token from the email |
 
-**Admin** (`Authorization: Bearer <token>`)
+**Session** (`/api/auth`; these endpoints set the refresh cookie)
 
 | | |
 |---|---|
-| `POST /api/admin/auth/login`, `GET /api/admin/me` | Login and current user |
-| `/api/admin/services` | CRUD (DELETE deactivates) |
-| `/api/admin/staff` | CRUD, plus `PUT /{id}/services` and `GET`/`PUT /{id}/working-hours` |
-| `/api/admin/time-off` | CRUD for time off. With no `staffId` it closes the whole shop. |
-| `GET /api/admin/bookings` | List with `from`, `to`, `staffId`, `status`, `q`, `page`, `size`, `sort` |
-| `GET /api/admin/bookings/{id}`, `POST /{id}/cancel`, `POST /{id}/confirm` | Single booking actions |
-| `GET /api/admin/stats?from=&to=` | Booked and cancelled counts per local day and per service |
+| `POST /api/auth/{tenant}/login` | Any role → access token + cookie |
+| `POST /api/auth/refresh`, `POST /api/auth/logout` | Cookie |
+| `POST /api/auth/password` | Change password (Bearer) |
 
-## Languages (DE/EN)
+**Customer** (`/api/me`, Bearer)
 
-- **Response language:** `?lang=de|en`, then `Accept-Language`, then German as the default.
-- **Translated fields:** services have `name_de/en` and `description_de/en`; staff have `bio_de/en`.
-- **Errors:** all errors are localized RFC 9457 problem details. Each has a stable `code` field, e.g. `booking.slot_taken`, so the frontend can rely on it. Texts are in `messages.properties` (DE) and `messages_en.properties`.
-- **Bookings:** each booking stores the customer's language (`lang` in the request body, otherwise the request locale). Emails always use that language.
+| | |
+|---|---|
+| `GET`, `PATCH /api/me` | Profile |
+| `GET /api/me/bookings?scope=upcoming\|past`, `GET …/{id}`, `POST …/{id}/cancel` | My bookings |
+| `GET /api/me/loyalty` | Loyalty state |
+| `GET /api/me/export`, `POST /api/me/delete` | GDPR |
+
+**Barber** (`/api/barber`, role BARBER, own bookings only)
+
+| | |
+|---|---|
+| `GET /api/barber/calendar?date=&view=day\|week` | Calendar |
+| `GET /api/barber/requests` | Pending requests |
+| `GET /api/barber/bookings/{id}` | One booking |
+| `POST …/{id}/accept\|decline\|complete\|no-show\|cancel` | Transitions |
+
+**Admin** (`/api/admin`, role ADMIN, own tenant only)
+
+| | |
+|---|---|
+| `GET /api/admin/bookings` | Filter by `from`, `to`, `staffId`, `status`, `q`, with paging. Views include `allowedTransitions` and payment |
+| `POST /api/admin/bookings` | Manual walk-in / phone booking: CONFIRMED, no deposit |
+| `POST /api/admin/bookings/{id}/accept\|decline\|complete\|no-show\|cancel\|refund` | Transitions; `cancel` takes `{refund?}`, `refund` is the override |
+| `GET /api/admin/customers?q=` | Accounts and guests with completed visits and loyalty |
+| `GET`, `PUT /api/admin/settings` | Booking policy (see below) |
+| `POST /api/admin/staff/{id}/account` | Barber login (invite email) |
+| `/api/admin/services`, `/api/admin/staff` (+ `/services`, `/working-hours`), `/api/admin/time-off`, `/api/admin/stats` | As in phase 2 |
+
+Errors are RFC 9457 problem details with a stable `code` and a localized `detail`. Validation errors also have
+`errors: {field: message}`.
+
+## Configuration
+
+**Per tenant** (columns on `tenant`; `GET`/`PUT /api/admin/settings`; all values in minutes / cents / percent):
+
+| Setting | Default |
+|---|---|
+| `barberResponseMin` | 720 (12 h) |
+| `paymentDeadlineMin` | 1440 (24 h) |
+| `deadlineBeforeStartMin` | 120 (both deadlines end ≥ 2 h before the appointment) |
+| `depositCents` | 1000 |
+| `refundCutoffMin` | 1440 |
+| `loyaltyThreshold` | 10 |
+| `loyaltyPercent` | 50 |
+| `slotStepMin` | 15 |
+| `bufferMin` | 0 |
+| `minLeadMin` | 120 |
+| `maxDaysAhead` | 60 |
+| `autoCompleteAfterMin` | 120 |
+| `reminderBeforeMin` | 1440 |
+
+**Environment** (all documented in `infra/.env.example`):
+
+| Variable | Meaning |
+|---|---|
+| `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` | Database |
+| `APP_JWT_SECRET` | **Required**, ≥ 32 bytes. Signs access tokens. Email-link tokens use a derived key unless `APP_TOKEN_SECRET` is set. |
+| `APP_ADMIN_EMAIL`, `APP_ADMIN_PASSWORD`, `APP_ADMIN_TENANT` | Bootstrap admin, created if missing |
+| `APP_FRONTEND_BASE_URL`, `APP_CORS_ALLOWED_ORIGINS` | Base for email links; allowed browser origins |
+| `APP_COOKIE_SECURE` | `true` behind HTTPS (the `prod` profile defaults to `true`) |
+| `APP_JOBS_ENABLED`, `APP_JOBS_INTERVAL` | Scheduled job (default on, every minute) |
+| `APP_RATE_LIMIT_BOOKINGS` / `_LOGIN` / `_AUTH_MAIL` / `_TOKEN_ACTIONS` / `_REFRESH` | Per-IP limits: 10/min, 5/min, 5 per 10 min, 20/min, 30/min |
+| `APP_BOOKING_MAX_OPEN_REQUESTS` | Open requests per email (anti-spam), default 3 |
+| `PAYMENT_PROVIDER`, `PAYMENT_DEMO_ALLOW_IN_PROD` | `demo`; the prod guard switch |
+| `SMTP_*`, `APP_MAIL_FROM` | Mail server (Mailpit locally) |
+| `SPRING_PROFILES_ACTIVE` | `demo` loads the demo shop; `prod` hardens it (secure cookie, no Swagger) |
+
+Frontend link paths (`app.links.*` in `application.yml`): `/{lang}/booking`, `/{lang}/booking/manage/{token}`,
+`/{lang}/pay/{token}`, `/{lang}/barber/requests/{token}`, `/{lang}/account/verify/{token}`,
+`/{lang}/account/reset-password/{token}`, `/{lang}/account`.
+
+## Code structure (package by feature, `com.barbershop.*`)
+
+| Package | Contents |
+|---|---|
+| `booking` | `Booking` + `BookingItem`; `BookingStateMachine`; `BookingLifecycle` (all transitions); `BookingService` (create, preview, queries); `BookingLinkService` (email-link pages); `BookingRules` / `BookingPricing` (pure rules); `BookingJobs`; customer/barber/admin controllers; stats |
+| `payment` | `PaymentProvider`, `DemoPaymentProvider`, `PaymentService` (`handlePaymentSucceeded`), `PaymentLedger`, prod guard (`PaymentConfig`) |
+| `loyalty` | `LoyaltyRules` (pure), `LoyaltyService`, account row |
+| `token` | Single-use email-link tokens (`ActionTokenService`, HMAC `TokenHasher`) |
+| `auth` | Users and roles, JWT, refresh tokens, login/refresh/logout, lockout, security config, bootstrap admin |
+| `account` | Register/verify/reset, profile, GDPR export/delete, guest linking, barber invites, customer list |
+| `availability` | `AvailabilityCalculator` (pure: multiple services, buffer, DST) and the service around it |
+| `mail` | `MailContent` + one layout; `BookingMails` / `AccountMails`; `.ics`; after-commit listeners |
+| `tenant` | Tenant, `BookingPolicy` (per-tenant rules), settings endpoint |
+| `service`, `staff` | Catalogue, barbers, working hours, time off |
+| `common` | Config, i18n, errors (RFC 9457), rate limiting, frontend links |
 
 ## Double booking protection
 
-There are three layers:
+1. **Schedule check.** The start must be a real slot (working hours, time off, lead time, horizon, grid),
+   otherwise **422**.
+2. **Overlap check** against slot-blocking bookings, including the buffer → **409**.
+3. **Database exclusion constraint** over `[start, end + buffer)` for all slot-blocking statuses. It is the final
+   word under concurrency. With "any barber", the next free barber is tried; the least booked one that day goes first.
 
-1. **Check against the schedule.** The requested start must be a real slot (working hours, time off, notice, horizon), otherwise the API returns **422**.
-2. **Overlap check before the insert.** An overlap returns **409**.
-3. **Database constraint.** This one also holds under concurrency:
-   `EXCLUDE USING gist (staff_id WITH =, time_range WITH &&) WHERE (status <> 'CANCELLED')` on a generated `tstzrange` column (`btree_gist`). A violation (SQLSTATE 23P01) also becomes a **409**.
-
-With "any barber", the next free barber is tried instead. `BookingConcurrencyIT` fires 16 parallel requests at the same slot:
-
-- For one barber, exactly 1 request succeeds.
-- For any barber, exactly 2 succeed (one per barber).
+`BookingConcurrencyIT`: of 16 parallel requests for one barber and slot, exactly 1 succeeds. For "any barber",
+exactly one per free barber succeeds.
+Each insert attempt runs in its own transaction, and the reads before it hold no connection, so a booking rush
+cannot exhaust the connection pool.
 
 ## Times
 
-All timestamps are stored as `timestamptz` (UTC). Working hours are local times in the tenant's time zone (`Europe/Berlin`).
-
-The API returns times with the local offset, e.g. `2026-10-20T10:00:00+02:00`. DST changes are covered by unit tests.
-
-## Security notes
-
-- Passwords use BCrypt with cost 12. Login runs in constant time, with a dummy hash for unknown emails.
-- Cancel tokens are 256-bit random values. Only their SHA-256 hash is stored.
-- Admin tokens are JWTs (HS256, 8 h) and are scoped to one tenant.
-- The Docker image runs as a non-root user.
+All instants are `timestamptz` (UTC). Working hours are local times in the tenant's timezone. The API returns
+the local offset (`2026-10-20T10:00:00+02:00`). DST is covered by unit tests.

@@ -1,10 +1,11 @@
 package com.barbershop.availability;
 
-import com.barbershop.availability.AvailabilityService.AvailabilityView;
 import com.barbershop.availability.AvailabilityService.AvailableDaysView;
+import com.barbershop.availability.AvailabilityService.DayView;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -25,23 +26,23 @@ public class PublicAvailabilityController {
     }
 
     @GetMapping
-    @Operation(summary = "Free slots for a service on a date; staff optional (omit = any barber)")
-    public AvailabilityView slots(@PathVariable("tenant") String tenant,
-                                  @RequestParam("service") UUID serviceId,
-                                  @RequestParam(name = "staff", required = false) UUID staffId,
-                                  @RequestParam("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
-        return availability.availability(tenant, serviceId, staffId, date);
+    @Operation(summary = "Free slots of one day for ALL barbers at once (one column per barber) plus the merged "
+            + "'any barber' list. services = comma-separated service ids; duration = sum of all services.")
+    public DayView day(@PathVariable("tenant") String tenant,
+                       @RequestParam("services") List<UUID> serviceIds,
+                       @RequestParam("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        return availability.day(tenant, serviceIds, date);
     }
 
     @GetMapping("/days")
-    @Operation(summary = "Dates in [from, to] with at least one free slot (max. 62 days)")
+    @Operation(summary = "Dates in [from, to] with at least one free slot (max. 62 days); staff omitted = any barber")
     public AvailableDaysView days(@PathVariable("tenant") String tenant,
-                                  @RequestParam("service") UUID serviceId,
+                                  @RequestParam("services") List<UUID> serviceIds,
                                   @RequestParam(name = "staff", required = false) UUID staffId,
                                   @RequestParam(name = "from", required = false)
                                   @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
                                   @RequestParam(name = "to", required = false)
                                   @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
-        return availability.availableDays(tenant, serviceId, staffId, from, to);
+        return availability.availableDays(tenant, serviceIds, staffId, from, to);
     }
 }

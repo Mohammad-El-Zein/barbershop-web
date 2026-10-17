@@ -45,7 +45,13 @@ class AvailabilityCalculatorTest {
 
     private static List<Slot> compute(LocalDate date, Duration duration, Duration step, Instant earliest,
                                       StaffDay... staff) {
-        return AvailabilityCalculator.compute(new Request(date, BERLIN, duration, step, earliest, List.of(staff)));
+        return compute(date, duration, Duration.ZERO, step, earliest, staff);
+    }
+
+    private static List<Slot> compute(LocalDate date, Duration duration, Duration buffer, Duration step,
+                                      Instant earliest, StaffDay... staff) {
+        return AvailabilityCalculator.compute(new Request(date, BERLIN, duration, buffer, step, earliest,
+                List.of(staff)));
     }
 
     @Nested
@@ -118,6 +124,44 @@ class AvailabilityCalculatorTest {
             List<Slot> slots = compute(TUESDAY, Duration.ofMinutes(45), MIN15, LONG_AGO,
                     new StaffDay(LUCA, List.of(range("12:00", "13:00"), range("14:00", "15:00")), List.of()));
             assertThat(localTimes(slots)).containsExactly("12:00", "12:15", "14:00", "14:15");
+        }
+    }
+
+    @Nested
+    @DisplayName("multiple services and buffer")
+    class MultipleServices {
+
+        /** Haircut 45 + beard 30 = one 75-minute appointment. */
+        private final Duration haircutPlusBeard = Duration.ofMinutes(45).plus(Duration.ofMinutes(30));
+
+        @Test
+        void theSummedDurationMustFitBeforeClosing() {
+            List<Slot> slots = compute(TUESDAY, haircutPlusBeard, MIN15, LONG_AGO,
+                    new StaffDay(LUCA, List.of(range("17:00", "19:00")), List.of()));
+            // 17:45 + 75 min = 19:00 still fits; 18:00 would end 19:15
+            assertThat(localTimes(slots)).containsExactly("17:00", "17:15", "17:30", "17:45");
+            assertThat(slots.getFirst().end()).isEqualTo(at(TUESDAY, "18:15"));
+        }
+
+        @Test
+        void aLongerCombinationNeedsALongerGap() {
+            Interval before = new Interval(at(TUESDAY, "09:00"), at(TUESDAY, "10:00"));
+            Interval after = new Interval(at(TUESDAY, "11:00"), at(TUESDAY, "12:00"));
+            StaffDay luca = new StaffDay(LUCA, List.of(range("09:00", "12:00")), List.of(before, after));
+            // a 45-min haircut fits the one-hour gap, haircut + beard (75 min) does not
+            assertThat(localTimes(compute(TUESDAY, Duration.ofMinutes(45), MIN15, LONG_AGO, luca)))
+                    .containsExactly("10:00", "10:15");
+            assertThat(compute(TUESDAY, haircutPlusBeard, MIN15, LONG_AGO, luca)).isEmpty();
+        }
+
+        @Test
+        void theBufferAfterAnAppointmentMustBeFreeButMayPassClosingTime() {
+            Interval next = new Interval(at(TUESDAY, "10:00"), at(TUESDAY, "10:30"));
+            StaffDay luca = new StaffDay(LUCA, List.of(range("09:00", "11:00")), List.of(next));
+            List<Slot> withBuffer = compute(TUESDAY, MIN30, Duration.ofMinutes(15), MIN15, LONG_AGO, luca);
+            // 09:30 would end 10:00 but needs cleanup until 10:15 → blocked; 10:30 ends at 11:00 (buffer after closing ok)
+            assertThat(localTimes(withBuffer)).containsExactly("09:00", "09:15", "10:30");
+            assertThat(withBuffer.getFirst().end()).isEqualTo(at(TUESDAY, "09:30")); // the slot end excludes the buffer
         }
     }
 

@@ -1,67 +1,81 @@
 package com.barbershop.auth;
 
-import com.barbershop.common.config.OpenApiConfig;
-import com.barbershop.tenant.Tenant;
-import com.barbershop.tenant.TenantService;
+import com.barbershop.auth.AuthDtos.LoginRequest;
+import com.barbershop.auth.AuthDtos.SessionResponse;
+import com.barbershop.common.config.AppProperties;
+import com.barbershop.common.error.ApiException;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
-import java.time.Instant;
-import java.util.UUID;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CookieValue;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * Login (per shop), refresh and logout. The access token (15 min) is returned in
+ * the body and kept in memory by the frontend; the refresh token is an httpOnly
+ * cookie limited to /api/auth, so JavaScript can never read it. Every endpoint that
+ * sets this cookie lives under /api/auth (strict cookie clients such as .NET reject
+ * a cookie whose path does not cover the URL that set it).
+ */
 @RestController
-@RequestMapping("/api/admin")
-@Tag(name = "Admin: auth")
+@RequestMapping("/api/auth")
+@Tag(name = "Auth: session")
 public class AuthController {
 
     private final AuthService auth;
-    private final TenantService tenants;
+    private final SessionResponses sessions;
+    private final AppProperties props;
 
-    public AuthController(AuthService auth, TenantService tenants) {
+    public AuthController(AuthService auth, SessionResponses sessions, AppProperties props) {
         this.auth = auth;
-        this.tenants = tenants;
+        this.sessions = sessions;
+        this.props = props;
     }
 
-    @PostMapping("/auth/login")
-    @Operation(summary = "Admin login → JWT (rate-limited per IP)")
-    public LoginResponse login(@Valid @RequestBody LoginRequest req) {
-        AuthService.LoginResult r = auth.login(req.email(), req.password());
-        return new LoginResponse(r.token().token(), "Bearer", r.token().expiresAt(), r.admin().getEmail(),
-                r.admin().getRole(), TenantRef.of(r.tenant()));
+    @PostMapping("/{tenant}/login")
+    @Operation(summary = "Login (customer, barber or admin) → access token + refresh cookie. The same 401 for "
+            + "unknown email / wrong password / locked account; 403 auth.email_not_verified only after a correct password.")
+    public ResponseEntity<SessionResponse> login(@PathVariable("tenant") String tenant,
+                                                 @Valid @RequestBody LoginRequest req) {
+        return sessions.of(auth.login(tenant, req.email(), req.password()));
     }
 
-    @GetMapping("/me")
-    @SecurityRequirement(name = OpenApiConfig.BEARER)
-    @Operation(summary = "The logged-in admin")
-    public MeResponse me(@AuthenticationPrincipal Jwt jwt) {
-        Tenant tenant = tenants.require(AdminPrincipal.tenantId(jwt));
-        return new MeResponse(UUID.fromString(jwt.getSubject()), jwt.getClaimAsString(AdminPrincipal.EMAIL_CLAIM),
-                jwt.getClaimAsString(AdminPrincipal.ROLE_CLAIM), TenantRef.of(tenant), jwt.getExpiresAt());
+    @PostMapping("/refresh")
+    @Operation(summary = "New access token from the refresh cookie (rotates the cookie; reuse revokes the session)")
+    public ResponseEntity<SessionResponse> refresh(HttpServletRequest request,
+                                                   @CookieValue(name = "${app.auth.refresh-cookie-name}", required = false)
+                                                   String refreshToken) {
+        requireAllowedOrigin(request);
+        if (refreshToken == null) throw ApiException.unauthorized("auth.session_expired");
+        return sessions.of(auth.refresh(refreshToken));
     }
 
-    public record LoginRequest(
-            @NotBlank(message = "{validation.required}") @Email(message = "{validation.email}") String email,
-            @NotBlank(message = "{validation.required}") @Size(max = 200, message = "{validation.size.max}") String password) {}
+    @PostMapping("/logout")
+    @Operation(summary = "Ends this session (revokes the refresh token family, clears the cookie). Idempotent.")
+    public ResponseEntity<Void> logout(HttpServletRequest request,
+                                       @CookieValue(name = "${app.auth.refresh-cookie-name}", required = false)
+                                       String refreshToken) {
+        requireAllowedOrigin(request);
+        if (refreshToken != null) auth.logout(refreshToken);
+        return ResponseEntity.noContent().header(HttpHeaders.SET_COOKIE, sessions.clearCookie()).build();
+    }
 
-    public record TenantRef(UUID id, String slug, String name, String timezone) {
-        static TenantRef of(Tenant t) {
-            return new TenantRef(t.getId(), t.getSlug(), t.getName(), t.getTimezone());
+    /**
+     * Defence in depth on the two cookie-authenticated endpoints: a browser always
+     * sends Origin on cross-origin POSTs, so a foreign site is rejected even if
+     * SameSite were not honoured. Requests without Origin (curl, server-side) pass.
+     */
+    private void requireAllowedOrigin(HttpServletRequest request) {
+        String origin = request.getHeader(HttpHeaders.ORIGIN);
+        if (origin != null && !SecurityConfig.allowedOrigins(props).contains(origin)) {
+            throw ApiException.forbidden("auth.forbidden");
         }
     }
-
-    public record LoginResponse(String accessToken, String tokenType, Instant expiresAt, String email, String role,
-                                TenantRef tenant) {}
-
-    public record MeResponse(UUID id, String email, String role, TenantRef tenant, Instant expiresAt) {}
 }

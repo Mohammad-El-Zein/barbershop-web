@@ -1,27 +1,26 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────────────────
 # Smoke test of the running stack (docker compose up) with the demo shop:
-#   availability → book → double booking (409) → view/cancel via token →
-#   admin login (wrong + right) → admin booking list → emails in Mailpit.
+#   availability → request → barber accepts via email link → DEMO payment
+#   via email link → confirmed → idempotent repeat → link replay (410) →
+#   cancel via manage link (refund) → emails in Mailpit.
 #
 #   ./infra/smoke-test.sh [YYYY-MM-DD]     (default: next Tuesday ≥ 2 days ahead)
 #
-# Reads ports and admin credentials from infra/.env. Prints every curl command.
+# Needs curl and node (for JSON). Windows without bash: infra/demo-flow.ps1.
 # ─────────────────────────────────────────────────────────────────────────
 set -euo pipefail
+export MSYS_NO_PATHCONV=1   # Git Bash on Windows: don't turn "/pay/" arguments into C:/… paths
 cd "$(dirname "$0")"
-# .env is compose syntax, not shell syntax → read single keys instead of sourcing it
 env_get() { grep -E "^$1=" ./.env | tail -n1 | cut -d= -f2- | tr -d '\r'; }
-BACKEND_HOST_PORT=$(env_get BACKEND_HOST_PORT)
-MAILPIT_UI_PORT=$(env_get MAILPIT_UI_PORT)
-APP_ADMIN_EMAIL=$(env_get APP_ADMIN_EMAIL)
-APP_ADMIN_PASSWORD=$(env_get APP_ADMIN_PASSWORD)
-
-API="http://localhost:${BACKEND_HOST_PORT:-8080}"
-MAILPIT="http://localhost:${MAILPIT_UI_PORT:-8025}"
+API="http://localhost:$(env_get BACKEND_HOST_PORT || echo 8080)"
+MAILPIT="http://localhost:$(env_get MAILPIT_UI_PORT || echo 8025)"
+ADMIN_EMAIL=$(env_get APP_ADMIN_EMAIL)
 TENANT=the-barber-news
 HAIRCUT=7b3f1c2e-0000-4000-8000-000000000101
+BEARD=7b3f1c2e-0000-4000-8000-000000000102
 LUCA=7b3f1c2e-0000-4000-8000-000000000201
+CUSTOMER="max-$(date +%s)@example.com"
 
 if [[ $# -ge 1 ]]; then DATE=$1; else
   d=$(date -d "+2 days" +%F)
@@ -29,68 +28,53 @@ if [[ $# -ge 1 ]]; then DATE=$1; else
   DATE=$d
 fi
 
-pretty() { if command -v jq >/dev/null; then jq .; elif command -v node >/dev/null; then
-  node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{try{console.log(JSON.stringify(JSON.parse(d),null,2))}catch{console.log(d)}})'
-  else cat; fi; }
 step() { printf '\n\033[1;33m▶ %s\033[0m\n' "$1"; }
-show() { printf '\033[2m$ %s\033[0m\n' "$*"; }
-# run curl, print status + pretty body; body also saved to $BODY
+json() { node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{const j=JSON.parse(d);const v=new Function("j","return "+process.argv[1])(j);console.log(typeof v==="object"?JSON.stringify(v,null,2):v)})' "$1"; }
+# req METHOD PATH [JSON] → prints "HTTP nnn", body in $BODY
 req() {
-  show "curl $*"
-  local out; out=$(curl -s -w '\n%{http_code}' "$@")
-  STATUS=${out##*$'\n'}; BODY=${out%$'\n'*}
-  echo "HTTP $STATUS"; [[ -n $BODY ]] && echo "$BODY" | pretty || true
+  local out; out=$(curl -s -w '\n%{http_code}' -X "$1" -H 'Content-Type: application/json' -H 'Accept-Language: en' \
+    ${3:+-d "$3"} "$API$2")
+  STATUS=${out##*$'\n'}; BODY=${out%$'\n'*}; echo "HTTP $STATUS"
 }
-field() { node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{const v=process.argv[1].split(".").reduce((o,k)=>o?.[k],JSON.parse(d));console.log(v??"")})' "$1"; }
+# token_from_mail TO SUBJECT_PART PATH_PART → the 43-char token from the newest matching mail
+token_from_mail() {
+  local id=""
+  for _ in $(seq 1 30); do
+    id=$(curl -s "$MAILPIT/api/v1/messages?limit=100" | node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{const m=JSON.parse(d).messages.find(m=>m.To.some(t=>t.Address===process.argv[1])&&m.Subject.includes(process.argv[2]));console.log(m?m.ID:"")})' "$1" "$2")
+    [[ -n $id ]] && break; sleep 0.5
+  done
+  [[ -z $id ]] && { echo "no mail to $1 with '$2'" >&2; exit 1; }
+  curl -s "$MAILPIT/api/v1/message/$id" | node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{const m=JSON.parse(d).Text.match(new RegExp(process.argv[1].replace(/[/]/g,"\\/")+"([A-Za-z0-9_-]{43})"));console.log(m[1])})' "$3"
+}
 
-step "Services (English via Accept-Language)"
-req -H "Accept-Language: en" "$API/api/public/$TENANT/services"
+step "Availability $DATE: haircut + beard, one column per barber"
+req GET "/api/public/$TENANT/availability?services=$HAIRCUT,$BEARD&date=$DATE"
+echo "$BODY" | json 'j.barbers.map(b=>b.name+": "+b.slots.slice(0,6).map(s=>s.time).join(" ")+" …").join("\n")'
+START=$(echo "$BODY" | json "j.barbers.find(b=>b.staffId==='$LUCA').slots.find(s=>s.time>='10:00').start")
 
-step "Availability: Haircut, any barber, $DATE (first 3 of the slots)"
-show "curl \"$API/api/public/$TENANT/availability?service=$HAIRCUT&date=$DATE&lang=de\""
-AVAIL=$(curl -s "$API/api/public/$TENANT/availability?service=$HAIRCUT&date=$DATE&lang=de")
-echo "$AVAIL" | node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{const j=JSON.parse(d);j.slots=j.slots.slice(0,3).concat([`… ${j.slots.length} slots in total`]);console.log(JSON.stringify(j,null,2))})'
+step "Request: Luca $START ($CUSTOMER)"
+req POST "/api/public/$TENANT/bookings" "{\"serviceIds\":[\"$HAIRCUT\",\"$BEARD\"],\"staffId\":\"$LUCA\",\"start\":\"$START\",\"customerName\":\"Max Mustermann\",\"customerEmail\":\"$CUSTOMER\",\"customerPhone\":\"+49 151 2345678\",\"lang\":\"en\",\"consent\":true}"
+echo "$BODY" | json '({id:j.id,status:j.status,total:j.price.total.formatted,deposit:j.price.deposit.formatted,dueAtShop:j.price.amountDueAtShop.formatted})'
 
-# start of Luca's 10:00 slot, with the Berlin offset exactly as the API returned it
-START=$(echo "$AVAIL" | node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{const s=JSON.parse(d).slots.find(s=>s.time==="10:00"&&s.staffIds.includes(process.argv[1]));if(!s){console.error("no 10:00 slot for Luca on that date");process.exit(1)}console.log(s.start)})' "$LUCA")
-BOOKING="{\"serviceId\":\"$HAIRCUT\",\"staffId\":\"$LUCA\",\"start\":\"$START\",\"customerName\":\"Max Mustermann\",\"customerPhone\":\"+49 151 2345678\",\"customerEmail\":\"max@example.com\",\"lang\":\"en\"}"
+step "Barber's email link: GET shows (no change), POST accepts"
+DECISION=$(token_from_mail "$ADMIN_EMAIL" "Neue Terminanfrage: Max Mustermann" "/barber/requests/")
+req GET "/api/public/barber-decision/$DECISION"; echo "$BODY" | json 'j.status'
+req POST "/api/public/barber-decision/$DECISION/accept"; echo "$BODY" | json 'j.status'
 
-step "Create booking: Luca, $START (customer language: English)"
-req -X POST -H "Content-Type: application/json" -H "Accept-Language: de" \
-  -d "$BOOKING" "$API/api/public/$TENANT/bookings"
-TOKEN=$(echo "$BODY" | field cancelToken)
-BOOKING_ID=$(echo "$BODY" | field id)
+step "Payment link from the 'accepted' email → DEMO payment page → simulate"
+PAY=$(token_from_mail "$CUSTOMER" "accepted" "/pay/")
+req GET "/api/public/payments/$PAY"; echo "$BODY" | json '({demoMode:j.demoMode,status:j.status,amount:j.amount.formatted,actions:j.actions})'
+req POST "/api/public/payments/$PAY/simulate"; echo "$BODY" | json 'j'
+req POST "/api/public/payments/$PAY/simulate"; echo "$BODY" | json '"alreadyProcessed: "+j.alreadyProcessed'
 
-step "Same slot again → 409 (localized problem detail, German)"
-req -X POST -H "Content-Type: application/json" -H "Accept-Language: de" \
-  -d "$BOOKING" "$API/api/public/$TENANT/bookings"
+step "Replay of the used barber link"
+req POST "/api/public/barber-decision/$DECISION/accept"; echo "$BODY" | json 'j.code+" – "+j.detail'
 
-step "View booking via cancel token"
-req "$API/api/public/bookings/$TOKEN?lang=en"
+step "Cancel via the manage link (≥ 24 h ahead → deposit refunded, simulated)"
+MANAGE=$(token_from_mail "$CUSTOMER" "Appointment confirmed" "/booking/manage/")
+req POST "/api/public/manage/$MANAGE/cancel" '{"reason":"smoke test"}'
+echo "$BODY" | json '({status:j.status,payment:j.payment.status})'
 
-step "Cancel via token"
-req -X DELETE "$API/api/public/bookings/$TOKEN?lang=de"
-
-step "Admin login with a wrong password → 401 (English)"
-req -X POST -H "Content-Type: application/json" -H "Accept-Language: en" \
-  -d "{\"email\":\"$APP_ADMIN_EMAIL\",\"password\":\"wrong-password\"}" "$API/api/admin/auth/login"
-
-step "Admin login (credentials from infra/.env)"
-show "curl -X POST -H 'Content-Type: application/json' -d '{\"email\":\"$APP_ADMIN_EMAIL\",\"password\":\"****\"}' $API/api/admin/auth/login"
-LOGIN=$(curl -s -X POST -H "Content-Type: application/json" \
-  -d "{\"email\":\"$APP_ADMIN_EMAIL\",\"password\":\"$APP_ADMIN_PASSWORD\"}" "$API/api/admin/auth/login")
-ADMIN_TOKEN=$(echo "$LOGIN" | field accessToken)
-echo "$LOGIN" | node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{const j=JSON.parse(d);j.accessToken=j.accessToken.slice(0,24)+"…";console.log(JSON.stringify(j,null,2))})'
-
-step "Admin: bookings on $DATE (needs the JWT)"
-show "curl -H \"Authorization: Bearer \$ADMIN_TOKEN\" \"$API/api/admin/bookings?from=$DATE&to=$DATE\""
-curl -s -H "Authorization: Bearer $ADMIN_TOKEN" "$API/api/admin/bookings?from=$DATE&to=$DATE" | pretty
-
-step "Admin without token → 401"
-req "$API/api/admin/bookings?lang=en"
-
-step "Emails caught by Mailpit ($MAILPIT)"
-show "curl $MAILPIT/api/v1/messages"
-curl -s "$MAILPIT/api/v1/messages" \
-  | node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{for(const m of JSON.parse(d).messages.slice(0,4))console.log(`- to ${m.To[0].Address}: ${m.Subject}`)})'
-echo
+step "Emails of this run (Mailpit $MAILPIT)"
+sleep 1
+curl -s "$MAILPIT/api/v1/messages?limit=100" | node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{JSON.parse(d).messages.filter(m=>m.To.some(t=>t.Address===process.argv[1])||m.Subject.includes("Max Mustermann")).slice(0,10).reverse().forEach(m=>console.log("  "+m.To[0].Address.padEnd(30)+m.Subject))})' "$CUSTOMER"

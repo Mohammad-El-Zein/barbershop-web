@@ -1,0 +1,11 @@
+# Profile `prod`: production hardening. Combine with your real SMTP settings.
+# The PaymentProviderGuard refuses to start this profile with payment.provider=demo
+# unless PAYMENT_DEMO_ALLOW_IN_PROD=true is set explicitly.
+app:
+  auth:
+    cookie-secure: ${APP_COOKIE_SECURE:true}
+springdoc:
+  swagger-ui:
+    enabled: ${APP_SWAGGER_ENABLED:false}
+  api-docs:
+    enabled: ${APP_SWAGGER_ENABLED:false}

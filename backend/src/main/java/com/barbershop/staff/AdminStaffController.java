@@ -1,7 +1,6 @@
 package com.barbershop.staff;
 
-import static com.barbershop.auth.AdminPrincipal.tenantId;
-
+import com.barbershop.auth.CurrentUser;
 import com.barbershop.common.config.OpenApiConfig;
 import com.barbershop.staff.StaffDtos.StaffAdminView;
 import com.barbershop.staff.StaffDtos.StaffRequest;
@@ -14,8 +13,6 @@ import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -39,50 +36,50 @@ public class AdminStaffController {
     }
 
     @GetMapping
-    public List<StaffAdminView> list(@AuthenticationPrincipal Jwt jwt) {
-        return directory.adminList(tenantId(jwt));
+    public List<StaffAdminView> list(CurrentUser admin) {
+        return directory.adminList(admin.tenantId());
     }
 
     @GetMapping("/{id}")
-    public StaffAdminView get(@AuthenticationPrincipal Jwt jwt, @PathVariable("id") UUID id) {
-        return directory.adminGet(tenantId(jwt), id);
+    public StaffAdminView get(CurrentUser admin, @PathVariable("id") UUID id) {
+        return directory.adminGet(admin.tenantId(), id);
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public StaffAdminView create(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody StaffRequest req) {
-        return directory.create(tenantId(jwt), req);
+    public StaffAdminView create(CurrentUser admin, @Valid @RequestBody StaffRequest req) {
+        return directory.create(admin.tenantId(), req);
     }
 
     @PutMapping("/{id}")
-    public StaffAdminView update(@AuthenticationPrincipal Jwt jwt, @PathVariable("id") UUID id,
+    public StaffAdminView update(CurrentUser admin, @PathVariable("id") UUID id,
                                  @Valid @RequestBody StaffRequest req) {
-        return directory.update(tenantId(jwt), id, req);
+        return directory.update(admin.tenantId(), id, req);
     }
 
     /** Deactivates the staff member (soft delete). */
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@AuthenticationPrincipal Jwt jwt, @PathVariable("id") UUID id) {
-        directory.deactivate(tenantId(jwt), id);
+    public void delete(CurrentUser admin, @PathVariable("id") UUID id) {
+        directory.deactivate(admin.tenantId(), id);
     }
 
     /** Replaces the services this staff member offers. */
     @PutMapping("/{id}/services")
-    public StaffAdminView setServices(@AuthenticationPrincipal Jwt jwt, @PathVariable("id") UUID id,
+    public StaffAdminView setServices(CurrentUser admin, @PathVariable("id") UUID id,
                                       @Valid @RequestBody StaffServicesRequest req) {
-        return directory.setServices(tenantId(jwt), id, req.serviceIds());
+        return directory.setServices(admin.tenantId(), id, req.serviceIds());
     }
 
     @GetMapping("/{id}/working-hours")
-    public List<WorkingHoursEntry> workingHours(@AuthenticationPrincipal Jwt jwt, @PathVariable("id") UUID id) {
-        return directory.workingHours(tenantId(jwt), id);
+    public List<WorkingHoursEntry> workingHours(CurrentUser admin, @PathVariable("id") UUID id) {
+        return directory.workingHours(admin.tenantId(), id);
     }
 
     /** Replaces the full weekly schedule. */
     @PutMapping("/{id}/working-hours")
-    public List<WorkingHoursEntry> replaceWorkingHours(@AuthenticationPrincipal Jwt jwt, @PathVariable("id") UUID id,
+    public List<WorkingHoursEntry> replaceWorkingHours(CurrentUser admin, @PathVariable("id") UUID id,
                                                        @Valid @RequestBody WorkingHoursRequest req) {
-        return directory.replaceWorkingHours(tenantId(jwt), id, req.entries());
+        return directory.replaceWorkingHours(admin.tenantId(), id, req.entries());
     }
 }

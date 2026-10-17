@@ -22,7 +22,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Dashboard numbers: bookings per local day (shop timezone) and per service in a
- * date range, split into booked (pending + confirmed) and cancelled. Plain SQL
+ * date range, split into booked (slot-blocking: requested, awaiting payment, confirmed,
+ * completed) and lost (declined, expired, cancelled, no-show). Plain SQL
  * because grouping by local day needs AT TIME ZONE.
  */
 @Service
@@ -53,8 +54,8 @@ public class StatsService {
 
         List<DayCount> perDay = jdbc.sql("""
                         select (b.start_time at time zone :tz)::date as day,
-                               count(*) filter (where b.status <> 'CANCELLED') as booked,
-                               count(*) filter (where b.status = 'CANCELLED') as cancelled
+                               count(*) filter (where b.status in ('PENDING_BARBER','AWAITING_PAYMENT','CONFIRMED','COMPLETED')) as booked,
+                               count(*) filter (where b.status not in ('PENDING_BARBER','AWAITING_PAYMENT','CONFIRMED','COMPLETED')) as cancelled
                         from booking b
                         where b.tenant_id = :tenant and b.start_time >= :from and b.start_time < :to
                         group by 1 order by 1""")
@@ -69,9 +70,9 @@ public class StatsService {
         Lang lang = Messages.currentLang();
         List<ServiceCount> perService = jdbc.sql("""
                         select s.id, s.name_de, s.name_en,
-                               count(*) filter (where b.status <> 'CANCELLED') as booked,
-                               count(*) filter (where b.status = 'CANCELLED') as cancelled
-                        from booking b join service s on s.id = b.service_id
+                               count(*) filter (where b.status in ('PENDING_BARBER','AWAITING_PAYMENT','CONFIRMED','COMPLETED')) as booked,
+                               count(*) filter (where b.status not in ('PENDING_BARBER','AWAITING_PAYMENT','CONFIRMED','COMPLETED')) as cancelled
+                        from booking b join booking_item i on i.booking_id = b.id join service s on s.id = i.service_id
                         where b.tenant_id = :tenant and b.start_time >= :from and b.start_time < :to
                         group by s.id, s.name_de, s.name_en
                         order by booked desc, s.name_de""")

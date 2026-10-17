@@ -1,7 +1,6 @@
 package com.barbershop.service;
 
-import static com.barbershop.auth.AdminPrincipal.tenantId;
-
+import com.barbershop.auth.CurrentUser;
 import com.barbershop.common.config.OpenApiConfig;
 import com.barbershop.service.ServiceDtos.ServiceAdminView;
 import com.barbershop.service.ServiceDtos.ServiceRequest;
@@ -11,8 +10,6 @@ import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -36,31 +33,31 @@ public class AdminServiceController {
     }
 
     @GetMapping
-    public List<ServiceAdminView> list(@AuthenticationPrincipal Jwt jwt) {
-        return catalog.adminList(tenantId(jwt));
+    public List<ServiceAdminView> list(CurrentUser admin) {
+        return catalog.adminList(admin.tenantId());
     }
 
     @GetMapping("/{id}")
-    public ServiceAdminView get(@AuthenticationPrincipal Jwt jwt, @PathVariable("id") UUID id) {
-        return catalog.adminGet(tenantId(jwt), id);
+    public ServiceAdminView get(CurrentUser admin, @PathVariable("id") UUID id) {
+        return catalog.adminGet(admin.tenantId(), id);
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public ServiceAdminView create(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody ServiceRequest req) {
-        return catalog.create(tenantId(jwt), req);
+    public ServiceAdminView create(CurrentUser admin, @Valid @RequestBody ServiceRequest req) {
+        return catalog.create(admin.tenantId(), req);
     }
 
     @PutMapping("/{id}")
-    public ServiceAdminView update(@AuthenticationPrincipal Jwt jwt, @PathVariable("id") UUID id,
+    public ServiceAdminView update(CurrentUser admin, @PathVariable("id") UUID id,
                                    @Valid @RequestBody ServiceRequest req) {
-        return catalog.update(tenantId(jwt), id, req);
+        return catalog.update(admin.tenantId(), id, req);
     }
 
     /** Deactivates the service (soft delete). */
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void delete(@AuthenticationPrincipal Jwt jwt, @PathVariable("id") UUID id) {
-        catalog.deactivate(tenantId(jwt), id);
+    public void delete(CurrentUser admin, @PathVariable("id") UUID id) {
+        catalog.deactivate(admin.tenantId(), id);
     }
 }
