@@ -8,7 +8,7 @@ Containers, compose stacks, CI/CD and infrastructure as code. The step-by-step p
 | `docker-compose.yml` + `.env.example` | **Local development**: Postgres, Mailpit and the backend (demo shop). `cp .env.example .env` |
 | `docker-compose.e2e.yml` | Override for **end-to-end tests / CI**: raised rate limits plus the production frontend image, built against the running backend |
 | `docker-compose.prod.example.yml` + `.env.prod.example` | **Production on one server (VPS)**: Caddy with automatic HTTPS, frontend, backend, Postgres (internal network), optional Redis |
-| `caddy/Caddyfile` | Reverse proxy for `SITE_DOMAIN` → frontend and `API_DOMAIN` → backend (actuator / API docs blocked) |
+| `caddy/Caddyfile` | Reverse proxy for `SITE_DOMAIN` → frontend and `API_DOMAIN` → backend (only `/actuator/health*` of the actuator is public, API docs blocked) |
 | `azure/` | Terraform for Azure Container Apps + Postgres Flexible Server + Key Vault + ACR + monitoring (**not applied**) |
 | `smoke-test.sh` | Full booking flow against a running stack (request → accept → demo payment → cancel, mails in Mailpit) |
 | `demo-*.ps1` | The same flows for Windows PowerShell |

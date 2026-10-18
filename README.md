@@ -6,7 +6,7 @@ Monorepo:
 |---|---|---|
 | `frontend/` | Next.js 16 (App Router) + TypeScript + Tailwind 4 + GSAP/ScrollTrigger + Lenis | Phase 1 ✅ |
 | `backend/` | Java 21 + Spring Boot 3 REST API, PostgreSQL, Flyway — booking lifecycle (barber approval → deposit → confirmed), accounts, loyalty, DEMO payments | Phase 2b ✅ |
-| `infra/` | Docker, docker-compose, CI, deployment | local stack ✅, production in Phase 4 |
+| `infra/` | Production images, docker-compose (local, e2e, VPS with Caddy), GitHub Actions + GitLab CI, Azure Terraform (`infra/azure`, not applied) | Phase 4 ✅ — guide: [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) |
 
 ## Backend quick start
 

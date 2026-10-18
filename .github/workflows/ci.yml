@@ -38,6 +38,7 @@ concurrency:
 
 env:
   TRIVY_IMAGE: aquasec/trivy:0.76.0
+  TERRAFORM_IMAGE: hashicorp/terraform:1.15.0
 
 jobs:
   backend:
@@ -83,6 +84,19 @@ jobs:
       - run: npm run build
         env:
           NEXT_TELEMETRY_DISABLED: "1"
+
+  terraform:
+    name: Infra · terraform fmt, validate, test (mocked, no Azure)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: fmt, init, validate, test
+        run: |
+          tf() { docker run --rm -v "$PWD/infra/azure:/work" -w /work ${{ env.TERRAFORM_IMAGE }} "$@"; }
+          tf fmt -recursive -check -diff
+          tf init -backend=false -input=false
+          tf validate
+          tf test
 
   dependency-scan:
     name: Dependencies · vulnerability scan

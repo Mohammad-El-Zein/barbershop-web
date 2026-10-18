@@ -1,0 +1,7 @@
+# Remote state in Azure Storage (README.md → "Remote state").
+#   cp backend.tf.example backend.tf
+#   cp backend.hcl.example backend.hcl   # fill in; git-ignored
+#   terraform init -backend-config=backend.hcl
+terraform {
+  backend "azurerm" {}
+}

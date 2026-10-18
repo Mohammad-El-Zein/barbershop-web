@@ -27,10 +27,14 @@
 # 	redir https://{$SITE_DOMAIN}{uri} permanent
 # }
 
-# API. Headers come from Spring Security; the actuator and API docs are not public.
+# API. Headers come from Spring Security. Public: the API and /actuator/health[/liveness|/readiness]
+# (for uptime monitors); everything else of the actuator and the API docs is not.
 {$API_DOMAIN} {
 	import common
-	@internal path /actuator* /v3/api-docs* /swagger-ui*
+	@internal {
+		path /actuator* /v3/api-docs* /swagger-ui*
+		not path /actuator/health /actuator/health/*
+	}
 	respond @internal 404
 	reverse_proxy backend:8080
 }

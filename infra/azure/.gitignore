@@ -1,0 +1,10 @@
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+*.tfplan
+backend.hcl
+# local overrides with secrets
+*.auto.tfvars
+override.tf
+override.tf.json

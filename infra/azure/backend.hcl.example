@@ -1,0 +1,7 @@
+# Remote state (README.md → Remote state). Copy to backend.hcl (git-ignored) and run
+#   terraform init -backend-config=backend.hcl
+resource_group_name  = "rg-barbershop-tfstate"
+storage_account_name = "stbarbershoptfstate" # globally unique, 3-24 lowercase letters/digits
+container_name       = "tfstate"
+key                  = "barbershop-prod.tfstate" # one key per environment
+use_azuread_auth     = true                      # Entra ID (RBAC), no storage account keys

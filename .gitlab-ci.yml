@@ -32,6 +32,7 @@ variables:
   DOCKER_IMAGE: docker:29-cli
   DIND_IMAGE: docker:29-dind
   TRIVY_IMAGE: aquasec/trivy:0.76.0
+  TERRAFORM_IMAGE: hashicorp/terraform:1.15.0
   PLAYWRIGHT_IMAGE: mcr.microsoft.com/playwright:v1.64.1-noble
   AZURE_CLI_IMAGE: mcr.microsoft.com/azure-cli:2.78.0
   # docker-in-docker without TLS on the job-private network (Testcontainers, builds, compose)
@@ -64,6 +65,20 @@ frontend:lint:
     - npm run typecheck
     - npm run check:messages
     - NEXT_TELEMETRY_DISABLED=1 npm run build
+
+infra:terraform:
+  stage: lint
+  needs: []
+  image:
+    name: $TERRAFORM_IMAGE
+    entrypoint: [""]
+  script:
+    # offline: init without backend, tests use mocked providers (no Azure account)
+    - cd infra/azure
+    - terraform fmt -recursive -check -diff
+    - terraform init -backend=false -input=false
+    - terraform validate
+    - terraform test
 
 # ── test ─────────────────────────────────────────────────────────────────────
 backend:test:
