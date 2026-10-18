@@ -44,7 +44,7 @@ class ProductionSafetyChecksTest {
                 new AppProperties.Auth(java.time.Duration.ofDays(30), "c", "/", secureCookie, "Strict", 5,
                         java.time.Duration.ofMinutes(15), java.time.Duration.ofHours(24), java.time.Duration.ofHours(1),
                         java.time.Duration.ofHours(72), 10, "v"),
-                new AppProperties.Tokens(""), null, new AppProperties.AdminBootstrap(null, null, null), null, null, null,
+                new AppProperties.Tokens(""), null, new AppProperties.AdminBootstrap(null, null, null, null, null), null, null, null,
                 null, null, null);
     }
 }

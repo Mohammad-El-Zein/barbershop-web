@@ -406,6 +406,7 @@ Errors are RFC 9457 problem details with a stable `code` and a localized `detail
 | `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` | Database |
 | `APP_JWT_SECRET` | **Required**, ≥ 32 bytes. Signs access tokens. Email-link tokens use a derived key unless `APP_TOKEN_SECRET` is set. |
 | `APP_ADMIN_EMAIL`, `APP_ADMIN_PASSWORD`, `APP_ADMIN_TENANT` | Bootstrap admin, created if missing |
+| `APP_TENANT_NAME`, `APP_TENANT_TIMEZONE` | Production without the demo seed: creates the shop `APP_ADMIN_TENANT` on first start if it is missing (default policy; services, barbers and hours are added in the admin area) |
 | `APP_FRONTEND_BASE_URL`, `APP_CORS_ALLOWED_ORIGINS` | Base for email links; allowed browser origins |
 | `APP_COOKIE_SECURE` | `true` behind HTTPS (the `prod` profile defaults to `true`) |
 | `APP_JOBS_ENABLED`, `APP_JOBS_INTERVAL` | Scheduled job (default on, every minute) |

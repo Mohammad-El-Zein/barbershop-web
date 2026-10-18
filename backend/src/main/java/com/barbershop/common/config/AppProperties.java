@@ -66,8 +66,13 @@ public record AppProperties(
             @NotBlank String resetPassword,
             @NotBlank String account) {}
 
-    /** Bootstrap admin from APP_ADMIN_EMAIL / APP_ADMIN_PASSWORD (optional). */
-    public record AdminBootstrap(String email, String password, String tenant) {}
+    /**
+     * Bootstrap admin from APP_ADMIN_EMAIL / APP_ADMIN_PASSWORD (optional) for the shop
+     * APP_ADMIN_TENANT. A fresh production database has no shop (the demo seed only runs
+     * with the demo profile): with APP_TENANT_NAME set, the shop is created if missing.
+     */
+    public record AdminBootstrap(String email, String password, String tenant, String tenantName,
+                                 String tenantTimezone) {}
 
     public record Mail(@NotBlank String from, @Valid @NotNull Outbox outbox) {
         /**

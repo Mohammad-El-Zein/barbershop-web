@@ -1,0 +1,9 @@
+# Accepted vulnerability findings — every entry needs a reason and an expiry date.
+# Trivy fails again automatically after the date (exp:), so nothing is ignored forever.
+
+# Spring Framework 6.2.19 (last open-source 6.2 release, Spring Boot 3.5.16); fixed only in
+# Spring Framework 7.0.9 = Spring Boot 4. Not reachable here: the backend is a JSON REST API
+# with no XsltView, no Server-Sent Events and no server-side view rendering.
+# Remove with the Spring Boot 4 upgrade (open point in docs/DEPLOYMENT.md → Security).
+CVE-2026-47884 exp:2027-01-31
+CVE-2026-47890 exp:2027-01-31

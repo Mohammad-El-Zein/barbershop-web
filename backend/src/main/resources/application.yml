@@ -130,6 +130,9 @@ app:
     email: ${APP_ADMIN_EMAIL:}
     password: ${APP_ADMIN_PASSWORD:}
     tenant: ${APP_ADMIN_TENANT:the-barber-news}
+    # production without the demo seed: create this shop on first start (slug = tenant above)
+    tenant-name: ${APP_TENANT_NAME:}
+    tenant-timezone: ${APP_TENANT_TIMEZONE:Europe/Berlin}
   mail:
     from: ${APP_MAIL_FROM:The Barber News <no-reply@example.com>}
     outbox:                          # transactional outbox (table mail_outbox), see MailOutbox
