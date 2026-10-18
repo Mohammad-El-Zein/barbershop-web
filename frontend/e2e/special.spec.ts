@@ -7,6 +7,7 @@ import {
   linkIn,
   nameFor,
   shot,
+  shotFile,
   sql,
   state,
   uniqueEmail,
@@ -121,4 +122,27 @@ test("double booking: the second customer for the same slot is told it's taken",
 
   await ctxA.close();
   await ctxB.close();
+});
+
+test("service card Book button (desktop and phone) opens the booking with that service preselected", async ({ page }, info) => {
+  const { lang } = variant(info);
+  const t = T[lang];
+  await page.goto(`/${lang}`);
+  await page.locator("[data-preloader]").waitFor({ state: "detached", timeout: 60_000 });
+  // jump to the services chapter the way the nav does
+  await page.evaluate(() => document.querySelector<HTMLAnchorElement>('a[href$="#services"]')?.click());
+  const beardCard = page.locator("[data-card]").filter({ hasText: t.beard });
+  const book = beardCard.getByRole("button", { name: lang === "de" ? "Buchen" : "Book", exact: true });
+  await expect(book).toBeVisible();
+  await expect(book).toBeInViewport();
+  await page.waitForTimeout(800); // let the cards finish their entrance
+  await page.screenshot({ path: shotFile(info, "55-service-cards") }); // the scroll scene: this screen only
+  await book.click();
+
+  // the preselected service skips step 1; going back shows exactly that one ticked
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByRole("radiogroup", { name: t.date })).toBeVisible();
+  await dialog.getByRole("button", { name: lang === "de" ? "Zurück" : "Back", exact: true }).click();
+  await expect(dialog.getByRole("checkbox", { name: t.beard })).toBeChecked();
+  await expect(dialog.getByRole("checkbox", { name: t.haircut })).not.toBeChecked();
 });

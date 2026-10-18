@@ -184,10 +184,15 @@ export function PinnedScene() {
         </div>
       </div>
 
-      {/* ───────── stage box: every animated object lives here ───────── */}
+      {/*
+        ───────── stage box: every animated object lives here ─────────
+        Decoration only, so it takes no pointer events: hidden actors (e.g. the orbit
+        wrappers, which keep their z-index while their image is faded out) must never
+        swallow a tap meant for a service card. The cards opt back in.
+      */}
       <div
         ref={stageBoxRef}
-        className="absolute bottom-[4%] [container-type:size] left-[42vw] right-[7%] top-[calc(var(--nav-h)+4vh)] max-md:bottom-[50%] max-md:left-[var(--gutter)] max-md:right-[var(--gutter)] max-md:top-[calc(var(--nav-h)+1svh)]"
+        className="pointer-events-none absolute bottom-[4%] [container-type:size] left-[42vw] right-[7%] top-[calc(var(--nav-h)+4vh)] max-md:bottom-[50%] max-md:left-[var(--gutter)] max-md:right-[var(--gutter)] max-md:top-[calc(var(--nav-h)+1svh)]"
       >
         {/* spotlight glow + floor shadow behind the product cluster (products chapter) */}
         <div className="absolute inset-0 z-[1] flex items-center justify-center" aria-hidden="true">
@@ -319,12 +324,13 @@ export function PinnedScene() {
           Service cards: one row, same top, same height, equal gaps. The stagger
           is entrance timing only (timeline), never a resting offset. Buttons sit
           on one baseline because every card has the same height and pushes its
-          button to the bottom.
+          button to the bottom. On phones the column starts at the top of the stage
+          (never under the nav) and may run into the free space above the chapter text.
         */}
-        <div className="absolute inset-0 z-20 flex flex-col justify-center gap-3 md:flex-row md:items-center">
+        <div className="absolute inset-0 z-20 flex flex-col justify-start gap-3 md:flex-row md:items-center md:justify-center">
           <div className="flex flex-col gap-3 md:w-full md:flex-row md:items-stretch md:justify-center md:gap-[3%]">
             {services.map((s) => (
-              <div key={s.messageKey} data-card className="will-change-transform md:h-[clamp(330px,48vh,420px)] md:w-[31%] md:max-w-[300px]">
+              <div key={s.messageKey} data-card className="pointer-events-auto will-change-transform md:h-[clamp(330px,48vh,420px)] md:w-[31%] md:max-w-[300px]">
                 <ServiceCard service={s} />
               </div>
             ))}
