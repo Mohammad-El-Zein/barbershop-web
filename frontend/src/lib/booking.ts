@@ -1,19 +1,33 @@
 "use client";
 
-import { siteConfig } from "@/config/site.config";
-import { scrollToTarget } from "./scroll";
-
 export const BOOKING_OPEN_EVENT = "booking:open";
 
+export type BookingOpenDetail = {
+  /** Where the click came from (later: analytics). */
+  source: string;
+  /** Preselected service ids (service-card buttons, "rebook"). */
+  serviceIds?: string[];
+  /** Preselected barber ("rebook"). */
+  staffId?: string;
+};
+
 /**
- * Single entry point used by every "Book Appointment" button.
- *
- * Phase 1: the booking flow doesn't exist yet, so this dispatches an event
- * (which the Phase 3 booking modal will listen to) and, while nothing handles it,
- * falls back to scrolling to the contact block in the footer.
+ * Single entry point used by every "Book" button. The booking modal
+ * (components/booking/BookingDialog, mounted in the locale layout) listens for
+ * the event; if nothing handles it (e.g. JS error), we fall back to the
+ * full-page booking flow.
  */
-export function openBooking(source = "unknown") {
-  const event = new CustomEvent(BOOKING_OPEN_EVENT, { detail: { source }, cancelable: true });
+export function openBooking(source = "unknown", preset: Omit<BookingOpenDetail, "source"> = {}) {
+  const detail: BookingOpenDetail = { source, ...preset };
+  const event = new CustomEvent<BookingOpenDetail>(BOOKING_OPEN_EVENT, { detail, cancelable: true });
   const notHandled = window.dispatchEvent(event); // false if a listener called preventDefault()
-  if (notHandled) scrollToTarget(`#${siteConfig.contact.anchor}`);
+  if (notHandled) {
+    const locale = document.documentElement.lang || "de";
+    const q = new URLSearchParams();
+    if (preset.serviceIds?.length) q.set("services", preset.serviceIds.join(","));
+    if (preset.staffId) q.set("staff", preset.staffId);
+    // no React tree to route with here: plain navigation to the booking page
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+    window.location.assign(`/${locale}/booking${q.size ? `?${q}` : ""}`);
+  }
 }

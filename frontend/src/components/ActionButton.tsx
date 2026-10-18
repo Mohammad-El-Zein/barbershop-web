@@ -11,17 +11,19 @@ type Props = {
   className?: string;
   /** Where the click came from — forwarded to the booking flow (later: analytics). */
   source?: string;
+  /** Services to preselect in the booking flow (service cards). */
+  serviceIds?: string[];
 };
 
 /** Renders a config CTA: "book" opens the booking flow, "#x" scrolls, anything else is a link. */
-export function ActionButton({ cta, size = "md", className = "", source }: Props) {
+export function ActionButton({ cta, size = "md", className = "", source, serviceIds }: Props) {
   const t = useTranslations();
   const label = t(cta.labelKey);
   const cls = `btn ${cta.variant === "primary" ? "btn-primary" : "btn-ghost"} ${size === "lg" ? "btn-lg" : ""} ${className}`;
 
   if (cta.action === "book") {
     return (
-      <button type="button" className={cls} onClick={() => openBooking(source)}>
+      <button type="button" className={cls} onClick={() => openBooking(source, { serviceIds })}>
         {label}
         {cta.variant === "primary" && <Arrow />}
       </button>

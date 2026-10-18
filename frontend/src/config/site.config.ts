@@ -55,6 +55,8 @@ export type Product = SceneImage & {
 export type ServiceCard = {
   /** Message namespace with title / text / price, e.g. "services.haircut". */
   messageKey: string;
+  /** Backend service id: the card's "Book" button preselects this service in the booking flow. */
+  serviceId: string;
   image: SceneImage;
   cta: Cta;
 };
@@ -281,16 +283,19 @@ export const siteConfig = {
   services: [
     {
       messageKey: "services.haircut",
+      serviceId: "7b3f1c2e-0000-4000-8000-000000000101", // PLACEHOLDER: demo shop ids
       image: { src: "/scene/service-haircut.webp", alt: "", width: 1280, height: 800 },
       cta: { labelKey: "cta.bookShort", action: "book", variant: "ghost" },
     },
     {
       messageKey: "services.beard",
+      serviceId: "7b3f1c2e-0000-4000-8000-000000000102",
       image: { src: "/scene/service-beard.webp", alt: "", width: 1280, height: 800 },
       cta: { labelKey: "cta.bookShort", action: "book", variant: "ghost" },
     },
     {
       messageKey: "services.styling",
+      serviceId: "7b3f1c2e-0000-4000-8000-000000000103",
       image: { src: "/scene/service-styling.webp", alt: "", width: 1280, height: 800 },
       cta: { labelKey: "cta.bookShort", action: "book", variant: "ghost" },
     },

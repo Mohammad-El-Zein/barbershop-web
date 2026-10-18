@@ -12,9 +12,11 @@ const { footer, contact, brand } = siteConfig;
  * (ivory in light mode), uses the shared page gutter, and marks where the nav
  * switches from "over the scene" to "over the page" (data-after-scene).
  */
-export function Footer() {
+export function Footer({ onLanding = true }: { onLanding?: boolean } = {}) {
   const t = useTranslations();
   const locale = useLocale();
+  // "#anchor" links scroll on the landing page; elsewhere they lead back to it
+  const hrefOf = (href: string) => (onLanding || !href.startsWith("#") ? href : `/${locale}${href === "#home" ? "" : href}`);
 
   return (
     <footer data-after-scene className="relative z-10 border-t border-gold/25 bg-surface text-ink">
@@ -48,7 +50,7 @@ export function Footer() {
             <ul className="mt-5 space-y-3">
               {col.links.map((l) => (
                 <li key={l.labelKey}>
-                  <a href={l.href} className="text-sm text-ink/80 transition-colors hover:text-gold-text">
+                  <a href={hrefOf(l.href)} className="text-sm text-ink/80 transition-colors hover:text-gold-text">
                     {t(l.labelKey)}
                   </a>
                 </li>

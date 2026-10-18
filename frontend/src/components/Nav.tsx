@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { siteConfig } from "@/config/site.config";
 import { openBooking } from "@/lib/booking";
 import { ScrollTrigger } from "@/lib/gsap";
 import { scrollToTarget } from "@/lib/scroll";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { Logo } from "./Logo";
+import { AccountLink } from "./AccountLink";
 import { ThemeToggle } from "./ThemeToggle";
 
 /**
@@ -24,6 +25,7 @@ import { ThemeToggle } from "./ThemeToggle";
  */
 export function Nav({ hasScene = true }: { hasScene?: boolean }) {
   const t = useTranslations();
+  const locale = useLocale();
   const [open, setOpen] = useState(false);
   const [overPage, setOverPage] = useState(!hasScene);
 
@@ -51,8 +53,10 @@ export function Nav({ hasScene = true }: { hasScene?: boolean }) {
     return () => st.kill();
   }, [hasScene]);
 
+  // on app pages the "#anchor" links point back to the landing page
+  const hrefOf = (href: string) => (hasScene ? href : `/${locale}${href === "#home" ? "" : href}`);
   const go = (e: React.MouseEvent, href: string) => {
-    if (scrollToTarget(href)) e.preventDefault();
+    if (hasScene && scrollToTarget(href)) e.preventDefault();
     setOpen(false);
   };
 
@@ -87,7 +91,7 @@ export function Nav({ hasScene = true }: { hasScene?: boolean }) {
         className="relative flex h-[var(--nav-h)] items-center justify-between gap-4 px-[var(--gutter)]"
       >
         <a
-          href="#home"
+          href={hrefOf("#home")}
           data-nav-logo
           onClick={(e) => go(e, "#home")}
           aria-label={t("nav.homeLink", { brand: siteConfig.brand.name })}
@@ -101,7 +105,7 @@ export function Nav({ hasScene = true }: { hasScene?: boolean }) {
             {siteConfig.nav.map((item) => (
               <li key={item.href}>
                 <a
-                  href={item.href}
+                  href={hrefOf(item.href)}
                   onClick={(e) => go(e, item.href)}
                   className="text-[0.72rem] font-medium uppercase tracking-[0.24em] text-ink/75 transition-colors hover:text-gold-text focus-visible:text-gold-text focus-visible:outline-none"
                 >
@@ -114,6 +118,7 @@ export function Nav({ hasScene = true }: { hasScene?: boolean }) {
             {/* phones: the language switcher lives in the mobile menu (bar width) */}
             <LanguageSwitcher className="hidden sm:flex" />
             <ThemeToggle />
+            <AccountLink />
           </div>
           <button type="button" className="btn btn-outline-gold hidden md:inline-flex" onClick={() => openBooking("nav")}>
             {t(siteConfig.bookCta.labelKey)}
@@ -143,7 +148,7 @@ export function Nav({ hasScene = true }: { hasScene?: boolean }) {
           {siteConfig.nav.map((item) => (
             <li key={item.href}>
               <a
-                href={item.href}
+                href={hrefOf(item.href)}
                 onClick={(e) => go(e, item.href)}
                 className="display block py-3 text-3xl text-ink hover:text-gold-text"
               >

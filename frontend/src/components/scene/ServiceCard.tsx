@@ -37,7 +37,12 @@ export function ServiceCard({ service, className = "" }: { service: ServiceCardD
         </div>
         <p className="line-clamp-2 text-xs leading-relaxed text-muted md:line-clamp-3 md:text-sm">{t("text")}</p>
         <div className="mt-auto hidden pt-3 md:block">
-          <ActionButton cta={service.cta} className="!h-9 !px-4 !text-[0.65rem]" source={`service-${service.messageKey}`} />
+          <ActionButton
+            cta={service.cta}
+            className="!h-9 !px-4 !text-[0.65rem]"
+            source={`service-${service.messageKey}`}
+            serviceIds={[service.serviceId]}
+          />
         </div>
       </div>
     </article>

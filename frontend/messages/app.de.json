@@ -1,0 +1,624 @@
+{
+  "common": {
+    "close": "Schließen",
+    "back": "Zurück"
+  },
+  "nav": {
+    "account": "Mein Konto",
+    "staffArea": "Team-Bereich",
+    "login": "Anmelden"
+  },
+  "errors": {
+    "network": "Keine Verbindung zum Server. Prüf bitte deine Internetverbindung und versuch es noch einmal.",
+    "generic": "Etwas ist schiefgelaufen. Bitte versuch es noch einmal.",
+    "booking_slot_taken": "Diese Uhrzeit wurde gerade vergeben. Wir haben die freien Zeiten aktualisiert – bitte wähl eine andere.",
+    "booking_slot_invalid": "Diese Uhrzeit ist nicht mehr buchbar. Bitte wähl eine andere.",
+    "booking_too_many_open_requests": "Du hast schon mehrere offene Anfragen. Bitte warte auf eine Antwort, bevor du weitere stellst.",
+    "booking_not_awaiting_payment": "Für diesen Termin ist gerade keine Anzahlung offen.",
+    "auth_invalid_credentials": "E-Mail oder Passwort ist falsch. Nach mehreren Fehlversuchen ist die Anmeldung kurz gesperrt.",
+    "auth_email_not_verified": "Bitte bestätige zuerst deine E-Mail-Adresse – wir haben dir einen Link geschickt.",
+    "auth_session_expired": "Deine Sitzung ist abgelaufen. Bitte melde dich erneut an.",
+    "token_used": "Dieser Link wurde bereits verwendet.",
+    "token_expired": "Dieser Link ist abgelaufen.",
+    "token_invalid": "Dieser Link ist ungültig.",
+    "validation_failed": "Bitte prüf deine Eingaben.",
+    "service_no_staff": "Für diese Kombination von Leistungen ist gerade kein Barber verfügbar."
+  },
+  "status": {
+    "PENDING_BARBER": "Wartet auf Barber",
+    "AWAITING_PAYMENT": "Anzahlung offen",
+    "CONFIRMED": "Bestätigt",
+    "COMPLETED": "Erledigt",
+    "DECLINED": "Abgelehnt",
+    "EXPIRED": "Abgelaufen",
+    "CANCELLED": "Storniert",
+    "NO_SHOW": "Nicht erschienen"
+  },
+  "booking": {
+    "title": "Termin buchen",
+    "eyebrow": "Online-Buchung",
+    "lead": "Leistungen wählen, Barber und Uhrzeit aussuchen, Anfrage senden. Dein Barber bestätigt – erst dann zahlst du die Anzahlung.",
+    "progress": "Fortschritt",
+    "steps": {
+      "services": "Leistungen",
+      "slot": "Termin",
+      "details": "Angaben",
+      "summary": "Übersicht"
+    },
+    "titles": {
+      "services": "Was dürfen wir für dich tun?",
+      "slot": "Wann und bei wem?",
+      "details": "Deine Angaben",
+      "summary": "Alles richtig?"
+    },
+    "back": "Zurück",
+    "next": "Weiter",
+    "confirm": "Anfrage senden",
+    "sending": "Wird gesendet …",
+    "services": {
+      "hint": "Du kannst mehrere Leistungen kombinieren – Dauer und Preis werden addiert.",
+      "legend": "Leistungen",
+      "selected": "{count, plural, one {# Leistung} other {# Leistungen}}",
+      "from": "ab",
+      "none": "Noch keine Leistung gewählt."
+    },
+    "slots": {
+      "prevDays": "Frühere Tage",
+      "nextDays": "Spätere Tage",
+      "date": "Datum",
+      "noSlotsShort": "keine freien Termine",
+      "pickDay": "Wähl einen Tag.",
+      "noSlots": "An diesem Tag ist leider nichts mehr frei.",
+      "nextFree": "Nächster freier Tag: {day}",
+      "noSlotsSoon": "In den nächsten Wochen ist leider nichts frei.",
+      "anyBarber": "Egal wer",
+      "anyBarberHint": "Wir wählen den freien Barber",
+      "freeCount": "{count, plural, =0 {ausgebucht} one {# frei} other {# frei}}",
+      "taken": "vergeben"
+    },
+    "details": {
+      "noteTooLong": "Höchstens 500 Zeichen.",
+      "phoneInvalid": "Bitte gib eine gültige Telefonnummer ein.",
+      "nameRequired": "Bitte gib deinen Namen ein.",
+      "emailInvalid": "Bitte gib eine gültige E-Mail-Adresse ein.",
+      "consentRequired": "Bitte stimm der Datenschutzerklärung zu.",
+      "note": "Notiz für deinen Barber (optional)",
+      "notePlaceholder": "z. B. Wünsche, Allergien, Referenzbild-Beschreibung",
+      "noteCount": "{count}/{max} Zeichen",
+      "bookingAs": "Du buchst mit deinem Konto:",
+      "phone": "Telefon",
+      "who": "Wie möchtest du buchen?",
+      "asGuest": "Als Gast",
+      "login": "Anmelden",
+      "name": "Name",
+      "email": "E-Mail",
+      "emailHint": "Hierhin schicken wir die Bestätigung und deinen Verwaltungs-Link.",
+      "consent": "Ich habe die <link>Datenschutzerklärung</link> gelesen und bin mit der Verarbeitung meiner Daten für die Terminbuchung einverstanden.",
+      "registerHint": "Mit Kundenkonto sammelst du Besuche für den Treuerabatt: <link>Konto erstellen</link>. Du kannst trotzdem jetzt als Gast buchen.",
+      "password": "Passwort",
+      "loginButton": "Anmelden",
+      "forgot": "Passwort vergessen?"
+    },
+    "summary": {
+      "services": "Leistungen",
+      "barber": "Barber",
+      "anyBarber": "Egal wer – wir teilen dir den freien Barber zu",
+      "when": "Wann",
+      "duration": "Dauer",
+      "note": "Notiz",
+      "total": "Gesamtpreis",
+      "from": "ab",
+      "loyaltyDiscount": "Treuerabatt",
+      "deposit": "Anzahlung",
+      "dueAtShop": "Im Laden zu zahlen",
+      "loyaltyTitle": "Treue",
+      "loyaltyApplies": "Dein Treuerabatt ist dran: {percent} % auf die Leistungen dieser Buchung.",
+      "loyaltyProgress": "{visits} von {threshold} Besuchen bis zu deinem Treuerabatt.",
+      "depositTitle": "Anzahlung {amount} – erst nach der Zusage",
+      "depositText": "Du zahlst {amount} erst, wenn dein Barber den Termin angenommen hat (Link per E-Mail, innerhalb von {hours} Stunden). Die Anzahlung wird im Laden vom Preis abgezogen.",
+      "cancelTitle": "Stornierung",
+      "cancelText": "Bis {refundHours} Stunden vorher kostenlos – du bekommst die Anzahlung zurück, danach behalten wir sie ein. Online stornieren geht bis {onlineHours} Stunden vor dem Termin.",
+      "nextSteps": "Nach dem Absenden prüft dein Barber die Anfrage (spätestens innerhalb von {hours} Stunden). Du siehst den Status sofort auf der nächsten Seite und bekommst alles per E-Mail."
+    },
+    "stepOf": "Schritt {current} von {total} · {label}"
+  },
+  "statusPage": {
+    "eyebrow": "Deine Buchung",
+    "PENDING_BARBER": {
+      "title": "Anfrage gesendet",
+      "text": "{barber} prüft deine Anfrage und meldet sich spätestens bis {deadline}. Wir haben dir eine Bestätigung an {email} geschickt."
+    },
+    "AWAITING_PAYMENT": {
+      "title": "Angenommen – bitte Anzahlung leisten",
+      "text": "{barber} hat zugesagt. Zahl die Anzahlung von {deposit} bis {payUntil}, dann ist dein Termin fest gebucht."
+    },
+    "CONFIRMED": {
+      "title": "Bestätigt – bis bald!",
+      "text": "Deine Anzahlung ist eingegangen, der Termin ist fest gebucht. Die Bestätigung mit Kalendereintrag liegt in deinem Postfach."
+    },
+    "COMPLETED": {
+      "title": "Danke für deinen Besuch",
+      "text": "Dieser Termin ist abgeschlossen."
+    },
+    "DECLINED": {
+      "title": "Leider abgelehnt",
+      "text": "{barber} kann diesen Termin nicht übernehmen. Such dir gern eine andere Uhrzeit aus."
+    },
+    "EXPIRED": {
+      "title": "Anfrage abgelaufen",
+      "text": "Die Anfrage wurde nicht rechtzeitig bestätigt oder bezahlt. Der Termin ist wieder frei."
+    },
+    "CANCELLED": {
+      "title": "Storniert",
+      "text": "Dieser Termin wurde storniert."
+    },
+    "NO_SHOW": {
+      "title": "Nicht erschienen",
+      "text": "Dieser Termin wurde als nicht wahrgenommen markiert."
+    },
+    "payNowTitle": "Anzahlung {amount} offen",
+    "payNowText": "Bezahl jetzt, um den Termin zu sichern (Demo-Zahlung).",
+    "payNow": "Jetzt bezahlen",
+    "summary": "Übersicht",
+    "autoRefresh": "Wird automatisch aktualisiert.",
+    "checkedAt": "Stand: {time}",
+    "refresh": "Aktualisieren",
+    "rebook": "Neuen Termin wählen",
+    "home": "Zur Startseite",
+    "timeline": {
+      "sent": "Gesendet",
+      "accepted": "Angenommen",
+      "confirmed": "Bestätigt"
+    }
+  },
+  "links": {
+    "eyebrow": "Link",
+    "used": {
+      "title": "Link schon verwendet",
+      "text": "Dieser Link wurde bereits benutzt und gilt nur einmal."
+    },
+    "expired": {
+      "title": "Link abgelaufen",
+      "text": "Dieser Link ist nicht mehr gültig."
+    },
+    "invalid": {
+      "title": "Link ungültig",
+      "text": "Diesen Link kennen wir nicht. Prüf bitte, ob du ihn vollständig geöffnet hast."
+    },
+    "error": {
+      "title": "Das hat nicht geklappt"
+    },
+    "currentStatus": "Aktueller Stand:",
+    "payment": {
+      "UNPAID": "Anzahlung offen",
+      "PAID": "Anzahlung bezahlt",
+      "REFUNDED": "Anzahlung erstattet",
+      "FORFEITED": "Anzahlung einbehalten"
+    },
+    "home": "Zur Startseite",
+    "book": "Termin buchen"
+  },
+  "manage": {
+    "eyebrow": "Termin verwalten",
+    "title": "Dein Termin",
+    "cancelledTitle": "Storniert",
+    "cancelledText": "Dein Termin wurde storniert. Wir haben dir eine Bestätigung geschickt.",
+    "after": {
+      "REFUNDED": "Deine Anzahlung von {amount} wird erstattet.",
+      "FORFEITED": "Die Anzahlung von {amount} wurde einbehalten.",
+      "UNPAID": "Es war keine Anzahlung bezahlt.",
+      "PAID": "Deine Anzahlung von {amount} ist bezahlt."
+    },
+    "demoRefund": "(Demo-Modus: Erstattung nur simuliert.)",
+    "noPayment": "Du hast noch keine Anzahlung bezahlt – es entstehen keine Kosten.",
+    "refund": "Wenn du jetzt stornierst, bekommst du deine Anzahlung von {amount} zurück.",
+    "noRefund": "Achtung: Weniger als 24 Stunden vorher – die Anzahlung von {amount} wird bei einer Stornierung einbehalten.",
+    "refundableUntil": "Kostenlos stornierbar bis {time}.",
+    "cancelHeading": "Du kannst doch nicht?",
+    "cancelButton": "Termin stornieren",
+    "tooLateTitle": "Online-Stornierung nicht mehr möglich",
+    "tooLateText": "Online stornieren geht nur bis {hours} Stunden vor dem Termin. Bitte ruf uns an: {phone}.",
+    "confirmTitle": "Termin wirklich stornieren?",
+    "confirmButton": "Ja, stornieren",
+    "reason": "Grund (optional)"
+  },
+  "pay": {
+    "demoBanner": "DEMO-MODUS: keine echte Zahlung",
+    "eyebrow": "Anzahlung",
+    "title": "Anzahlung bezahlen",
+    "lead": "Mit der Anzahlung ist dein Termin fest gebucht.",
+    "amount": "Betrag",
+    "payUntil": "Bitte bis {time} bezahlen.",
+    "deducted": "Die Anzahlung wird im Laden vom Preis abgezogen.",
+    "simulate": "Zahlung simulieren",
+    "pay": "Bezahlen",
+    "cancel": "Abbrechen",
+    "demoNote": "Demo: Es werden keine Zahlungsdaten abgefragt und kein Geld bewegt. „Zahlung simulieren“ löst denselben Ablauf aus wie eine echte Zahlung.",
+    "cancelConfirmTitle": "Termin stornieren?",
+    "cancelConfirm": "Ja, Termin stornieren",
+    "cancelConfirmText": "Wenn du abbrichst, wird die Terminanfrage storniert und die Zeit wieder freigegeben. Es entstehen keine Kosten.",
+    "successTitle": "Bezahlt – dein Termin steht!",
+    "successText": "Die Bestätigung mit Kalendereintrag geht an {email}.",
+    "cancelledTitle": "Termin storniert",
+    "cancelledText": "Die Anfrage wurde storniert, es wurde nichts bezahlt.",
+    "depositDeducted": "Die Anzahlung wird im Laden vom Preis abgezogen.",
+    "toStatus": "Zur Buchungsübersicht",
+    "home": "Zur Startseite"
+  },
+  "decision": {
+    "eyebrow": "Terminanfrage",
+    "title": "Neue Anfrage",
+    "acceptedTitle": "Angenommen",
+    "declinedTitle": "Abgelehnt",
+    "acceptedText": "Der Kunde wurde informiert und zahlt jetzt die Anzahlung.",
+    "declinedText": "Der Kunde wurde informiert und kann eine andere Uhrzeit wählen.",
+    "respondUntil": "Bitte antworte bis {time}.",
+    "loyalty": "Treue",
+    "choose": "Entscheidung",
+    "accept": "Annehmen",
+    "decline": "Ablehnen",
+    "reason": "Nachricht an den Kunden (optional)",
+    "reasonHint": "Wird in der Absage-E-Mail angezeigt.",
+    "acceptHint": "Der Kunde bekommt eine E-Mail mit dem Link zur Anzahlung.",
+    "declineHint": "Der Kunde bekommt eine Absage und kann neu buchen.",
+    "confirmAccept": "Termin annehmen",
+    "confirmDecline": "Termin ablehnen",
+    "acceptedNext": "Sobald die Anzahlung da ist, bekommst du eine E-Mail.",
+    "declinedNext": "Die Zeit ist wieder frei."
+  },
+  "account": {
+    "verify": {
+      "eyebrow": "Konto",
+      "title": "E-Mail bestätigen",
+      "text": "Klick auf den Button, um deine E-Mail-Adresse zu bestätigen.",
+      "button": "E-Mail bestätigen",
+      "doneTitle": "Bestätigt!",
+      "doneText": "Deine E-Mail-Adresse ist bestätigt. Du kannst dich jetzt anmelden.",
+      "linked": "{count, plural, one {# frühere Buchung} other {# frühere Buchungen}} mit dieser E-Mail wurden deinem Konto zugeordnet.",
+      "toLogin": "Zur Anmeldung"
+    },
+    "reset": {
+      "eyebrow": "Konto",
+      "title": "Neues Passwort",
+      "password": "Neues Passwort",
+      "repeat": "Passwort wiederholen",
+      "hint": "Mindestens 10 Zeichen.",
+      "tooShort": "Mindestens 10 Zeichen.",
+      "mismatch": "Die Passwörter stimmen nicht überein.",
+      "button": "Passwort speichern",
+      "doneTitle": "Passwort gespeichert",
+      "doneText": "Du kannst dich jetzt mit dem neuen Passwort anmelden.",
+      "toLogin": "Zur Anmeldung"
+    },
+    "login": {
+      "eyebrow": "Konto",
+      "title": "Anmelden",
+      "lead": "Für Kunden, Barber und Admins.",
+      "email": "E-Mail",
+      "password": "Passwort",
+      "button": "Anmelden",
+      "forgot": "Passwort vergessen?",
+      "register": "Noch kein Konto? Registrieren",
+      "resend": "Bestätigungs-E-Mail erneut senden",
+      "resent": "Falls nötig, haben wir dir einen neuen Link geschickt."
+    },
+    "register": {
+      "eyebrow": "Konto",
+      "title": "Konto erstellen",
+      "lead": "Sammle Besuche für deinen Treuerabatt und verwalte deine Termine an einem Ort.",
+      "name": "Name",
+      "email": "E-Mail",
+      "phone": "Telefon",
+      "password": "Passwort",
+      "passwordHint": "Mindestens 10 Zeichen.",
+      "lang": "Sprache für E-Mails",
+      "consent": "Ich habe die <link>Datenschutzerklärung</link> gelesen und stimme der Verarbeitung meiner Daten für das Kundenkonto zu.",
+      "button": "Registrieren",
+      "haveAccount": "Schon ein Konto? Anmelden",
+      "doneTitle": "Konto angelegt",
+      "doneHint": "Öffne den Link in der E-Mail, um dein Konto zu aktivieren. Frühere Gast-Buchungen mit derselben E-Mail werden dann automatisch übernommen.",
+      "errors": {
+        "name": "Bitte gib deinen Namen ein.",
+        "email": "Bitte gib eine gültige E-Mail-Adresse ein.",
+        "phone": "Bitte gib eine gültige Telefonnummer ein.",
+        "password": "Mindestens 10 Zeichen.",
+        "consent": "Bitte stimm der Datenschutzerklärung zu."
+      }
+    },
+    "forgot": {
+      "eyebrow": "Konto",
+      "title": "Passwort vergessen",
+      "lead": "Wir schicken dir einen Link zum Zurücksetzen.",
+      "email": "E-Mail",
+      "button": "Link senden",
+      "back": "Zurück zur Anmeldung"
+    },
+    "dashboard": {
+      "eyebrow": "Mein Konto",
+      "hello": "Hallo {name}",
+      "profile": "Profil",
+      "logout": "Abmelden",
+      "loyaltyTitle": "Treue",
+      "loyaltyReserved": "Dein Treuerabatt von {percent} % ist für deine nächste Buchung reserviert.",
+      "loyaltyReady": "Deine nächste Buchung bekommt {percent} % Treuerabatt!",
+      "loyaltyProgress": "{visits} von {threshold} Besuchen – noch {left} bis zu {percent} % Rabatt.",
+      "book": "Termin buchen",
+      "bookings": "Meine Termine",
+      "upcoming": "Anstehend",
+      "past": "Vergangen",
+      "emptyUpcoming": "Keine anstehenden Termine.",
+      "emptyPast": "Noch keine vergangenen Termine.",
+      "dueAtShop": "Im Laden zu zahlen",
+      "discount": "inkl. {amount} Treuerabatt",
+      "payUntil": "Anzahlung {amount} offen – bitte bis {time} bezahlen.",
+      "payNow": "Jetzt bezahlen",
+      "cancel": "Stornieren",
+      "rebook": "Nochmal buchen"
+    },
+    "profile": {
+      "back": "Mein Konto",
+      "title": "Profil",
+      "data": "Deine Daten",
+      "name": "Name",
+      "phone": "Telefon",
+      "lang": "Sprache",
+      "langHint": "Für E-Mails von uns.",
+      "save": "Speichern",
+      "saved": "Gespeichert.",
+      "password": "Passwort ändern",
+      "currentPassword": "Aktuelles Passwort",
+      "newPassword": "Neues Passwort",
+      "passwordHint": "Mindestens 10 Zeichen. Andere Geräte werden abgemeldet.",
+      "changePassword": "Passwort ändern",
+      "passwordChanged": "Passwort geändert. Andere Geräte wurden abgemeldet.",
+      "privacy": "Datenschutz",
+      "exportText": "Lade alle Daten herunter, die wir zu deinem Konto speichern (JSON).",
+      "export": "Meine Daten exportieren",
+      "deleteText": "Konto löschen: Offene künftige Termine werden storniert (es gilt die normale Erstattungsregel), alle Buchungen werden anonymisiert, dein Konto und deine Treuepunkte werden gelöscht.",
+      "delete": "Konto löschen",
+      "deleteTitle": "Konto endgültig löschen?",
+      "deleteConfirm": "Endgültig löschen",
+      "deleteWarning": "Das kann nicht rückgängig gemacht werden. Offene Termine werden storniert – weniger als 24 Stunden vorher wird die Anzahlung einbehalten."
+    }
+  },
+  "staff": {
+    "eyebrow": "Team",
+    "loginTitle": "Team-Anmeldung",
+    "noAccessTitle": "Kein Zugriff",
+    "noAccess": "Dieser Bereich ist für Barber und Admins.",
+    "toAccount": "Zu deinem Konto",
+    "adminArea": "Admin-Bereich",
+    "barberArea": "Barber-Bereich",
+    "profile": "Mein Profil",
+    "sections": "Bereiche",
+    "adminOnly": "Nur für Admins.",
+    "tabs": {
+      "calendar": "Kalender",
+      "bookings": "Buchungen",
+      "services": "Leistungen",
+      "staff": "Barber",
+      "timeOff": "Abwesenheiten",
+      "customers": "Kunden",
+      "stats": "Statistik"
+    },
+    "booking": {
+      "dueAtShop": "Im Laden",
+      "payment": "Anzahlung: {status}",
+      "paymentStatus": {
+        "UNPAID": "offen",
+        "PAID": "bezahlt",
+        "REFUNDED": "erstattet",
+        "FORFEITED": "einbehalten"
+      },
+      "respondUntil": "Antworten bis {time}",
+      "source": {
+        "WALK_IN": "Walk-in",
+        "PHONE": "Telefonbuchung"
+      },
+      "actions": {
+        "accept": "Annehmen",
+        "decline": "Ablehnen",
+        "complete": "Erledigt",
+        "no-show": "Nicht erschienen",
+        "cancel": "Stornieren",
+        "refund": "Anzahlung erstatten"
+      },
+      "confirm": {
+        "accept": "Termin annehmen?",
+        "decline": "Anfrage ablehnen?",
+        "complete": "Als erledigt markieren?",
+        "no-show": "Als nicht erschienen markieren? Die Anzahlung wird einbehalten.",
+        "cancel": "Termin stornieren?",
+        "refund": "Einbehaltene Anzahlung erstatten?"
+      },
+      "cancelRefund": "Bei einer Stornierung durch den Laden wird die Anzahlung erstattet.",
+      "reason": "Grund / Nachricht (optional)"
+    },
+    "calendar": {
+      "title": "Kalender",
+      "view": "Ansicht",
+      "day": "Tag",
+      "week": "Woche",
+      "prev": "Zurück",
+      "today": "Heute",
+      "next": "Weiter",
+      "pickDate": "Datum wählen",
+      "barber": "Barber",
+      "allBarbers": "Alle Barber",
+      "empty": "Keine Termine an diesem Tag.",
+      "requests": "Offene Anfragen",
+      "noRequests": "Keine offenen Anfragen.",
+      "showClosed": "Stornierte & abgelaufene zeigen ({count})",
+      "hideClosed": "Stornierte & abgelaufene ausblenden"
+    },
+    "bookings": {
+      "title": "Buchungen",
+      "from": "Von",
+      "to": "Bis",
+      "status": "Status",
+      "all": "Alle",
+      "search": "Suche (Name, E-Mail, Telefon)",
+      "count": "{count, plural, one {# Buchung} other {# Buchungen}}"
+    },
+    "manual": {
+      "title": "Manuelle Buchung",
+      "hint": "Walk-in oder Telefon: sofort bestätigt, ohne Anzahlung.",
+      "service": "Leistung",
+      "barber": "Barber",
+      "date": "Datum",
+      "time": "Uhrzeit",
+      "source": "Quelle",
+      "walkIn": "Walk-in",
+      "phoneBooking": "Telefon",
+      "name": "Name",
+      "phone": "Telefon",
+      "email": "E-Mail (optional)",
+      "emailHint": "Mit E-Mail bekommt der Kunde eine Bestätigung.",
+      "note": "Notiz",
+      "created": "Termin eingetragen.",
+      "button": "Termin eintragen"
+    },
+    "services": {
+      "title": "Leistungen",
+      "add": "Neue Leistung",
+      "nameDe": "Name (DE)",
+      "nameEn": "Name (EN)",
+      "descriptionDe": "Beschreibung (DE)",
+      "descriptionEn": "Beschreibung (EN)",
+      "duration": "Dauer (Minuten)",
+      "priceCents": "Preis (Cent)",
+      "priceHint": "z. B. 3500 = 35 €",
+      "sortOrder": "Reihenfolge",
+      "priceFrom": "„ab“-Preis",
+      "active": "Aktiv",
+      "save": "Speichern",
+      "cancel": "Abbrechen",
+      "inactive": "inaktiv",
+      "fromShort": "ab",
+      "edit": "Bearbeiten",
+      "deactivate": "Deaktivieren"
+    },
+    "barbers": {
+      "title": "Barber",
+      "newName": "Neuer Barber (Name)",
+      "add": "Anlegen",
+      "inactive": "inaktiv",
+      "close": "Schließen",
+      "manage": "Verwalten",
+      "name": "Name",
+      "photoUrl": "Foto-URL",
+      "bioDe": "Bio (DE)",
+      "bioEn": "Bio (EN)",
+      "active": "Aktiv",
+      "saved": "Gespeichert.",
+      "saveProfile": "Profil speichern",
+      "services": "Leistungen",
+      "saveServices": "Leistungen speichern",
+      "hours": "Arbeitszeiten",
+      "weekday": "Tag",
+      "start": "Von",
+      "end": "Bis",
+      "removeRange": "Zeitraum entfernen",
+      "addRange": "Zeitraum hinzufügen",
+      "saveHours": "Arbeitszeiten speichern",
+      "invited": "Einladung verschickt.",
+      "loginEmail": "E-Mail für den Barber-Login",
+      "loginHint": "Der Barber bekommt einen Link zum Festlegen des Passworts.",
+      "invite": "Login einrichten"
+    },
+    "timeOff": {
+      "title": "Abwesenheiten",
+      "who": "Wer",
+      "wholeShop": "Ganzer Laden",
+      "fromDate": "Von (Datum)",
+      "fromTime": "Von (Uhrzeit)",
+      "toDate": "Bis (Datum)",
+      "toTime": "Bis (Uhrzeit)",
+      "reason": "Grund",
+      "add": "Eintragen",
+      "empty": "Keine Abwesenheiten.",
+      "remove": "Entfernen"
+    },
+    "customers": {
+      "title": "Kunden",
+      "search": "Suche",
+      "name": "Name",
+      "contact": "Kontakt",
+      "type": "Art",
+      "visits": "Besuche",
+      "cycle": "Treue",
+      "last": "Letzte Buchung",
+      "account": "Konto",
+      "guest": "Gast",
+      "legend": "Treue = Besuche im aktuellen Zyklus, ★ = nächste Buchung mit Rabatt."
+    },
+    "stats": {
+      "title": "Statistik",
+      "from": "Von",
+      "to": "Bis",
+      "booked": "Gebucht",
+      "lost": "Storniert / abgelehnt / abgelaufen",
+      "perDay": "Pro Tag",
+      "empty": "Keine Buchungen im Zeitraum.",
+      "legend": "Gold = gebucht, grau = verloren (gebucht/verloren).",
+      "perService": "Pro Leistung (gebucht / verloren)"
+    },
+    "settings": {
+      "title": "Buchungsregeln",
+      "saved": "Gespeichert.",
+      "save": "Regeln speichern",
+      "depositCents": "Anzahlung (Cent)",
+      "refundCutoffMin": "Kostenlos stornieren bis (Min. vorher)",
+      "onlineCancelCutoffMin": "Online stornieren bis (Min. vorher)",
+      "barberResponseMin": "Antwortfrist Barber (Min.)",
+      "paymentDeadlineMin": "Zahlungsfrist (Min.)",
+      "deadlineBeforeStartMin": "Fristen enden spätestens (Min. vorher)",
+      "minLeadMin": "Vorlaufzeit (Min.)",
+      "maxDaysAhead": "Buchbar im Voraus (Tage)",
+      "slotStepMin": "Zeitraster (Min.)",
+      "bufferMin": "Puffer nach Termin (Min.)",
+      "loyaltyThreshold": "Besuche bis Treuerabatt",
+      "loyaltyPercent": "Treuerabatt (%)",
+      "autoCompleteAfterMin": "Automatisch erledigt nach (Min.)",
+      "reminderBeforeMin": "Erinnerung vorher (Min.)"
+    }
+  },
+  "privacy": {
+    "eyebrow": "Rechtliches",
+    "title": "Datenschutz",
+    "placeholder": "PLATZHALTER: Hier steht bisher nur der Teil zur Online-Buchung. Die vollständige Datenschutzerklärung (Verantwortlicher, Hosting, Cookies, Rechte, Aufsichtsbehörde …) folgt und muss rechtlich geprüft werden.",
+    "booking": {
+      "title": "Online-Buchung",
+      "text": [
+        "Für eine Terminanfrage verarbeiten wir Name, E-Mail-Adresse, Telefonnummer, die gewählten Leistungen, Barber, Datum/Uhrzeit und deine optionale Notiz – zur Durchführung des Termins (Art. 6 Abs. 1 lit. b DSGVO).",
+        "Gäste verwalten ihre Buchung ausschließlich über die Links in unseren E-Mails. Diese Links sind persönlich, einmalig nutzbar und laufen ab."
+      ]
+    },
+    "account": {
+      "title": "Kundenkonto",
+      "text": [
+        "Mit einem Konto speichern wir zusätzlich dein Passwort (nur als sicherer Hash), deine Sprache und deine Treuepunkte. Wenn du ein Konto mit derselben E-Mail anlegst und bestätigst, werden frühere Gast-Buchungen deinem Konto zugeordnet.",
+        "Du kannst alle zu deinem Konto gespeicherten Daten jederzeit im Profil als Datei exportieren."
+      ]
+    },
+    "emails": {
+      "title": "E-Mails",
+      "text": [
+        "Wir schicken dir nur E-Mails zu deinen Terminen (Eingang, Zusage, Zahlung, Bestätigung mit Kalenderdatei, Erinnerung, Stornierung) und zu deinem Konto. Keine Werbung."
+      ]
+    },
+    "deletion": {
+      "title": "Konto löschen",
+      "text": [
+        "Du kannst dein Konto jederzeit im Profil löschen. Dabei werden offene künftige Termine storniert – es gilt die normale Erstattungsregel: Bei Stornierung mindestens 24 Stunden vor dem Termin wird die Anzahlung erstattet, danach einbehalten.",
+        "Anschließend werden alle deine Buchungen anonymisiert (Name, E-Mail, Telefon und Notiz werden entfernt; Datum und Beträge bleiben für die Buchhaltung des Ladens erhalten) und dein Konto, deine Anmeldedaten und Treuepunkte werden gelöscht."
+      ]
+    },
+    "payments": {
+      "title": "Zahlungen",
+      "text": [
+        "Derzeit ist kein echter Zahlungsanbieter angebunden (Demo-Modus). Es werden keine Zahlungs- oder Kartendaten erhoben."
+      ]
+    }
+  }
+}

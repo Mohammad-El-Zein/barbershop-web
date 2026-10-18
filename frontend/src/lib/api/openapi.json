@@ -1,0 +1,4711 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Barbershop Booking API",
+    "description": "Public booking API (services, staff, availability, booking requests, email-link\npages, demo payments), customer account API (/api/me), barber API (/api/barber)\nand admin API (/api/admin). Access tokens are short-lived JWTs (Bearer); the\nrefresh token is an httpOnly cookie on /api/auth.\nCustomer-facing texts are localized: `?lang=de|en` or the `Accept-Language`\nheader (default `de`). Times are ISO-8601 with the offset of the tenant's timezone.\nErrors are RFC 9457 problem details with a stable `code`.\nPayments: DEMO MODE ONLY — no real payment provider is connected.",
+    "version": "v2"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080",
+      "description": "local backend"
+    }
+  ],
+  "paths": {
+    "/api/admin/staff/{id}": {
+      "get": {
+        "tags": [
+          "Admin: staff"
+        ],
+        "operationId": "get",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffAdminView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "Admin: staff"
+        ],
+        "operationId": "update",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StaffRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffAdminView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "Admin: staff"
+        ],
+        "operationId": "delete",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/admin/staff/{id}/working-hours": {
+      "get": {
+        "tags": [
+          "Admin: staff"
+        ],
+        "operationId": "workingHours",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WorkingHoursEntry"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "Admin: staff"
+        ],
+        "operationId": "replaceWorkingHours",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkingHoursRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WorkingHoursEntry"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/admin/staff/{id}/services": {
+      "put": {
+        "tags": [
+          "Admin: staff"
+        ],
+        "operationId": "setServices",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StaffServicesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffAdminView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/admin/settings": {
+      "get": {
+        "tags": [
+          "Admin: settings"
+        ],
+        "operationId": "get_1",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PolicyDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "Admin: settings"
+        ],
+        "summary": "Replace the booking policy (all values in minutes / cents / percent)",
+        "operationId": "update_1",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PolicyDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PolicyDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/admin/services/{id}": {
+      "get": {
+        "tags": [
+          "Admin: services"
+        ],
+        "operationId": "get_2",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceAdminView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "Admin: services"
+        ],
+        "operationId": "update_2",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ServiceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceAdminView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "Admin: services"
+        ],
+        "operationId": "delete_1",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/public/{tenant}/bookings": {
+      "post": {
+        "tags": [
+          "Public: bookings"
+        ],
+        "summary": "Request a booking (guest or logged-in) → 201, status PENDING_BARBER. 409 if the slot was just taken, 422 if it is not a valid slot. The manage link is sent by email only.",
+        "operationId": "create",
+        "parameters": [
+          {
+            "name": "tenant",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateBookingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookingView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/public/{tenant}/bookings/price-preview": {
+      "post": {
+        "tags": [
+          "Public: bookings"
+        ],
+        "summary": "Price before booking: total, loyalty discount (logged-in customers), deposit, due at shop",
+        "operationId": "pricePreview",
+        "parameters": [
+          {
+            "name": "tenant",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PricePreviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PricePreview"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/public/{tenant}/auth/resend-verification": {
+      "post": {
+        "tags": [
+          "Auth: account"
+        ],
+        "operationId": "resend",
+        "parameters": [
+          {
+            "name": "tenant",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcceptedResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/public/{tenant}/auth/register": {
+      "post": {
+        "tags": [
+          "Auth: account"
+        ],
+        "summary": "Register a customer account (consent required). Always 202 — check your email.",
+        "operationId": "register",
+        "parameters": [
+          {
+            "name": "tenant",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcceptedResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/public/{tenant}/auth/forgot-password": {
+      "post": {
+        "tags": [
+          "Auth: account"
+        ],
+        "operationId": "forgot",
+        "parameters": [
+          {
+            "name": "tenant",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcceptedResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/public/payments/{token}/simulate": {
+      "post": {
+        "tags": [
+          "Public: payments (demo)"
+        ],
+        "summary": "DEMO ONLY: simulate a successful payment → CONFIRMED. Goes through the same PaymentService.handlePaymentSucceeded a real webhook uses. Idempotent.",
+        "operationId": "simulate",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/public/payments/{token}/cancel": {
+      "post": {
+        "tags": [
+          "Public: payments (demo)"
+        ],
+        "summary": "Customer cancels the booking from the payment page (nothing was paid)",
+        "operationId": "cancel",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookingView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/public/payments/webhook/{provider}": {
+      "post": {
+        "tags": [
+          "Public: payments (demo)"
+        ],
+        "summary": "Provider webhook (real providers only; the demo provider has none → 404)",
+        "operationId": "webhook",
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "string"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/public/manage/{token}/cancel": {
+      "post": {
+        "tags": [
+          "Public: bookings"
+        ],
+        "summary": "Cancel via the manage link (single use). Deposit refunded if ≥ refund cutoff before",
+        "operationId": "cancel_1",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookingView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/public/booking-status/{token}/payment-link": {
+      "post": {
+        "tags": [
+          "Public: bookings"
+        ],
+        "summary": "Fresh single-use link to the deposit payment page (only while AWAITING_PAYMENT)",
+        "operationId": "statusPaymentLink",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentLinkView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/public/barber-decision/{token}/decline": {
+      "post": {
+        "tags": [
+          "Public: bookings"
+        ],
+        "summary": "Decline → DECLINED, customer is asked to pick another time (single use)",
+        "operationId": "decline",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DecisionView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/public/barber-decision/{token}/accept": {
+      "post": {
+        "tags": [
+          "Public: bookings"
+        ],
+        "summary": "Accept → AWAITING_PAYMENT, customer gets the payment link (single use)",
+        "operationId": "accept",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DecisionView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/public/auth/verify-email": {
+      "post": {
+        "tags": [
+          "Auth: account"
+        ],
+        "summary": "Confirm the email (single-use link token). Links earlier guest bookings with that email.",
+        "operationId": "verify",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TokenRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerifyResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/public/auth/reset-password": {
+      "post": {
+        "tags": [
+          "Auth: account"
+        ],
+        "summary": "Set a new password with the reset/invite link token (single use). Ends all sessions.",
+        "operationId": "reset",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcceptedResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/me/delete": {
+      "post": {
+        "tags": [
+          "Customer: account"
+        ],
+        "summary": "GDPR: delete my account (password required). Open future bookings are cancelled, all bookings anonymised.",
+        "operationId": "delete_2",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordConfirmation"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/me/bookings/{id}/payment-link": {
+      "post": {
+        "tags": [
+          "Customer: my bookings"
+        ],
+        "summary": "\"Pay now\": fresh single-use link to the deposit payment page (only while AWAITING_PAYMENT)",
+        "operationId": "paymentLink",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentLinkView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/me/bookings/{id}/cancel": {
+      "post": {
+        "tags": [
+          "Customer: my bookings"
+        ],
+        "summary": "Cancel my booking (deposit refunded if ≥ refund cutoff before the appointment)",
+        "operationId": "cancel_2",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookingView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/barber/bookings/{id}/no-show": {
+      "post": {
+        "tags": [
+          "Barber"
+        ],
+        "operationId": "noShow",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookingAdminView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/barber/bookings/{id}/decline": {
+      "post": {
+        "tags": [
+          "Barber"
+        ],
+        "operationId": "decline_1",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookingAdminView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/barber/bookings/{id}/complete": {
+      "post": {
+        "tags": [
+          "Barber"
+        ],
+        "operationId": "complete",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookingAdminView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/barber/bookings/{id}/cancel": {
+      "post": {
+        "tags": [
+          "Barber"
+        ],
+        "summary": "Cancel by the shop: a paid deposit is always refunded",
+        "operationId": "cancel_3",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookingAdminView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/barber/bookings/{id}/accept": {
+      "post": {
+        "tags": [
+          "Barber"
+        ],
+        "operationId": "accept_1",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookingAdminView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/auth/{tenant}/login": {
+      "post": {
+        "tags": [
+          "Auth: session"
+        ],
+        "summary": "Login (customer, barber or admin) → access token + refresh cookie. The same 401 for unknown email / wrong password / locked account; 403 auth.email_not_verified only after a correct password.",
+        "operationId": "login",
+        "parameters": [
+          {
+            "name": "tenant",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/refresh": {
+      "post": {
+        "tags": [
+          "Auth: session"
+        ],
+        "summary": "New access token from the refresh cookie (rotates the cookie; reuse revokes the session)",
+        "operationId": "refresh",
+        "parameters": [
+          {
+            "name": "bs_refresh",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/password": {
+      "post": {
+        "tags": [
+          "Auth: account"
+        ],
+        "summary": "Change password: all other sessions end, this device gets a fresh session + cookie",
+        "operationId": "changePassword",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangePasswordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "tags": [
+          "Auth: session"
+        ],
+        "summary": "Ends this session (revokes the refresh token family, clears the cookie). Idempotent.",
+        "operationId": "logout",
+        "parameters": [
+          {
+            "name": "bs_refresh",
+            "in": "cookie",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/admin/time-off": {
+      "get": {
+        "tags": [
+          "Admin: time off"
+        ],
+        "summary": "Time off overlapping [from, to) — default: now … +90 days",
+        "operationId": "list",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TimeOffView"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Admin: time off"
+        ],
+        "operationId": "create_1",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TimeOffRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TimeOffView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/admin/staff": {
+      "get": {
+        "tags": [
+          "Admin: staff"
+        ],
+        "operationId": "list_1",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/StaffAdminView"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Admin: staff"
+        ],
+        "operationId": "create_2",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StaffRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffAdminView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/admin/staff/{id}/account": {
+      "post": {
+        "tags": [
+          "Admin: accounts"
+        ],
+        "summary": "Create the barber's own login for this staff profile; an invite email lets them set their password",
+        "operationId": "createBarberAccount",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BarberAccountRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BarberAccountView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/admin/services": {
+      "get": {
+        "tags": [
+          "Admin: services"
+        ],
+        "operationId": "list_2",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ServiceAdminView"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Admin: services"
+        ],
+        "operationId": "create_3",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ServiceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceAdminView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/admin/bookings": {
+      "get": {
+        "tags": [
+          "Admin: bookings"
+        ],
+        "summary": "List/filter bookings. Dates are local days in the shop timezone; q searches name, email, phone; sort = startTime|createdAt|customerName|status, prefix '-' for desc",
+        "operationId": "list_3",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "staffId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PENDING_BARBER",
+                "AWAITING_PAYMENT",
+                "CONFIRMED",
+                "COMPLETED",
+                "DECLINED",
+                "EXPIRED",
+                "CANCELLED",
+                "NO_SHOW"
+              ]
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "startTime"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageViewBookingAdminView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Admin: bookings"
+        ],
+        "summary": "Manual booking (walk-in / phone): CONFIRMED immediately, no deposit",
+        "operationId": "createManual",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManualBookingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookingAdminView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/admin/bookings/{id}/refund": {
+      "post": {
+        "tags": [
+          "Admin: bookings"
+        ],
+        "summary": "Refund override: refunds a PAID or FORFEITED deposit (simulated in demo mode)",
+        "operationId": "refund",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookingAdminView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/admin/bookings/{id}/no-show": {
+      "post": {
+        "tags": [
+          "Admin: bookings"
+        ],
+        "operationId": "noShow_1",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookingAdminView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/admin/bookings/{id}/decline": {
+      "post": {
+        "tags": [
+          "Admin: bookings"
+        ],
+        "operationId": "decline_2",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookingAdminView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/admin/bookings/{id}/complete": {
+      "post": {
+        "tags": [
+          "Admin: bookings"
+        ],
+        "operationId": "complete_1",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookingAdminView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/admin/bookings/{id}/cancel": {
+      "post": {
+        "tags": [
+          "Admin: bookings"
+        ],
+        "summary": "Cancel by the shop. A paid deposit is refunded by default; refund=false keeps it",
+        "operationId": "cancel_4",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminCancelRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookingAdminView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/admin/bookings/{id}/accept": {
+      "post": {
+        "tags": [
+          "Admin: bookings"
+        ],
+        "operationId": "accept_2",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookingAdminView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/me": {
+      "get": {
+        "tags": [
+          "Customer: account"
+        ],
+        "operationId": "me",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "patch": {
+        "tags": [
+          "Customer: account"
+        ],
+        "summary": "Update name, phone, language",
+        "operationId": "update_3",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProfileRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/public/{tenant}": {
+      "get": {
+        "tags": [
+          "Public: shop"
+        ],
+        "summary": "Shop info (name, timezone, currency, theme) and the booking rules customers see",
+        "operationId": "get_3",
+        "parameters": [
+          {
+            "name": "tenant",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/public/{tenant}/staff": {
+      "get": {
+        "tags": [
+          "Public: staff"
+        ],
+        "summary": "Active barbers, localized bio; ?service= filters to those offering it",
+        "operationId": "list_4",
+        "parameters": [
+          {
+            "name": "tenant",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "service",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/StaffView"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/public/{tenant}/services": {
+      "get": {
+        "tags": [
+          "Public: services"
+        ],
+        "summary": "Active services, localized (?lang=de|en or Accept-Language)",
+        "operationId": "list_5",
+        "parameters": [
+          {
+            "name": "tenant",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ServiceView"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/public/{tenant}/availability": {
+      "get": {
+        "tags": [
+          "Public: availability"
+        ],
+        "summary": "One day for ALL barbers at once: a column per barber with every start time of their schedule (available=false = taken) plus the merged 'any barber' list (free only). services = comma-separated service ids; duration = sum of all services.",
+        "operationId": "day",
+        "parameters": [
+          {
+            "name": "tenant",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "services",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          },
+          {
+            "name": "date",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DayView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/public/{tenant}/availability/days": {
+      "get": {
+        "tags": [
+          "Public: availability"
+        ],
+        "summary": "Dates in [from, to] with at least one free slot (max. 62 days); staff omitted = any barber",
+        "operationId": "days",
+        "parameters": [
+          {
+            "name": "tenant",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "services",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "format": "uuid"
+              }
+            }
+          },
+          {
+            "name": "staff",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AvailableDaysView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/public/payments/{token}": {
+      "get": {
+        "tags": [
+          "Public: payments (demo)"
+        ],
+        "summary": "Payment page data: amount, booking summary, demoMode flag (changes nothing). 410 token.used (with paymentStatus) / token.expired",
+        "operationId": "page",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentPageView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/public/manage/{token}": {
+      "get": {
+        "tags": [
+          "Public: bookings"
+        ],
+        "summary": "Booking behind a manage link (changes nothing). 410 token.used / token.expired",
+        "operationId": "manage",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookingView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/public/booking-status/{token}": {
+      "get": {
+        "tags": [
+          "Public: bookings"
+        ],
+        "summary": "Live status for the status page (statusToken from the creation response; changes nothing)",
+        "operationId": "status",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookingView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/public/barber-decision/{token}": {
+      "get": {
+        "tags": [
+          "Public: bookings"
+        ],
+        "summary": "Request behind the barber's accept/decline link (changes nothing)",
+        "operationId": "decision",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DecisionView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/me/loyalty": {
+      "get": {
+        "tags": [
+          "Customer: my bookings"
+        ],
+        "summary": "visits_in_current_cycle, threshold, next_discount_available …",
+        "operationId": "loyalty",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoyaltyView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/me/export": {
+      "get": {
+        "tags": [
+          "Customer: account"
+        ],
+        "summary": "GDPR: everything stored about me as JSON (download)",
+        "operationId": "export",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/me/bookings": {
+      "get": {
+        "tags": [
+          "Customer: my bookings"
+        ],
+        "summary": "My bookings: scope=upcoming (default, soonest first) or past (latest first)",
+        "operationId": "list_6",
+        "parameters": [
+          {
+            "name": "scope",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "upcoming"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BookingView"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/me/bookings/{id}": {
+      "get": {
+        "tags": [
+          "Customer: my bookings"
+        ],
+        "operationId": "get_4",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookingView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/barber/requests": {
+      "get": {
+        "tags": [
+          "Barber"
+        ],
+        "summary": "My pending requests (PENDING_BARBER), soonest first",
+        "operationId": "requests",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BookingAdminView"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/barber/calendar": {
+      "get": {
+        "tags": [
+          "Barber"
+        ],
+        "summary": "My calendar: view=day (default) or week (Mon–Sun containing date)",
+        "operationId": "calendar",
+        "parameters": [
+          {
+            "name": "date",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "day"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BookingAdminView"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/barber/bookings/{id}": {
+      "get": {
+        "tags": [
+          "Barber"
+        ],
+        "operationId": "get_5",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookingAdminView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/admin/stats": {
+      "get": {
+        "tags": [
+          "Admin: dashboard"
+        ],
+        "summary": "Bookings per day and per service (default: last 30 days)",
+        "operationId": "stats",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatsView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/admin/customers": {
+      "get": {
+        "tags": [
+          "Admin: accounts"
+        ],
+        "summary": "Customers (accounts + guests by email) with completed visits and loyalty state",
+        "operationId": "customers",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageViewCustomerRow"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/admin/bookings/{id}": {
+      "get": {
+        "tags": [
+          "Admin: bookings"
+        ],
+        "operationId": "get_6",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookingAdminView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/admin/time-off/{id}": {
+      "delete": {
+        "tags": [
+          "Admin: time off"
+        ],
+        "operationId": "delete_3",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "StaffRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 0
+          },
+          "photoUrl": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 0
+          },
+          "bioDe": {
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 0
+          },
+          "bioEn": {
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 0
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "sortOrder": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "StaffAdminView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "photoUrl": {
+            "type": "string"
+          },
+          "bioDe": {
+            "type": "string"
+          },
+          "bioEn": {
+            "type": "string"
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "sortOrder": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "serviceIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        }
+      },
+      "WorkingHoursEntry": {
+        "type": "object",
+        "properties": {
+          "weekday": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 7,
+            "minimum": 1
+          },
+          "start": {
+            "type": "string"
+          },
+          "end": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "end",
+          "start",
+          "weekday"
+        ]
+      },
+      "WorkingHoursRequest": {
+        "type": "object",
+        "properties": {
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WorkingHoursEntry"
+            }
+          }
+        },
+        "required": [
+          "entries"
+        ]
+      },
+      "StaffServicesRequest": {
+        "type": "object",
+        "properties": {
+          "serviceIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "uniqueItems": true
+          }
+        },
+        "required": [
+          "serviceIds"
+        ]
+      },
+      "PolicyDto": {
+        "type": "object",
+        "properties": {
+          "barberResponseMin": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 1
+          },
+          "paymentDeadlineMin": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 1
+          },
+          "deadlineBeforeStartMin": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "depositCents": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "refundCutoffMin": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "onlineCancelCutoffMin": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "loyaltyThreshold": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 1
+          },
+          "loyaltyPercent": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 100,
+            "minimum": 0
+          },
+          "slotStepMin": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 120,
+            "minimum": 5
+          },
+          "bufferMin": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 120,
+            "minimum": 0
+          },
+          "minLeadMin": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "maxDaysAhead": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 365,
+            "minimum": 1
+          },
+          "autoCompleteAfterMin": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "reminderBeforeMin": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "autoCompleteAfterMin",
+          "barberResponseMin",
+          "bufferMin",
+          "deadlineBeforeStartMin",
+          "depositCents",
+          "loyaltyPercent",
+          "loyaltyThreshold",
+          "maxDaysAhead",
+          "minLeadMin",
+          "onlineCancelCutoffMin",
+          "paymentDeadlineMin",
+          "refundCutoffMin",
+          "reminderBeforeMin",
+          "slotStepMin"
+        ]
+      },
+      "ServiceRequest": {
+        "type": "object",
+        "properties": {
+          "nameDe": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 0
+          },
+          "nameEn": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 0
+          },
+          "descriptionDe": {
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 0
+          },
+          "descriptionEn": {
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 0
+          },
+          "durationMin": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 480,
+            "minimum": 5
+          },
+          "priceCents": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "priceFrom": {
+            "type": "boolean"
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "sortOrder": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "required": [
+          "durationMin",
+          "nameDe",
+          "nameEn",
+          "priceCents"
+        ]
+      },
+      "ServiceAdminView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nameDe": {
+            "type": "string"
+          },
+          "nameEn": {
+            "type": "string"
+          },
+          "descriptionDe": {
+            "type": "string"
+          },
+          "descriptionEn": {
+            "type": "string"
+          },
+          "durationMin": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "priceCents": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "priceFrom": {
+            "type": "boolean"
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "sortOrder": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "CreateBookingRequest": {
+        "type": "object",
+        "properties": {
+          "serviceIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "maxItems": 10,
+            "minItems": 0
+          },
+          "staffId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "start": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "customerName": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 2
+          },
+          "customerPhone": {
+            "type": "string",
+            "pattern": "^\\+?[0-9 ()/-]{6,30}$"
+          },
+          "customerEmail": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 254,
+            "minLength": 0
+          },
+          "lang": {
+            "type": "string",
+            "pattern": "de|en"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 0
+          },
+          "consent": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "serviceIds",
+          "start"
+        ]
+      },
+      "Actions": {
+        "type": "object",
+        "properties": {
+          "canCancel": {
+            "type": "boolean"
+          },
+          "cancellableUntil": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "refundIfCancelledNow": {
+            "type": "boolean"
+          },
+          "refundableUntil": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "BookingView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING_BARBER",
+              "AWAITING_PAYMENT",
+              "CONFIRMED",
+              "COMPLETED",
+              "DECLINED",
+              "EXPIRED",
+              "CANCELLED",
+              "NO_SHOW"
+            ]
+          },
+          "services": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ServiceLine"
+            }
+          },
+          "staff": {
+            "$ref": "#/components/schemas/StaffRef"
+          },
+          "start": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "end": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "durationMin": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "customerName": {
+            "type": "string"
+          },
+          "customerEmail": {
+            "type": "string"
+          },
+          "customerPhone": {
+            "type": "string"
+          },
+          "lang": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          },
+          "price": {
+            "$ref": "#/components/schemas/PriceView"
+          },
+          "loyalty": {
+            "type": "string",
+            "enum": [
+              "NONE",
+              "RESERVED",
+              "RELEASED",
+              "CONSUMED"
+            ]
+          },
+          "payment": {
+            "$ref": "#/components/schemas/PaymentInfo"
+          },
+          "barberDeadline": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "statusReason": {
+            "type": "string"
+          },
+          "actions": {
+            "$ref": "#/components/schemas/Actions"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "statusToken": {
+            "type": "string"
+          }
+        }
+      },
+      "MoneyView": {
+        "type": "object",
+        "properties": {
+          "cents": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "formatted": {
+            "type": "string"
+          }
+        }
+      },
+      "PaymentInfo": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "UNPAID",
+              "PAID",
+              "REFUNDED",
+              "FORFEITED"
+            ]
+          },
+          "amount": {
+            "$ref": "#/components/schemas/MoneyView"
+          },
+          "deadline": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "demoMode": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PriceView": {
+        "type": "object",
+        "properties": {
+          "currency": {
+            "type": "string"
+          },
+          "total": {
+            "$ref": "#/components/schemas/MoneyView"
+          },
+          "loyaltyDiscount": {
+            "$ref": "#/components/schemas/MoneyView"
+          },
+          "deposit": {
+            "$ref": "#/components/schemas/MoneyView"
+          },
+          "amountDueAtShop": {
+            "$ref": "#/components/schemas/MoneyView"
+          },
+          "priceFrom": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ServiceLine": {
+        "type": "object",
+        "properties": {
+          "serviceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "durationMin": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "price": {
+            "$ref": "#/components/schemas/MoneyView"
+          },
+          "priceFrom": {
+            "type": "boolean"
+          }
+        }
+      },
+      "StaffRef": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "PricePreviewRequest": {
+        "type": "object",
+        "properties": {
+          "serviceIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "maxItems": 10,
+            "minItems": 0
+          }
+        },
+        "required": [
+          "serviceIds"
+        ]
+      },
+      "LoyaltyInfo": {
+        "type": "object",
+        "properties": {
+          "visitsInCurrentCycle": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "threshold": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "discountPercent": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "nextDiscountAvailable": {
+            "type": "boolean"
+          },
+          "appliesToThisBooking": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PricePreview": {
+        "type": "object",
+        "properties": {
+          "services": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ServiceLine"
+            }
+          },
+          "durationMin": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "price": {
+            "$ref": "#/components/schemas/PriceView"
+          },
+          "loyalty": {
+            "$ref": "#/components/schemas/LoyaltyInfo"
+          }
+        }
+      },
+      "EmailRequest": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 254,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "email"
+        ]
+      },
+      "AcceptedResponse": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "RegisterRequest": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 254,
+            "minLength": 0
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 0
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 2
+          },
+          "phone": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^\\+?[0-9 ()/-]{6,30}$"
+          },
+          "lang": {
+            "type": "string",
+            "pattern": "de|en"
+          },
+          "consent": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "consent",
+          "email",
+          "name",
+          "password",
+          "phone"
+        ]
+      },
+      "PaymentResult": {
+        "type": "object",
+        "properties": {
+          "paymentStatus": {
+            "type": "string",
+            "enum": [
+              "UNPAID",
+              "PAID",
+              "REFUNDED",
+              "FORFEITED"
+            ]
+          },
+          "bookingStatus": {
+            "type": "string",
+            "enum": [
+              "PENDING_BARBER",
+              "AWAITING_PAYMENT",
+              "CONFIRMED",
+              "COMPLETED",
+              "DECLINED",
+              "EXPIRED",
+              "CANCELLED",
+              "NO_SHOW"
+            ]
+          },
+          "alreadyProcessed": {
+            "type": "boolean"
+          },
+          "demoMode": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ReasonRequest": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 0
+          }
+        }
+      },
+      "PaymentLinkView": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        }
+      },
+      "DecisionView": {
+        "type": "object",
+        "properties": {
+          "bookingId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING_BARBER",
+              "AWAITING_PAYMENT",
+              "CONFIRMED",
+              "COMPLETED",
+              "DECLINED",
+              "EXPIRED",
+              "CANCELLED",
+              "NO_SHOW"
+            ]
+          },
+          "customerName": {
+            "type": "string"
+          },
+          "services": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ServiceLine"
+            }
+          },
+          "staff": {
+            "$ref": "#/components/schemas/StaffRef"
+          },
+          "start": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "end": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "durationMin": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "note": {
+            "type": "string"
+          },
+          "loyaltyNote": {
+            "type": "string"
+          },
+          "price": {
+            "$ref": "#/components/schemas/PriceView"
+          },
+          "respondUntil": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "actions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "TokenRequest": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "token"
+        ]
+      },
+      "VerifyResult": {
+        "type": "object",
+        "properties": {
+          "verified": {
+            "type": "boolean"
+          },
+          "linkedGuestBookings": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "ResetPasswordRequest": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 0
+          },
+          "newPassword": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "newPassword",
+          "token"
+        ]
+      },
+      "PasswordConfirmation": {
+        "type": "object",
+        "properties": {
+          "password": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "password"
+        ]
+      },
+      "BookingAdminView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING_BARBER",
+              "AWAITING_PAYMENT",
+              "CONFIRMED",
+              "COMPLETED",
+              "DECLINED",
+              "EXPIRED",
+              "CANCELLED",
+              "NO_SHOW"
+            ]
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "ONLINE",
+              "WALK_IN",
+              "PHONE"
+            ]
+          },
+          "services": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ServiceLine"
+            }
+          },
+          "staff": {
+            "$ref": "#/components/schemas/StaffRef"
+          },
+          "start": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "end": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "durationMin": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "customerName": {
+            "type": "string"
+          },
+          "customerEmail": {
+            "type": "string"
+          },
+          "customerPhone": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "lang": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          },
+          "price": {
+            "$ref": "#/components/schemas/PriceView"
+          },
+          "loyalty": {
+            "type": "string",
+            "enum": [
+              "NONE",
+              "RESERVED",
+              "RELEASED",
+              "CONSUMED"
+            ]
+          },
+          "payment": {
+            "$ref": "#/components/schemas/PaymentInfo"
+          },
+          "barberDeadline": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "acceptedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "confirmedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "completedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "cancelledAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "cancelledBy": {
+            "type": "string",
+            "enum": [
+              "CUSTOMER",
+              "BARBER",
+              "ADMIN",
+              "SYSTEM",
+              "PAYMENT"
+            ]
+          },
+          "statusReason": {
+            "type": "string"
+          },
+          "allowedTransitions": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "PENDING_BARBER",
+                "AWAITING_PAYMENT",
+                "CONFIRMED",
+                "COMPLETED",
+                "DECLINED",
+                "EXPIRED",
+                "CANCELLED",
+                "NO_SHOW"
+              ]
+            },
+            "uniqueItems": true
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "LoginRequest": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 254,
+            "minLength": 0
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ]
+      },
+      "SessionResponse": {
+        "type": "object",
+        "properties": {
+          "accessToken": {
+            "type": "string"
+          },
+          "tokenType": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "user": {
+            "$ref": "#/components/schemas/UserView"
+          }
+        }
+      },
+      "TenantRef": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "timezone": {
+            "type": "string"
+          }
+        }
+      },
+      "UserView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "email": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "lang": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "CUSTOMER",
+              "BARBER",
+              "ADMIN"
+            ]
+          },
+          "staffId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "emailVerified": {
+            "type": "boolean"
+          },
+          "tenant": {
+            "$ref": "#/components/schemas/TenantRef"
+          }
+        }
+      },
+      "ChangePasswordRequest": {
+        "type": "object",
+        "properties": {
+          "currentPassword": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 0
+          },
+          "newPassword": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "currentPassword",
+          "newPassword"
+        ]
+      },
+      "TimeOffRequest": {
+        "type": "object",
+        "properties": {
+          "staffId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "start": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "end": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "end",
+          "start"
+        ]
+      },
+      "TimeOffView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "staffId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "staffName": {
+            "type": "string"
+          },
+          "start": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "end": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      },
+      "BarberAccountRequest": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 254,
+            "minLength": 0
+          },
+          "lang": {
+            "type": "string",
+            "pattern": "de|en"
+          }
+        },
+        "required": [
+          "email"
+        ]
+      },
+      "BarberAccountView": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "staffId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "email": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "inviteSent": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ManualBookingRequest": {
+        "type": "object",
+        "properties": {
+          "serviceIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "maxItems": 10,
+            "minItems": 0
+          },
+          "staffId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "start": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "customerName": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 2
+          },
+          "customerPhone": {
+            "type": "string",
+            "pattern": "^\\+?[0-9 ()/-]{6,30}$"
+          },
+          "customerEmail": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 254,
+            "minLength": 0
+          },
+          "lang": {
+            "type": "string",
+            "pattern": "de|en"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 0
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "ONLINE",
+              "WALK_IN",
+              "PHONE"
+            ]
+          }
+        },
+        "required": [
+          "customerName",
+          "serviceIds",
+          "source",
+          "staffId",
+          "start"
+        ]
+      },
+      "AdminCancelRequest": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 0
+          },
+          "refund": {
+            "type": "boolean"
+          }
+        }
+      },
+      "UpdateProfileRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 2
+          },
+          "phone": {
+            "type": "string",
+            "pattern": "^\\+?[0-9 ()/-]{6,30}$"
+          },
+          "lang": {
+            "type": "string",
+            "pattern": "de|en"
+          }
+        }
+      },
+      "BookingRules": {
+        "type": "object",
+        "properties": {
+          "depositCents": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "refundCutoffMin": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "onlineCancelCutoffMin": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "barberResponseMin": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "paymentDeadlineMin": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "minLeadMin": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "maxDaysAhead": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "slotStepMin": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "loyaltyThreshold": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "loyaltyPercent": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "demoPayments": {
+            "type": "boolean"
+          }
+        }
+      },
+      "TenantView": {
+        "type": "object",
+        "properties": {
+          "slug": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "defaultLocale": {
+            "type": "string"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "logoUrl": {
+            "type": "string"
+          },
+          "theme": {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          "bookingRules": {
+            "$ref": "#/components/schemas/BookingRules"
+          }
+        }
+      },
+      "StaffView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "photoUrl": {
+            "type": "string"
+          },
+          "bio": {
+            "type": "string"
+          },
+          "serviceIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        }
+      },
+      "CatalogPrice": {
+        "type": "object",
+        "properties": {
+          "amountCents": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "from": {
+            "type": "boolean"
+          },
+          "formatted": {
+            "type": "string"
+          }
+        }
+      },
+      "ServiceView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "durationMin": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "price": {
+            "$ref": "#/components/schemas/CatalogPrice"
+          }
+        }
+      },
+      "AnySlotView": {
+        "type": "object",
+        "properties": {
+          "start": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "end": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "time": {
+            "type": "string"
+          },
+          "staffIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        }
+      },
+      "BarberColumn": {
+        "type": "object",
+        "properties": {
+          "staffId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "photoUrl": {
+            "type": "string"
+          },
+          "slots": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SlotView"
+            }
+          }
+        }
+      },
+      "DayView": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "serviceIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "durationMin": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "slotStepMin": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "barbers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BarberColumn"
+            }
+          },
+          "anyBarber": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AnySlotView"
+            }
+          }
+        }
+      },
+      "SlotView": {
+        "type": "object",
+        "properties": {
+          "start": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "end": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "time": {
+            "type": "string"
+          },
+          "available": {
+            "type": "boolean"
+          }
+        }
+      },
+      "AvailableDaysView": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date"
+          },
+          "to": {
+            "type": "string",
+            "format": "date"
+          },
+          "days": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        }
+      },
+      "PaymentPageView": {
+        "type": "object",
+        "properties": {
+          "demoMode": {
+            "type": "boolean"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "UNPAID",
+              "PAID",
+              "REFUNDED",
+              "FORFEITED"
+            ]
+          },
+          "amount": {
+            "$ref": "#/components/schemas/MoneyView"
+          },
+          "payUntil": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "booking": {
+            "$ref": "#/components/schemas/BookingView"
+          },
+          "actions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "LoyaltyView": {
+        "type": "object",
+        "properties": {
+          "visitsInCurrentCycle": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "threshold": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "discountPercent": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "nextDiscountAvailable": {
+            "type": "boolean"
+          },
+          "discountReserved": {
+            "type": "boolean"
+          },
+          "reservedBookingId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "totalVisits": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "rewardsUsed": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "ExportView": {
+        "type": "object",
+        "properties": {
+          "exportedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "account": {
+            "$ref": "#/components/schemas/UserView"
+          },
+          "consentAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "consentVersion": {
+            "type": "string"
+          },
+          "loyalty": {
+            "$ref": "#/components/schemas/LoyaltyView"
+          },
+          "bookings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BookingView"
+            }
+          },
+          "payments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PaymentExport"
+            }
+          }
+        }
+      },
+      "PaymentExport": {
+        "type": "object",
+        "properties": {
+          "bookingId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "status": {
+            "type": "string"
+          },
+          "amountCents": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "paidAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "refundedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "forfeitedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "DayCount": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "booked": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "cancelled": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "ServiceCount": {
+        "type": "object",
+        "properties": {
+          "serviceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "booked": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "cancelled": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "StatsView": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date"
+          },
+          "to": {
+            "type": "string",
+            "format": "date"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "totalBooked": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalCancelled": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "perDay": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DayCount"
+            }
+          },
+          "perService": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ServiceCount"
+            }
+          }
+        }
+      },
+      "CustomerRow": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "registered": {
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "completedVisits": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "visitsInCurrentCycle": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "nextDiscountAvailable": {
+            "type": "boolean"
+          },
+          "totalBookings": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "lastBookingAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "PageViewCustomerRow": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CustomerRow"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalItems": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "PageViewBookingAdminView": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BookingAdminView"
+            }
+          },
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalItems": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalPages": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  }
+}

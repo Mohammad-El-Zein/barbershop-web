@@ -1,0 +1,624 @@
+{
+  "common": {
+    "close": "Close",
+    "back": "Back"
+  },
+  "nav": {
+    "account": "My account",
+    "staffArea": "Staff area",
+    "login": "Log in"
+  },
+  "errors": {
+    "network": "Can’t reach the server. Please check your connection and try again.",
+    "generic": "Something went wrong. Please try again.",
+    "booking_slot_taken": "This time was just taken. We’ve refreshed the free times – please pick another one.",
+    "booking_slot_invalid": "This time can’t be booked anymore. Please pick another one.",
+    "booking_too_many_open_requests": "You already have several open requests. Please wait for an answer before sending more.",
+    "booking_not_awaiting_payment": "No deposit is due for this booking right now.",
+    "auth_invalid_credentials": "Email or password is incorrect. After several failed attempts, sign-in is locked for a short time.",
+    "auth_email_not_verified": "Please confirm your email address first – we’ve sent you a link.",
+    "auth_session_expired": "Your session has expired. Please log in again.",
+    "token_used": "This link has already been used.",
+    "token_expired": "This link has expired.",
+    "token_invalid": "This link is invalid.",
+    "validation_failed": "Please check your input.",
+    "service_no_staff": "No barber is available for this combination of services right now."
+  },
+  "status": {
+    "PENDING_BARBER": "Waiting for barber",
+    "AWAITING_PAYMENT": "Deposit due",
+    "CONFIRMED": "Confirmed",
+    "COMPLETED": "Completed",
+    "DECLINED": "Declined",
+    "EXPIRED": "Expired",
+    "CANCELLED": "Cancelled",
+    "NO_SHOW": "No-show"
+  },
+  "booking": {
+    "title": "Book an appointment",
+    "eyebrow": "Online booking",
+    "lead": "Choose services, pick a barber and time, send your request. Your barber confirms – only then do you pay the deposit.",
+    "progress": "Progress",
+    "steps": {
+      "services": "Services",
+      "slot": "Time",
+      "details": "Details",
+      "summary": "Summary"
+    },
+    "titles": {
+      "services": "What can we do for you?",
+      "slot": "When and with whom?",
+      "details": "Your details",
+      "summary": "All correct?"
+    },
+    "back": "Back",
+    "next": "Next",
+    "confirm": "Send request",
+    "sending": "Sending …",
+    "services": {
+      "hint": "You can combine several services – duration and price add up.",
+      "legend": "Services",
+      "selected": "{count, plural, one {# service} other {# services}}",
+      "from": "from",
+      "none": "No service selected yet."
+    },
+    "slots": {
+      "prevDays": "Earlier days",
+      "nextDays": "Later days",
+      "date": "Date",
+      "noSlotsShort": "fully booked",
+      "pickDay": "Pick a day.",
+      "noSlots": "Unfortunately there’s nothing free on this day.",
+      "nextFree": "Next free day: {day}",
+      "noSlotsSoon": "Unfortunately there’s nothing free in the coming weeks.",
+      "anyBarber": "Any barber",
+      "anyBarberHint": "We pick the free barber",
+      "freeCount": "{count, plural, =0 {fully booked} other {# free}}",
+      "taken": "taken"
+    },
+    "details": {
+      "noteTooLong": "At most 500 characters.",
+      "phoneInvalid": "Please enter a valid phone number.",
+      "nameRequired": "Please enter your name.",
+      "emailInvalid": "Please enter a valid email address.",
+      "consentRequired": "Please accept the privacy policy.",
+      "note": "Note for your barber (optional)",
+      "notePlaceholder": "e.g. wishes, allergies, a description of your reference look",
+      "noteCount": "{count}/{max} characters",
+      "bookingAs": "You’re booking with your account:",
+      "phone": "Phone",
+      "who": "How do you want to book?",
+      "asGuest": "As guest",
+      "login": "Log in",
+      "name": "Name",
+      "email": "Email",
+      "emailHint": "We’ll send the confirmation and your manage link here.",
+      "consent": "I have read the <link>privacy policy</link> and agree to my data being processed for this booking.",
+      "registerHint": "With a customer account you collect visits for the loyalty reward: <link>create an account</link>. You can still book as a guest now.",
+      "password": "Password",
+      "loginButton": "Log in",
+      "forgot": "Forgot your password?"
+    },
+    "summary": {
+      "services": "Services",
+      "barber": "Barber",
+      "anyBarber": "Any barber – we assign the free one",
+      "when": "When",
+      "duration": "Duration",
+      "note": "Note",
+      "total": "Total price",
+      "from": "from",
+      "loyaltyDiscount": "Loyalty discount",
+      "deposit": "Deposit",
+      "dueAtShop": "To pay at the shop",
+      "loyaltyTitle": "Loyalty",
+      "loyaltyApplies": "Your loyalty reward is due: {percent}% off the services of this booking.",
+      "loyaltyProgress": "{visits} of {threshold} visits towards your loyalty reward.",
+      "depositTitle": "{amount} deposit – only after the barber accepts",
+      "depositText": "You pay {amount} only once your barber has accepted (link by email, within {hours} hours). The deposit is deducted from your price at the shop.",
+      "cancelTitle": "Cancellation",
+      "cancelText": "Free until {refundHours} hours before – you get your deposit back; after that it’s kept. Online cancellation is possible until {onlineHours} hours before the appointment.",
+      "nextSteps": "After sending, your barber reviews the request (within {hours} hours at the latest). You’ll see the status right away on the next page and get everything by email."
+    },
+    "stepOf": "Step {current} of {total} · {label}"
+  },
+  "statusPage": {
+    "eyebrow": "Your booking",
+    "PENDING_BARBER": {
+      "title": "Request sent",
+      "text": "{barber} is reviewing your request and will answer by {deadline} at the latest. We’ve sent a confirmation to {email}."
+    },
+    "AWAITING_PAYMENT": {
+      "title": "Accepted – please pay the deposit",
+      "text": "{barber} has accepted. Pay the {deposit} deposit by {payUntil} and your appointment is booked."
+    },
+    "CONFIRMED": {
+      "title": "Confirmed – see you soon!",
+      "text": "Your deposit has arrived and your appointment is booked. The confirmation with a calendar file is in your inbox."
+    },
+    "COMPLETED": {
+      "title": "Thanks for your visit",
+      "text": "This appointment is completed."
+    },
+    "DECLINED": {
+      "title": "Unfortunately declined",
+      "text": "{barber} can’t take this appointment. Feel free to pick another time."
+    },
+    "EXPIRED": {
+      "title": "Request expired",
+      "text": "The request wasn’t confirmed or paid in time. The time is free again."
+    },
+    "CANCELLED": {
+      "title": "Cancelled",
+      "text": "This appointment has been cancelled."
+    },
+    "NO_SHOW": {
+      "title": "No-show",
+      "text": "This appointment was marked as missed."
+    },
+    "payNowTitle": "{amount} deposit due",
+    "payNowText": "Pay now to secure your appointment (demo payment).",
+    "payNow": "Pay now",
+    "summary": "Summary",
+    "autoRefresh": "Updates automatically.",
+    "checkedAt": "As of {time}",
+    "refresh": "Refresh",
+    "rebook": "Pick a new time",
+    "home": "Back to the homepage",
+    "timeline": {
+      "sent": "Sent",
+      "accepted": "Accepted",
+      "confirmed": "Confirmed"
+    }
+  },
+  "links": {
+    "eyebrow": "Link",
+    "used": {
+      "title": "Link already used",
+      "text": "This link has already been used and only works once."
+    },
+    "expired": {
+      "title": "Link expired",
+      "text": "This link is no longer valid."
+    },
+    "invalid": {
+      "title": "Invalid link",
+      "text": "We don’t know this link. Please check that you opened it completely."
+    },
+    "error": {
+      "title": "That didn’t work"
+    },
+    "currentStatus": "Current status:",
+    "payment": {
+      "UNPAID": "Deposit due",
+      "PAID": "Deposit paid",
+      "REFUNDED": "Deposit refunded",
+      "FORFEITED": "Deposit kept"
+    },
+    "home": "Back to the homepage",
+    "book": "Book an appointment"
+  },
+  "manage": {
+    "eyebrow": "Manage booking",
+    "title": "Your appointment",
+    "cancelledTitle": "Cancelled",
+    "cancelledText": "Your appointment has been cancelled. We’ve sent you a confirmation.",
+    "after": {
+      "REFUNDED": "Your {amount} deposit will be refunded.",
+      "FORFEITED": "The {amount} deposit has been kept.",
+      "UNPAID": "No deposit had been paid.",
+      "PAID": "Your {amount} deposit is paid."
+    },
+    "demoRefund": "(Demo mode: refund only simulated.)",
+    "noPayment": "You haven’t paid a deposit yet – cancelling costs nothing.",
+    "refund": "If you cancel now, you get your {amount} deposit back.",
+    "noRefund": "Note: less than 24 hours before – the {amount} deposit is kept if you cancel.",
+    "refundableUntil": "Free cancellation until {time}.",
+    "cancelHeading": "Can’t make it?",
+    "cancelButton": "Cancel appointment",
+    "tooLateTitle": "Online cancellation no longer possible",
+    "tooLateText": "Online cancellation is only possible until {hours} hours before the appointment. Please call us: {phone}.",
+    "confirmTitle": "Really cancel this appointment?",
+    "confirmButton": "Yes, cancel",
+    "reason": "Reason (optional)"
+  },
+  "pay": {
+    "demoBanner": "DEMO MODE: no real payment",
+    "eyebrow": "Deposit",
+    "title": "Pay the deposit",
+    "lead": "With the deposit your appointment is booked for sure.",
+    "amount": "Amount",
+    "payUntil": "Please pay by {time}.",
+    "deducted": "The deposit is deducted from your price at the shop.",
+    "simulate": "Simulate payment",
+    "pay": "Pay",
+    "cancel": "Cancel",
+    "demoNote": "Demo: no payment details are asked for and no money is moved. “Simulate payment” runs the same process as a real payment.",
+    "cancelConfirmTitle": "Cancel the appointment?",
+    "cancelConfirm": "Yes, cancel the appointment",
+    "cancelConfirmText": "If you cancel, the appointment request is cancelled and the time is released. It costs nothing.",
+    "successTitle": "Paid – you’re booked!",
+    "successText": "The confirmation with a calendar file is on its way to {email}.",
+    "cancelledTitle": "Appointment cancelled",
+    "cancelledText": "The request was cancelled; nothing was paid.",
+    "depositDeducted": "The deposit is deducted from your price at the shop.",
+    "toStatus": "To the booking overview",
+    "home": "Back to the homepage"
+  },
+  "decision": {
+    "eyebrow": "Appointment request",
+    "title": "New request",
+    "acceptedTitle": "Accepted",
+    "declinedTitle": "Declined",
+    "acceptedText": "The customer has been told and now pays the deposit.",
+    "declinedText": "The customer has been told and can pick another time.",
+    "respondUntil": "Please answer by {time}.",
+    "loyalty": "Loyalty",
+    "choose": "Decision",
+    "accept": "Accept",
+    "decline": "Decline",
+    "reason": "Message to the customer (optional)",
+    "reasonHint": "Shown in the decline email.",
+    "acceptHint": "The customer gets an email with the link to pay the deposit.",
+    "declineHint": "The customer gets a decline and can book again.",
+    "confirmAccept": "Accept booking",
+    "confirmDecline": "Decline booking",
+    "acceptedNext": "You’ll get an email as soon as the deposit is paid.",
+    "declinedNext": "The time is free again."
+  },
+  "account": {
+    "verify": {
+      "eyebrow": "Account",
+      "title": "Confirm your email",
+      "text": "Click the button to confirm your email address.",
+      "button": "Confirm email",
+      "doneTitle": "Confirmed!",
+      "doneText": "Your email address is confirmed. You can log in now.",
+      "linked": "{count, plural, one {# earlier booking} other {# earlier bookings}} with this email {count, plural, one {was} other {were}} added to your account.",
+      "toLogin": "To login"
+    },
+    "reset": {
+      "eyebrow": "Account",
+      "title": "New password",
+      "password": "New password",
+      "repeat": "Repeat password",
+      "hint": "At least 10 characters.",
+      "tooShort": "At least 10 characters.",
+      "mismatch": "The passwords don’t match.",
+      "button": "Save password",
+      "doneTitle": "Password saved",
+      "doneText": "You can now log in with your new password.",
+      "toLogin": "To login"
+    },
+    "login": {
+      "eyebrow": "Account",
+      "title": "Log in",
+      "lead": "For customers, barbers and admins.",
+      "email": "Email",
+      "password": "Password",
+      "button": "Log in",
+      "forgot": "Forgot your password?",
+      "register": "No account yet? Register",
+      "resend": "Resend confirmation email",
+      "resent": "If needed, we’ve sent you a new link."
+    },
+    "register": {
+      "eyebrow": "Account",
+      "title": "Create an account",
+      "lead": "Collect visits for your loyalty reward and manage your appointments in one place.",
+      "name": "Name",
+      "email": "Email",
+      "phone": "Phone",
+      "password": "Password",
+      "passwordHint": "At least 10 characters.",
+      "lang": "Language for emails",
+      "consent": "I have read the <link>privacy policy</link> and agree to my data being processed for the customer account.",
+      "button": "Register",
+      "haveAccount": "Already have an account? Log in",
+      "doneTitle": "Account created",
+      "doneHint": "Open the link in the email to activate your account. Earlier guest bookings with the same email are added automatically.",
+      "errors": {
+        "name": "Please enter your name.",
+        "email": "Please enter a valid email address.",
+        "phone": "Please enter a valid phone number.",
+        "password": "At least 10 characters.",
+        "consent": "Please accept the privacy policy."
+      }
+    },
+    "forgot": {
+      "eyebrow": "Account",
+      "title": "Forgot password",
+      "lead": "We’ll send you a link to reset it.",
+      "email": "Email",
+      "button": "Send link",
+      "back": "Back to login"
+    },
+    "dashboard": {
+      "eyebrow": "My account",
+      "hello": "Hi {name}",
+      "profile": "Profile",
+      "logout": "Log out",
+      "loyaltyTitle": "Loyalty",
+      "loyaltyReserved": "Your {percent}% loyalty reward is reserved for your next booking.",
+      "loyaltyReady": "Your next booking gets {percent}% loyalty discount!",
+      "loyaltyProgress": "{visits} of {threshold} visits – {left} more until {percent}% off.",
+      "book": "Book an appointment",
+      "bookings": "My appointments",
+      "upcoming": "Upcoming",
+      "past": "Past",
+      "emptyUpcoming": "No upcoming appointments.",
+      "emptyPast": "No past appointments yet.",
+      "dueAtShop": "To pay at the shop",
+      "discount": "incl. {amount} loyalty discount",
+      "payUntil": "{amount} deposit due – please pay by {time}.",
+      "payNow": "Pay now",
+      "cancel": "Cancel",
+      "rebook": "Book again"
+    },
+    "profile": {
+      "back": "My account",
+      "title": "Profile",
+      "data": "Your details",
+      "name": "Name",
+      "phone": "Phone",
+      "lang": "Language",
+      "langHint": "For our emails.",
+      "save": "Save",
+      "saved": "Saved.",
+      "password": "Change password",
+      "currentPassword": "Current password",
+      "newPassword": "New password",
+      "passwordHint": "At least 10 characters. Other devices get logged out.",
+      "changePassword": "Change password",
+      "passwordChanged": "Password changed. Other devices were logged out.",
+      "privacy": "Privacy",
+      "exportText": "Download all data we store for your account (JSON).",
+      "export": "Export my data",
+      "deleteText": "Delete account: open future appointments are cancelled (the normal refund rule applies), all bookings are anonymised, your account and loyalty points are deleted.",
+      "delete": "Delete account",
+      "deleteTitle": "Delete your account for good?",
+      "deleteConfirm": "Delete for good",
+      "deleteWarning": "This can’t be undone. Open appointments are cancelled – less than 24 hours before, the deposit is kept."
+    }
+  },
+  "staff": {
+    "eyebrow": "Team",
+    "loginTitle": "Staff login",
+    "noAccessTitle": "No access",
+    "noAccess": "This area is for barbers and admins.",
+    "toAccount": "To your account",
+    "adminArea": "Admin area",
+    "barberArea": "Barber area",
+    "profile": "My profile",
+    "sections": "Sections",
+    "adminOnly": "Admins only.",
+    "tabs": {
+      "calendar": "Calendar",
+      "bookings": "Bookings",
+      "services": "Services",
+      "staff": "Barbers",
+      "timeOff": "Time off",
+      "customers": "Customers",
+      "stats": "Stats"
+    },
+    "booking": {
+      "dueAtShop": "At the shop",
+      "payment": "Deposit: {status}",
+      "paymentStatus": {
+        "UNPAID": "due",
+        "PAID": "paid",
+        "REFUNDED": "refunded",
+        "FORFEITED": "kept"
+      },
+      "respondUntil": "Answer by {time}",
+      "source": {
+        "WALK_IN": "Walk-in",
+        "PHONE": "Phone booking"
+      },
+      "actions": {
+        "accept": "Accept",
+        "decline": "Decline",
+        "complete": "Completed",
+        "no-show": "No-show",
+        "cancel": "Cancel",
+        "refund": "Refund deposit"
+      },
+      "confirm": {
+        "accept": "Accept the appointment?",
+        "decline": "Decline the request?",
+        "complete": "Mark as completed?",
+        "no-show": "Mark as no-show? The deposit is kept.",
+        "cancel": "Cancel the appointment?",
+        "refund": "Refund the kept deposit?"
+      },
+      "cancelRefund": "When the shop cancels, the deposit is refunded.",
+      "reason": "Reason / message (optional)"
+    },
+    "calendar": {
+      "title": "Calendar",
+      "view": "View",
+      "day": "Day",
+      "week": "Week",
+      "prev": "Previous",
+      "today": "Today",
+      "next": "Next",
+      "pickDate": "Pick a date",
+      "barber": "Barber",
+      "allBarbers": "All barbers",
+      "empty": "No appointments on this day.",
+      "requests": "Open requests",
+      "noRequests": "No open requests.",
+      "showClosed": "Show cancelled & expired ({count})",
+      "hideClosed": "Hide cancelled & expired"
+    },
+    "bookings": {
+      "title": "Bookings",
+      "from": "From",
+      "to": "To",
+      "status": "Status",
+      "all": "All",
+      "search": "Search (name, email, phone)",
+      "count": "{count, plural, one {# booking} other {# bookings}}"
+    },
+    "manual": {
+      "title": "Manual booking",
+      "hint": "Walk-in or phone: confirmed immediately, no deposit.",
+      "service": "Service",
+      "barber": "Barber",
+      "date": "Date",
+      "time": "Time",
+      "source": "Source",
+      "walkIn": "Walk-in",
+      "phoneBooking": "Phone",
+      "name": "Name",
+      "phone": "Phone",
+      "email": "Email (optional)",
+      "emailHint": "With an email the customer gets a confirmation.",
+      "note": "Note",
+      "created": "Appointment added.",
+      "button": "Add appointment"
+    },
+    "services": {
+      "title": "Services",
+      "add": "New service",
+      "nameDe": "Name (DE)",
+      "nameEn": "Name (EN)",
+      "descriptionDe": "Description (DE)",
+      "descriptionEn": "Description (EN)",
+      "duration": "Duration (minutes)",
+      "priceCents": "Price (cents)",
+      "priceHint": "e.g. 3500 = €35",
+      "sortOrder": "Order",
+      "priceFrom": "“from” price",
+      "active": "Active",
+      "save": "Save",
+      "cancel": "Cancel",
+      "inactive": "inactive",
+      "fromShort": "from",
+      "edit": "Edit",
+      "deactivate": "Deactivate"
+    },
+    "barbers": {
+      "title": "Barbers",
+      "newName": "New barber (name)",
+      "add": "Add",
+      "inactive": "inactive",
+      "close": "Close",
+      "manage": "Manage",
+      "name": "Name",
+      "photoUrl": "Photo URL",
+      "bioDe": "Bio (DE)",
+      "bioEn": "Bio (EN)",
+      "active": "Active",
+      "saved": "Saved.",
+      "saveProfile": "Save profile",
+      "services": "Services",
+      "saveServices": "Save services",
+      "hours": "Working hours",
+      "weekday": "Day",
+      "start": "From",
+      "end": "To",
+      "removeRange": "Remove range",
+      "addRange": "Add range",
+      "saveHours": "Save working hours",
+      "invited": "Invitation sent.",
+      "loginEmail": "Email for the barber login",
+      "loginHint": "The barber gets a link to set a password.",
+      "invite": "Set up login"
+    },
+    "timeOff": {
+      "title": "Time off",
+      "who": "Who",
+      "wholeShop": "Whole shop",
+      "fromDate": "From (date)",
+      "fromTime": "From (time)",
+      "toDate": "To (date)",
+      "toTime": "To (time)",
+      "reason": "Reason",
+      "add": "Add",
+      "empty": "No time off.",
+      "remove": "Remove"
+    },
+    "customers": {
+      "title": "Customers",
+      "search": "Search",
+      "name": "Name",
+      "contact": "Contact",
+      "type": "Type",
+      "visits": "Visits",
+      "cycle": "Loyalty",
+      "last": "Last booking",
+      "account": "Account",
+      "guest": "Guest",
+      "legend": "Loyalty = visits in the current cycle, ★ = next booking gets the discount."
+    },
+    "stats": {
+      "title": "Stats",
+      "from": "From",
+      "to": "To",
+      "booked": "Booked",
+      "lost": "Cancelled / declined / expired",
+      "perDay": "Per day",
+      "empty": "No bookings in this range.",
+      "legend": "Gold = booked, grey = lost (booked/lost).",
+      "perService": "Per service (booked / lost)"
+    },
+    "settings": {
+      "title": "Booking rules",
+      "saved": "Saved.",
+      "save": "Save rules",
+      "depositCents": "Deposit (cents)",
+      "refundCutoffMin": "Free cancellation until (min before)",
+      "onlineCancelCutoffMin": "Online cancellation until (min before)",
+      "barberResponseMin": "Barber response time (min)",
+      "paymentDeadlineMin": "Payment deadline (min)",
+      "deadlineBeforeStartMin": "Deadlines end at the latest (min before)",
+      "minLeadMin": "Lead time (min)",
+      "maxDaysAhead": "Bookable ahead (days)",
+      "slotStepMin": "Time grid (min)",
+      "bufferMin": "Buffer after appointment (min)",
+      "loyaltyThreshold": "Visits until loyalty reward",
+      "loyaltyPercent": "Loyalty discount (%)",
+      "autoCompleteAfterMin": "Auto-complete after (min)",
+      "reminderBeforeMin": "Reminder before (min)"
+    }
+  },
+  "privacy": {
+    "eyebrow": "Legal",
+    "title": "Privacy",
+    "placeholder": "PLACEHOLDER: so far only the online-booking part is written. The full privacy policy (controller, hosting, cookies, your rights, supervisory authority …) follows and must be reviewed legally.",
+    "booking": {
+      "title": "Online booking",
+      "text": [
+        "For an appointment request we process your name, email address, phone number, the chosen services, barber, date/time and your optional note – to carry out the appointment (Art. 6(1)(b) GDPR).",
+        "Guests manage their booking only via the links in our emails. These links are personal, single-use and expire."
+      ]
+    },
+    "account": {
+      "title": "Customer account",
+      "text": [
+        "With an account we additionally store your password (only as a secure hash), your language and your loyalty points. If you create and confirm an account with the same email, earlier guest bookings are added to your account.",
+        "You can export all data stored for your account as a file in your profile at any time."
+      ]
+    },
+    "emails": {
+      "title": "Emails",
+      "text": [
+        "We only send you emails about your appointments (received, accepted, payment, confirmation with calendar file, reminder, cancellation) and your account. No advertising."
+      ]
+    },
+    "deletion": {
+      "title": "Deleting your account",
+      "text": [
+        "You can delete your account in your profile at any time. Open future appointments are then cancelled – the normal refund rule applies: if cancelled at least 24 hours before the appointment, the deposit is refunded; later, it is kept.",
+        "Afterwards all your bookings are anonymised (name, email, phone and note are removed; date and amounts stay for the shop’s accounting) and your account, login data and loyalty points are deleted."
+      ]
+    },
+    "payments": {
+      "title": "Payments",
+      "text": [
+        "No real payment provider is connected at the moment (demo mode). No payment or card data is collected."
+      ]
+    }
+  }
+}

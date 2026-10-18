@@ -3,11 +3,12 @@ import { Anton, Inter } from "next/font/google";
 import { notFound } from "next/navigation";
 import { hasLocale, NextIntlClientProvider } from "next-intl";
 import { getMessages, getTranslations } from "next-intl/server";
-import { SmoothScroll } from "@/components/SmoothScroll";
+import { BookingDialog } from "@/components/booking/BookingDialog";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { siteConfig } from "@/config/site.config";
 import { themeCss } from "@/config/theme-css";
 import { routing } from "@/i18n/routing";
+import { AuthProvider } from "@/lib/auth/AuthProvider";
 import "../globals.css";
 
 // Condensed display face for headlines, Inter for body copy.
@@ -65,8 +66,11 @@ export default async function LocaleLayout({ children, params }: LayoutProps<"/[
       <body>
         <ThemeProvider>
           <NextIntlClientProvider locale={locale} messages={messages}>
-            <SmoothScroll />
-            {children}
+            <AuthProvider>
+              {children}
+              {/* opened by every "Book" button (lib/booking.ts → openBooking) */}
+              <BookingDialog />
+            </AuthProvider>
           </NextIntlClientProvider>
         </ThemeProvider>
         <div className="grain" aria-hidden="true" />

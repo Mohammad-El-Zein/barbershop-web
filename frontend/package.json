@@ -8,7 +8,11 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "placeholders": "node scripts/generate-placeholders.mjs"
+    "placeholders": "node scripts/generate-placeholders.mjs",
+    "api:generate": "node scripts/api-generate.mjs",
+    "e2e": "playwright test",
+    "e2e:install": "playwright install chromium",
+    "check:messages": "node scripts/check-messages.mjs"
   },
   "dependencies": {
     "@gsap/react": "^2.1.2",
@@ -17,16 +21,19 @@
     "next": "16.4.0",
     "next-intl": "^4.14.9",
     "next-themes": "^0.4.6",
+    "openapi-fetch": "^0.13.8",
     "react": "19.3.0",
     "react-dom": "19.3.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.1",
     "@tailwindcss/turbopack": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.4.0",
+    "openapi-typescript": "^7.13.0",
     "sharp": "^0.35.5",
     "tailwindcss": "^4",
     "typescript": "^5"
