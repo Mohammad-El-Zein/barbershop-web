@@ -93,7 +93,7 @@ export function DecisionView() {
           <Row label={tS("duration")}>{minutes(data.durationMin ?? 0, locale)}</Row>
           <Row label={tS("note")}>{data.note || "–"}</Row>
           <Row label={t("loyalty")}>{data.loyaltyNote}</Row>
-          <Row label={tS("total")}>{(data.price?.priceFrom ? tS("from") + " " : "") + data.price?.total?.formatted}</Row>
+          <Row label={tS("total")}>{data.price?.total?.formatted}</Row>
         </dl>
       </div>
 

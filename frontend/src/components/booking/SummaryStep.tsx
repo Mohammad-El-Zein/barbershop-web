@@ -73,7 +73,7 @@ export function SummaryStep({
             </div>
           ) : (
             <dl>
-              <Row label={t("total")}>{(p.priceFrom ? t("from") + " " : "") + p.total?.formatted}</Row>
+              <Row label={t("total")}>{p.total?.formatted}</Row>
               {(p.loyaltyDiscount?.cents ?? 0) > 0 && <Row label={t("loyaltyDiscount")}>− {p.loyaltyDiscount?.formatted}</Row>}
               <Row label={t("deposit")}>{p.deposit?.formatted}</Row>
               <Row label={t("dueAtShop")} strong>

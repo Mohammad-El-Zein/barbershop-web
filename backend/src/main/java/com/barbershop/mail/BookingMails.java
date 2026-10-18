@@ -165,7 +165,7 @@ public class BookingMails {
                 .row(msg(l, "mail.label.duration"), msg(l, "mail.label.duration.value", b.durationMin()))
                 .row(msg(l, "mail.label.note"), b.getCustomerNote() == null ? "–" : b.getCustomerNote())
                 .row(msg(l, "mail.label.loyalty"), loyaltyNotes.forBarber(b, t.policy(), l))
-                .row(msg(l, "mail.label.total"), money(b.getPriceTotalCents(), b, l, b.isPriceFrom()));
+                .row(msg(l, "mail.label.total"), money(b.getPriceTotalCents(), b, l));
         if (b.getLoyaltyDiscountCents() > 0) {
             m.row(msg(l, "mail.label.loyalty_discount"), "− " + money(b.getLoyaltyDiscountCents(), b, l));
         }
@@ -184,7 +184,7 @@ public class BookingMails {
                 .row(msg(l, "mail.label.services"), b.serviceNames(l))
                 .strongRow(msg(l, "mail.label.time"), when(b, t, l))
                 .strongRow(msg(l, "mail.label.deposit"), msg(l, "mail.barber.paid.deposit", money(b.getDepositCents(), b, l)))
-                .row(msg(l, "mail.label.due_at_shop"), money(b.getAmountDueAtShopCents(), b, l)); // exact amount, never "ab"/"from"
+                .row(msg(l, "mail.label.due_at_shop"), money(b.getAmountDueAtShopCents(), b, l));
         if (demo) m.notice(msg(l, "mail.demo_note"), "demo");
         return m;
     }
@@ -227,7 +227,7 @@ public class BookingMails {
                 .strongRow(msg(l, "mail.label.when"), when(b, t, l))
                 .row(msg(l, "mail.label.duration"), msg(l, "mail.label.duration.value", b.durationMin()));
         if (!withPrices) return;
-        m.row(msg(l, "mail.label.total"), money(b.getPriceTotalCents(), b, l, b.isPriceFrom()));
+        m.row(msg(l, "mail.label.total"), money(b.getPriceTotalCents(), b, l));
         if (b.getLoyaltyDiscountCents() > 0) {
             m.row(msg(l, "mail.label.loyalty_discount"), "− " + money(b.getLoyaltyDiscountCents(), b, l));
         }
@@ -235,7 +235,7 @@ public class BookingMails {
             boolean paid = b.getStatus() == BookingStatus.CONFIRMED || b.getStatus() == BookingStatus.COMPLETED;
             m.row(msg(l, paid ? "mail.label.deposit_paid" : "mail.label.deposit"), money(b.getDepositCents(), b, l));
         }
-        m.strongRow(msg(l, "mail.label.due_at_shop"), money(b.getAmountDueAtShopCents(), b, l, b.isPriceFrom()));
+        m.strongRow(msg(l, "mail.label.due_at_shop"), money(b.getAmountDueAtShopCents(), b, l));
     }
 
     private void refundInfo(MailContent m, Booking b, Tenant t, Lang l, Settlement deposit, boolean demo,
@@ -257,7 +257,7 @@ public class BookingMails {
     private byte[] ics(Booking b, Tenant t, Lang l) {
         String summary = b.serviceNames(l) + " – " + t.getName();
         String description = msg(l, "mail.label.barber") + ": " + b.getStaff().getName() + "\n"
-                + msg(l, "mail.label.due_at_shop") + ": " + money(b.getAmountDueAtShopCents(), b, l, b.isPriceFrom());
+                + msg(l, "mail.label.due_at_shop") + ": " + money(b.getAmountDueAtShopCents(), b, l);
         return IcsCalendar.event(b.getId(), b.getStartTime(), b.getEndTime(), Instant.now(clock), summary,
                 description, t.getName());
     }
@@ -277,12 +277,9 @@ public class BookingMails {
         return DateTimeFormatter.ofPattern(msg(l, "mail.datetime.pattern"), l.locale()).format(i.atZone(t.zone()));
     }
 
+    /** Booking amounts are exact: never "ab"/"from" (that is only for the catalogue). */
     private String money(int cents, Booking b, Lang l) {
-        return money(cents, b, l, false);
-    }
-
-    private String money(int cents, Booking b, Lang l, boolean from) {
-        return prices.format(cents, b.getCurrency(), from, l);
+        return prices.format(cents, b.getCurrency(), false, l);
     }
 
     private String msg(Lang l, String code, Object... args) {

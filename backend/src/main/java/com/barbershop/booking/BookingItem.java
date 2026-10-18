@@ -41,9 +41,6 @@ public class BookingItem {
     @Column(name = "price_cents", nullable = false, updatable = false)
     private int priceCents;
 
-    @Column(name = "price_from", nullable = false, updatable = false)
-    private boolean priceFrom;
-
     @Column(nullable = false, updatable = false)
     private int position;
 
@@ -57,7 +54,6 @@ public class BookingItem {
         this.nameEn = service.getNameEn();
         this.durationMin = service.getDurationMin();
         this.priceCents = service.getPriceCents();
-        this.priceFrom = service.isPriceFrom();
         this.position = position;
     }
 
@@ -71,6 +67,5 @@ public class BookingItem {
     public String getNameEn() { return nameEn; }
     public int getDurationMin() { return durationMin; }
     public int getPriceCents() { return priceCents; }
-    public boolean isPriceFrom() { return priceFrom; }
     public int getPosition() { return position; }
 }

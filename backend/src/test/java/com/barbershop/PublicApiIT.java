@@ -164,7 +164,7 @@ class PublicApiIT extends AbstractIntegrationTest {
         assertThat((Map<String, Object>) price.get("total")).containsEntry("cents", 6000).containsEntry("formatted", "€60");
         assertThat((Map<String, Object>) price.get("deposit")).containsEntry("cents", 1000);
         assertThat((Map<String, Object>) price.get("amountDueAtShop")).containsEntry("cents", 5000);
-        assertThat(price).containsEntry("priceFrom", true);
+        assertThat(price).doesNotContainKey("priceFrom"); // booking prices are exact, even for "from" services
 
         assertThat(post(BASE + "/bookings/price-preview", Map.of("serviceIds", List.of(HAIRCUT, HAIRCUT))).getBody())
                 .containsEntry("code", "service.duplicate");

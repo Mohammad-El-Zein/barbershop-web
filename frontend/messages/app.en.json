@@ -59,7 +59,6 @@
       "hint": "You can combine several services – duration and price add up.",
       "legend": "Services",
       "selected": "{count, plural, one {# service} other {# services}}",
-      "from": "from",
       "none": "No service selected yet."
     },
     "slots": {
@@ -107,7 +106,6 @@
       "duration": "Duration",
       "note": "Note",
       "total": "Total price",
-      "from": "from",
       "loyaltyDiscount": "Loyalty discount",
       "deposit": "Deposit",
       "dueAtShop": "To pay at the shop",

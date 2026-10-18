@@ -14,6 +14,9 @@ import {
   waitForMail,
 } from "./support";
 
+/** "ab 60 €" / "from €60": booking amounts are exact, the prefix is only for the landing cards. */
+const FROM_PRICE = /\bab \d|\bfrom €/;
+
 async function openBookingFromLanding(page: Page, t: Texts, mobile: boolean) {
   await page.locator("[data-preloader]").waitFor({ state: "detached", timeout: 60_000 });
   if (mobile) {
@@ -72,6 +75,7 @@ test("guest books → barber accepts via email link → demo payment → confirm
   // 4) summary → send
   await expect(dialog.getByText("Luca").first()).toBeVisible();
   await expect(dialog.getByText(/10\s€|€10/).first()).toBeVisible();
+  await expect(dialog).not.toContainText(FROM_PRICE);
   await shot(page, info, "05-modal-summary");
   await dialog.getByRole("button", { name: t.send }).click();
 
@@ -101,6 +105,7 @@ test("guest books → barber accepts via email link → demo payment → confirm
   // DEMO payment page: banner, amount, two buttons, no card fields
   await expect(page.getByRole("note")).toHaveText(new RegExp(t.demo));
   await expect(page.locator("main input")).toHaveCount(0);
+  await expect(page.getByRole("main")).not.toContainText(FROM_PRICE);
   await expect(page.locator('input[autocomplete^="cc-"], input[name*="card" i]')).toHaveCount(0);
   await shot(page, info, "10-pay-demo");
   await page.getByRole("button", { name: t.simulate }).click();
@@ -109,6 +114,9 @@ test("guest books → barber accepts via email link → demo payment → confirm
 
   // both confirmation emails, each in its recipient's language
   const confirmed = await waitForMail(email, t.confirmedMail);
+  expect(confirmed.Text).not.toMatch(FROM_PRICE);
+  expect((await waitForMail(email, lang === "de" ? "hat zugesagt" : "accepted")).Text).not.toMatch(FROM_PRICE);
+  expect((await waitForMail(email, lang === "de" ? "Deine Terminanfrage" : "Your appointment request")).Text).not.toMatch(FROM_PRICE);
   expect(confirmed.Attachments.map((a) => a.FileName)).toContain(lang === "en" ? "appointment.ics" : "termin.ics");
   const paidMail = await waitForMail(barberEmail, `Anzahlung erhalten: ${name}`);
   expect(paidMail.Text).toMatch(/10\s€ Anzahlung bezahlt/);
@@ -142,6 +150,7 @@ test("guest books → barber accepts via email link → demo payment → confirm
   await expect(page.getByRole("heading", { name: t.hello })).toBeVisible();
   const card = page.locator("li[data-booking-id]").filter({ hasText: "Luca" }).first();
   await expect(card.getByText(t.confirmedBadge, { exact: true })).toBeVisible();
+  await expect(page.getByRole("main")).not.toContainText(FROM_PRICE);
   await shot(page, info, "16-my-bookings");
 
   // barber calendar (Luca's own login) shows the booking on that day

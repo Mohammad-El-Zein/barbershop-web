@@ -112,9 +112,6 @@ public class Booking implements Persistable<UUID> {
     @Column(name = "amount_due_at_shop_cents", nullable = false)
     private int amountDueAtShopCents;
 
-    @Column(name = "price_from", nullable = false)
-    private boolean priceFrom;
-
     @Enumerated(EnumType.STRING)
     @Column(name = "loyalty_status", nullable = false)
     private LoyaltyStatus loyaltyStatus = LoyaltyStatus.NONE;
@@ -238,7 +235,6 @@ public class Booking implements Persistable<UUID> {
         this.loyaltyDiscountCents = p.loyaltyDiscountCents();
         this.depositCents = p.depositCents();
         this.amountDueAtShopCents = p.amountDueAtShopCents();
-        this.priceFrom = p.priceFrom();
     }
 
     public void setLoyaltyStatus(LoyaltyStatus loyaltyStatus) {
@@ -310,7 +306,6 @@ public class Booking implements Persistable<UUID> {
     public int getLoyaltyDiscountCents() { return loyaltyDiscountCents; }
     public int getDepositCents() { return depositCents; }
     public int getAmountDueAtShopCents() { return amountDueAtShopCents; }
-    public boolean isPriceFrom() { return priceFrom; }
     public LoyaltyStatus getLoyaltyStatus() { return loyaltyStatus; }
     public Instant getBarberDeadlineAt() { return barberDeadlineAt; }
     public Instant getPaymentDeadlineAt() { return paymentDeadlineAt; }

@@ -5,7 +5,10 @@ import type { Service } from "@/lib/api/types";
 import { minutes, money } from "@/lib/format";
 import { Skeleton } from "../ui/Feedback";
 
-/** Step 1: one or more services, with duration, price and a running total. */
+/**
+ * Step 1: one or more services, with duration, price and a running total. Prices are
+ * the exact amounts the booking will charge — "ab"/"from" is only for the landing cards.
+ */
 export function ServicesStep({
   services,
   loading,
@@ -22,7 +25,6 @@ export function ServicesStep({
   const chosen = (services ?? []).filter((s) => selected.includes(s.id!));
   const totalCents = chosen.reduce((sum, s) => sum + (s.price?.amountCents ?? 0), 0);
   const totalMin = chosen.reduce((sum, s) => sum + (s.durationMin ?? 0), 0);
-  const from = chosen.some((s) => s.price?.from);
 
   return (
     <div>
@@ -54,7 +56,7 @@ export function ServicesStep({
                       <span className="flex min-w-0 flex-1 flex-col gap-1">
                         <span className="flex items-baseline justify-between gap-3">
                           <span className="display text-xl">{s.name}</span>
-                          <span className="shrink-0 text-sm font-semibold text-gold-text">{s.price?.formatted}</span>
+                          <span className="shrink-0 text-sm font-semibold text-gold-text">{money(s.price?.amountCents ?? 0, locale)}</span>
                         </span>
                         <span className="text-xs text-muted">{minutes(s.durationMin ?? 0, locale)}</span>
                         {s.description && <span className="text-sm leading-snug text-ink/75">{s.description}</span>}
@@ -76,10 +78,7 @@ export function ServicesStep({
             <span className="text-sm text-muted">
               {t("selected", { count: chosen.length })} · {minutes(totalMin, locale)}
             </span>
-            <span className="text-base font-semibold">
-              {from ? t("from") + " " : ""}
-              {money(totalCents, locale)}
-            </span>
+            <span className="text-base font-semibold">{money(totalCents, locale)}</span>
           </>
         ) : (
           <span className="text-sm text-muted">{t("none")}</span>

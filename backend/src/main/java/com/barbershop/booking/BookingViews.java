@@ -83,20 +83,20 @@ public class BookingViews {
     public List<ServiceLine> lines(Booking b, Lang lang) {
         return b.getItems().stream()
                 .map(i -> new ServiceLine(i.getServiceId(), i.name(lang), i.getDurationMin(),
-                        money(i.getPriceCents(), b.getCurrency(), lang), i.isPriceFrom()))
+                        money(i.getPriceCents(), b.getCurrency(), lang)))
                 .toList();
     }
 
     public PriceView price(Booking b, Lang lang) {
         String c = b.getCurrency();
         return new PriceView(c, money(b.getPriceTotalCents(), c, lang), money(b.getLoyaltyDiscountCents(), c, lang),
-                money(b.getDepositCents(), c, lang), money(b.getAmountDueAtShopCents(), c, lang), b.isPriceFrom());
+                money(b.getDepositCents(), c, lang), money(b.getAmountDueAtShopCents(), c, lang));
     }
 
     public PriceView price(BookingPricing.Breakdown p, String currency, Lang lang) {
         return new PriceView(currency, money(p.totalCents(), currency, lang),
                 money(p.loyaltyDiscountCents(), currency, lang), money(p.depositCents(), currency, lang),
-                money(p.amountDueAtShopCents(), currency, lang), p.priceFrom());
+                money(p.amountDueAtShopCents(), currency, lang));
     }
 
     public MoneyView money(int cents, String currency, Lang lang) {

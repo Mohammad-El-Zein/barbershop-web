@@ -61,7 +61,8 @@ class BookingFlowIT extends AbstractIntegrationTest {
 
         MimeMessage received = mailTo(email, "Your appointment request at The Barber News");
         assertThat(received.getContentLanguage()).containsExactly("en");
-        assertThat(text(received)).contains("Haircut + Beard Sculpting").contains("€10 deposit");
+        assertThat(text(received)).contains("Haircut + Beard Sculpting", "€10 deposit", "€60")
+                .doesNotContain("from €"); // booking amounts are exact, even for "from" services
 
         // the barber's request mail (admin fallback, German): details + Accept/Decline at the end
         MimeMessage request = mailTo(ADMIN_EMAIL, "Neue Terminanfrage: " + nameFor(email));
@@ -84,7 +85,7 @@ class BookingFlowIT extends AbstractIntegrationTest {
         assertThat(paymentStatus(id)).isEqualTo("UNPAID");
 
         MimeMessage payMail = mailTo(email, "Luca accepted");
-        assertThat(text(payMail)).contains("Pay now", "€10", "DEMO MODE");
+        assertThat(text(payMail)).contains("Pay now", "€10", "DEMO MODE").doesNotContain("from €");
         String pay = tokenFromMail(email, "Luca accepted", PAY_LINK);
 
         // 4) payment page (GET twice: still unpaid), demo banner flag, no card fields — just two actions
@@ -105,7 +106,7 @@ class BookingFlowIT extends AbstractIntegrationTest {
 
         MimeMessage confirmed = mailTo(email, "Appointment confirmed");
         assertThat(text(confirmed)).contains("Deposit paid", "To pay at the shop", "€50", "DEMO MODE",
-                "cancel for free");
+                "cancel for free").doesNotContain("from €");
         assertThat(attachmentNames(confirmed)).containsExactly("appointment.ics");
         MimeMessage barberPaid = mailTo(ADMIN_EMAIL, "Anzahlung erhalten: " + nameFor(email));
         assertThat(text(barberPaid)).contains("10 € Anzahlung bezahlt", "Haarschnitt + Bart-Styling", "10:00–11:15");

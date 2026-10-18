@@ -60,7 +60,7 @@ export function BookingSummary({ booking, showPrices = true }: { booking: Bookin
       <Row label={t("when")}>{dateTimeRange(booking.start!, booking.end!, locale, booking.timezone)}</Row>
       {showPrices && p && (
         <>
-          <Row label={t("total")}>{(p.priceFrom ? t("from") + " " : "") + p.total?.formatted}</Row>
+          <Row label={t("total")}>{p.total?.formatted}</Row>
           {(p.loyaltyDiscount?.cents ?? 0) > 0 && <Row label={t("loyaltyDiscount")}>− {p.loyaltyDiscount?.formatted}</Row>}
           {(p.deposit?.cents ?? 0) > 0 && <Row label={t("deposit")}>{p.deposit?.formatted}</Row>}
           <Row label={t("dueAtShop")} strong>

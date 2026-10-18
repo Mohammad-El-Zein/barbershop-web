@@ -3354,9 +3354,6 @@
           },
           "amountDueAtShop": {
             "$ref": "#/components/schemas/MoneyView"
-          },
-          "priceFrom": {
-            "type": "boolean"
           }
         }
       },
@@ -3376,9 +3373,6 @@
           },
           "price": {
             "$ref": "#/components/schemas/MoneyView"
-          },
-          "priceFrom": {
-            "type": "boolean"
           }
         }
       },

@@ -148,7 +148,7 @@ public class BookingService {
                 policy.getLoyaltyPercent());
         List<ServiceLine> lines = services.stream()
                 .map(s -> new ServiceLine(s.getId(), s.name(lang), s.getDurationMin(),
-                        views.money(s.getPriceCents(), tenant.getCurrency(), lang), s.isPriceFrom()))
+                        views.money(s.getPriceCents(), tenant.getCurrency(), lang)))
                 .toList();
         return new PricePreview(lines, (int) AvailabilityService.totalDuration(services).toMinutes(),
                 views.price(price, tenant.getCurrency(), lang), loyaltyInfo);
@@ -481,7 +481,7 @@ public class BookingService {
     }
 
     private static List<Line> lines(List<BarberService> services) {
-        return services.stream().map(s -> new Line(s.getPriceCents(), s.isPriceFrom())).toList();
+        return services.stream().map(s -> new Line(s.getPriceCents())).toList();
     }
 
     private static boolean isCustomerOf(CurrentUser user, Tenant tenant) {

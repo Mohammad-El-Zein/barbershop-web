@@ -73,13 +73,14 @@ public final class BookingDtos {
 
     public record MoneyView(int cents, String formatted) {}
 
-    public record ServiceLine(UUID serviceId, String name, int durationMin, MoneyView price, boolean priceFrom) {}
+    /** A booked service at its exact price (a booking never shows "from" prices). */
+    public record ServiceLine(UUID serviceId, String name, int durationMin, MoneyView price) {}
 
     public record StaffRef(UUID id, String name) {}
 
-    /** price_total − loyalty_discount − deposit = amount_due_at_shop. */
+    /** price_total − loyalty_discount − deposit = amount_due_at_shop; all exact amounts. */
     public record PriceView(String currency, MoneyView total, MoneyView loyaltyDiscount, MoneyView deposit,
-                            MoneyView amountDueAtShop, boolean priceFrom) {}
+                            MoneyView amountDueAtShop) {}
 
     public record PaymentInfo(PaymentStatus status, MoneyView amount, OffsetDateTime deadline, boolean demoMode) {}
 

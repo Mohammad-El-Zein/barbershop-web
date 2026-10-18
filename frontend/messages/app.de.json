@@ -59,7 +59,6 @@
       "hint": "Du kannst mehrere Leistungen kombinieren – Dauer und Preis werden addiert.",
       "legend": "Leistungen",
       "selected": "{count, plural, one {# Leistung} other {# Leistungen}}",
-      "from": "ab",
       "none": "Noch keine Leistung gewählt."
     },
     "slots": {
@@ -107,7 +106,6 @@
       "duration": "Dauer",
       "note": "Notiz",
       "total": "Gesamtpreis",
-      "from": "ab",
       "loyaltyDiscount": "Treuerabatt",
       "deposit": "Anzahlung",
       "dueAtShop": "Im Laden zu zahlen",

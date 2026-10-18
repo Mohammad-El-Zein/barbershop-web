@@ -1471,7 +1471,6 @@ export interface components {
             currency?: string;
             deposit?: components["schemas"]["MoneyView"];
             loyaltyDiscount?: components["schemas"]["MoneyView"];
-            priceFrom?: boolean;
             total?: components["schemas"]["MoneyView"];
         };
         ReasonRequest: {
@@ -1520,7 +1519,6 @@ export interface components {
             durationMin?: number;
             name?: string;
             price?: components["schemas"]["MoneyView"];
-            priceFrom?: boolean;
             /** Format: uuid */
             serviceId?: string;
         };
