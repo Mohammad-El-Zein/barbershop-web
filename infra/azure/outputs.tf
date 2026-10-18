@@ -47,6 +47,16 @@ output "container_app_environment" {
   value = azurerm_container_app_environment.this.name
 }
 
+output "db_init_job_name" {
+  description = "Run once after the first apply: az containerapp job start -g <rg> -n <this>."
+  value       = azurerm_container_app_job.db_init.name
+}
+
+output "migrate_job_name" {
+  description = "Flyway with the owner login; CI runs it before every backend rollout."
+  value       = azurerm_container_app_job.migrate.name
+}
+
 output "postgres_fqdn" {
   value = azurerm_postgresql_flexible_server.this.fqdn
 }
@@ -74,6 +84,7 @@ output "ci_variables" {
     AZURE_RESOURCE_GROUP = azurerm_resource_group.this.name
     ACR_NAME             = azurerm_container_registry.this.name
     BACKEND_APP_NAME     = azurerm_container_app.backend.name
+    MIGRATE_JOB_NAME     = azurerm_container_app_job.migrate.name
     FRONTEND_APP_NAME    = azurerm_container_app.frontend.name
     API_URL              = local.api_url
     NEXT_PUBLIC_SITE_URL = local.site_url

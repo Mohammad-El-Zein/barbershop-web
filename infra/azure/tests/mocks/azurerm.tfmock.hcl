@@ -122,3 +122,9 @@ mock_data "azurerm_client_config" {
     subscription_id = "00000000-0000-4000-8000-000000000004"
   }
 }
+
+mock_resource "azurerm_container_app_job" {
+  defaults = {
+    id = "/subscriptions/00000000-0000-4000-8000-000000000004/resourceGroups/rg-barbershop-dev/providers/Microsoft.App/jobs/job-barbershop-dev-migrate"
+  }
+}

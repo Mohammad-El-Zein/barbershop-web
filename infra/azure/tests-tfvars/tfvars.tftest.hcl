@@ -1,6 +1,6 @@
 # The real env/*.tfvars files against mocked providers (types, preconditions, wiring):
-#   terraform test -filter=tests/tfvars.tftest.hcl -var-file=env/dev.tfvars -var subscription_id=00000000-0000-4000-8000-000000000004
-#   terraform test -filter=tests/tfvars.tftest.hcl -var-file=env/prod.tfvars -var subscription_id=00000000-0000-4000-8000-000000000004 -var captcha_secret=x
+#   terraform test -test-directory=tests-tfvars -var-file=env/dev.tfvars -var subscription_id=00000000-0000-4000-8000-000000000004
+#   terraform test -test-directory=tests-tfvars -var-file=env/prod.tfvars -var subscription_id=00000000-0000-4000-8000-000000000004 -var captcha_secret=x
 
 mock_provider "azurerm" {
   source = "./tests/mocks"

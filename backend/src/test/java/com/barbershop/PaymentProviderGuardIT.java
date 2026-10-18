@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.barbershop.payment.PaymentProvider;
 import com.barbershop.support.AbstractIntegrationTest;
+import com.barbershop.support.DbRoles;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.builder.SpringApplicationBuilder;
@@ -46,8 +47,12 @@ class PaymentProviderGuardIT extends AbstractIntegrationTest {
                 .profiles("prod", "demo")
                 .run("--server.port=0",
                         "--spring.datasource.url=" + POSTGRES.getJdbcUrl(),
-                        "--spring.datasource.username=" + POSTGRES.getUsername(),
-                        "--spring.datasource.password=" + POSTGRES.getPassword(),
+                        // like production: application role only, no migration (validate the schema)
+                        "--spring.datasource.username=" + DbRoles.APP,
+                        "--spring.datasource.password=" + DbRoles.APP_PASSWORD,
+                        "--spring.flyway.user=" + DbRoles.APP,
+                        "--spring.flyway.password=" + DbRoles.APP_PASSWORD,
+                        "--app.db.migrate=false",
                         "--spring.mail.host=localhost",
                         "--spring.mail.port=" + MAIL.getSmtp().getPort(),
                         "--app.jwt.secret=" + UUID.randomUUID() + UUID.randomUUID(),

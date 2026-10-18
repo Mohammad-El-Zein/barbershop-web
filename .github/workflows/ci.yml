@@ -7,7 +7,7 @@
 # No secrets in this file. Deploy uses GitHub OIDC → Azure (no stored password) and
 # repository / environment VARIABLES (see docs/DEPLOYMENT.md → CI/CD):
 #   AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID, AZURE_RESOURCE_GROUP,
-#   ACR_NAME, BACKEND_APP_NAME, FRONTEND_APP_NAME, API_URL (health check),
+#   ACR_NAME, BACKEND_APP_NAME, MIGRATE_JOB_NAME, FRONTEND_APP_NAME, API_URL (health check),
 #   NEXT_PUBLIC_SITE_URL, NEXT_PUBLIC_API_URL, NEXT_PUBLIC_TENANT, optional
 #   NEXT_PUBLIC_GA4_ID / _GOOGLE_ADS_ID / _GOOGLE_ADS_CONVERSION_LABEL / _META_PIXEL_ID /
 #   _TURNSTILE_SITE_KEY (frontend images bake these in at build time).
@@ -92,11 +92,14 @@ jobs:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
       - name: fmt, init, validate, test
         run: |
-          tf() { docker run --rm -v "$PWD/infra/azure:/work" -w /work ${{ env.TERRAFORM_IMAGE }} "$@"; }
+          # infra/ is mounted: dbjobs.tf reads ../postgres/init-roles.sql
+          tf() { docker run --rm -v "$PWD/infra:/infra" -w /infra/azure ${{ env.TERRAFORM_IMAGE }} "$@"; }
           tf fmt -recursive -check -diff
           tf init -backend=false -input=false
           tf validate
           tf test
+          tf test -test-directory=tests-tfvars -var-file=env/dev.tfvars -var subscription_id=00000000-0000-4000-8000-000000000004
+          tf test -test-directory=tests-tfvars -var-file=env/prod.tfvars -var subscription_id=00000000-0000-4000-8000-000000000004 -var captcha_secret=x
 
   dependency-scan:
     name: Dependencies · vulnerability scan
@@ -224,6 +227,8 @@ jobs:
           sed -i "s|^APP_JWT_SECRET=.*|APP_JWT_SECRET=$(openssl rand -base64 48 | tr -d '\n')|" infra/.env
           sed -i "s|^POSTGRES_PASSWORD=.*|POSTGRES_PASSWORD=$(openssl rand -hex 24)|" infra/.env
           sed -i "s|^APP_ADMIN_PASSWORD=.*|APP_ADMIN_PASSWORD=$(openssl rand -hex 24)|" infra/.env
+          sed -i "s|^DB_MIGRATION_PASSWORD=.*|DB_MIGRATION_PASSWORD=$(openssl rand -hex 24)|" infra/.env
+          sed -i "s|^DB_APP_PASSWORD=.*|DB_APP_PASSWORD=$(openssl rand -hex 24)|" infra/.env
       - name: Start backend, Postgres, Mailpit
         run: $COMPOSE up -d --build --wait backend mailpit
       - name: Build and start the frontend image (prerendered against the running backend)
@@ -276,6 +281,7 @@ jobs:
           RG: ${{ vars.AZURE_RESOURCE_GROUP }}
           ACR: ${{ vars.ACR_NAME }}
           BACKEND_APP: ${{ vars.BACKEND_APP_NAME }}
+          MIGRATE_JOB: ${{ vars.MIGRATE_JOB_NAME }}
           FRONTEND_APP: ${{ vars.FRONTEND_APP_NAME }}
         run: |
           TAG="sha-${GITHUB_SHA::7}"
@@ -284,7 +290,9 @@ jobs:
           for c in backend frontend; do
             docker buildx imagetools create --tag "$ACR.azurecr.io/barbershop-$c:$TAG" "$SRC/$c:$TAG"
           done
-          # backend first: Flyway migrates on start; the readiness probe gates the traffic switch
+          # 1) migrations with the owner role (separate job); stops the deploy on failure
+          sh infra/azure/scripts/run-migrate-job.sh "$RG" "$MIGRATE_JOB" "$ACR.azurecr.io/barbershop-backend:$TAG"
+          # 2) backend (application role, validates the schema), then the frontend
           az containerapp update -g "$RG" -n "$BACKEND_APP" --image "$ACR.azurecr.io/barbershop-backend:$TAG"
           az containerapp update -g "$RG" -n "$FRONTEND_APP" --image "$ACR.azurecr.io/barbershop-frontend:$TAG"
       - name: Smoke test

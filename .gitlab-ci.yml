@@ -7,7 +7,7 @@
 # No secrets in this file. Uses GitLab's built-in registry variables and, for the deploy,
 # CI/CD VARIABLES (protected, per environment) — see docs/DEPLOYMENT.md → CI/CD:
 #   AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID (OIDC federated credential,
-#   no client secret), AZURE_RESOURCE_GROUP, ACR_NAME, BACKEND_APP_NAME,
+#   no client secret), AZURE_RESOURCE_GROUP, ACR_NAME, BACKEND_APP_NAME, MIGRATE_JOB_NAME,
 #   FRONTEND_APP_NAME, API_URL, and the frontend build values NEXT_PUBLIC_SITE_URL,
 #   NEXT_PUBLIC_API_URL, NEXT_PUBLIC_TENANT, NEXT_PUBLIC_GA4_ID, … (baked into the image).
 # Tags: every pipeline pushes sha-<short sha>; the default branch also gets the branch
@@ -79,6 +79,8 @@ infra:terraform:
     - terraform init -backend=false -input=false
     - terraform validate
     - terraform test
+    - terraform test -test-directory=tests-tfvars -var-file=env/dev.tfvars -var subscription_id=00000000-0000-4000-8000-000000000004
+    - terraform test -test-directory=tests-tfvars -var-file=env/prod.tfvars -var subscription_id=00000000-0000-4000-8000-000000000004 -var captcha_secret=x
 
 # ── test ─────────────────────────────────────────────────────────────────────
 backend:test:
@@ -232,6 +234,8 @@ e2e:
     - sed -i "s|^APP_JWT_SECRET=.*|APP_JWT_SECRET=$(openssl rand -base64 48 | tr -d '\n')|" infra/.env
     - sed -i "s|^POSTGRES_PASSWORD=.*|POSTGRES_PASSWORD=$(openssl rand -hex 24)|" infra/.env
     - sed -i "s|^APP_ADMIN_PASSWORD=.*|APP_ADMIN_PASSWORD=$(openssl rand -hex 24)|" infra/.env
+    - sed -i "s|^DB_MIGRATION_PASSWORD=.*|DB_MIGRATION_PASSWORD=$(openssl rand -hex 24)|" infra/.env
+    - sed -i "s|^DB_APP_PASSWORD=.*|DB_APP_PASSWORD=$(openssl rand -hex 24)|" infra/.env
   script:
     - $COMPOSE up -d --build --wait backend mailpit
     # prerendered against the running backend (build network "host" = the dind daemon)
@@ -268,7 +272,10 @@ e2e:
           --source "$CI_REGISTRY_IMAGE/$c:$IMAGE_TAG" --image "barbershop-$c:$IMAGE_TAG" \
           --username "$CI_REGISTRY_USER" --password "$CI_REGISTRY_PASSWORD"
       done
-    # backend first: Flyway migrates on start; the readiness probe gates the traffic switch
+    # 1) migrations with the owner role (separate job); stops the deploy on failure
+    - sh infra/azure/scripts/run-migrate-job.sh "$AZURE_RESOURCE_GROUP" "$MIGRATE_JOB_NAME"
+      "$ACR_NAME.azurecr.io/barbershop-backend:$IMAGE_TAG"
+    # 2) backend (application role, validates the schema), then the frontend
     - az containerapp update -g "$AZURE_RESOURCE_GROUP" -n "$BACKEND_APP_NAME"
       --image "$ACR_NAME.azurecr.io/barbershop-backend:$IMAGE_TAG" --output none
     - az containerapp update -g "$AZURE_RESOURCE_GROUP" -n "$FRONTEND_APP_NAME"

@@ -3,14 +3,13 @@ package com.barbershop.auth;
 import com.barbershop.common.config.AppProperties;
 import com.barbershop.common.error.ProblemFactory;
 import java.util.List;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.AuthenticationEntryPoint;
@@ -39,7 +38,9 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
  * cookie is the refresh token: httpOnly, SameSite=Strict, path /api/auth, and
  * {@link AuthController} additionally checks the Origin header.
  */
+// web only: the migration run (APP_MIGRATE_ONLY) starts without a web server
 @Configuration
+@ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 public class SecurityConfig {
 
     @Bean
@@ -114,8 +115,4 @@ public class SecurityConfig {
         return props.cors().allowedOrigins().stream().map(String::trim).filter(s -> !s.isEmpty()).toList();
     }
 
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder(12);
-    }
 }

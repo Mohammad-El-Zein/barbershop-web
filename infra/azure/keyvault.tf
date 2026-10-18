@@ -1,6 +1,6 @@
 # Key Vault (RBAC): every secret the backend needs. The apps read them with their managed
 # identity (Container Apps Key Vault references) — no secret is stored in an app definition.
-# Generated secrets (JWT, link tokens, DB password) are created here; optional ones
+# Generated secrets (JWT, link tokens, the three DB logins) are created here; optional ones
 # (SMTP, admin, CAPTCHA, Redis) only when the variable is set.
 # Note: Terraform state contains these values → protect the state (README.md → Remote state).
 
@@ -43,10 +43,12 @@ resource "random_password" "link_tokens" {
 locals {
   # name in Key Vault → value; the optional ones only when set (flags are not secret)
   generated_secrets = {
-    "db-password"  = random_password.db.result
-    "jwt-secret"   = random_password.jwt.result
-    "token-secret" = random_password.link_tokens.result
-    "appi-conn"    = azurerm_application_insights.this.connection_string
+    "db-admin-password"     = random_password.db.result
+    "db-migration-password" = random_password.db_migrator.result
+    "db-app-password"       = random_password.db_app.result
+    "jwt-secret"            = random_password.jwt.result
+    "token-secret"          = random_password.link_tokens.result
+    "appi-conn"             = azurerm_application_insights.this.connection_string
   }
   optional_secret_values = {
     "smtp-password"  = var.smtp_password

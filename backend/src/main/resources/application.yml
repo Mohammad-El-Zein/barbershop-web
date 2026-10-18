@@ -13,9 +13,11 @@ spring:
   threads:
     virtual:
       enabled: true
+  # Two logins (docs/DEPLOYMENT.md → Database roles): the connection pool uses the
+  # least-privilege application role, Flyway its own migration (owner) role.
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/barbershop}
-    username: ${DB_USERNAME:barbershop}
+    username: ${DB_USERNAME:barbershop_app}
     password: ${DB_PASSWORD:}
   jpa:
     open-in-view: false
@@ -29,6 +31,12 @@ spring:
     # LocalTime working hours by the JVM zone offset (09:00 → 10:00 in Berlin).
   flyway:
     locations: classpath:db/migration
+    # migration role; without DB_MIGRATION_USERNAME Flyway uses the application login
+    # (then the prod start-up check refuses a login that can run DDL)
+    user: ${DB_MIGRATION_USERNAME:${DB_USERNAME:barbershop_app}}
+    password: ${DB_MIGRATION_PASSWORD:${DB_PASSWORD:}}
+    placeholders:
+      app_role: ${DB_USERNAME:barbershop_app} # afterMigrate.sql grants this role its DML rights
   mail:
     host: ${SMTP_HOST:localhost}
     port: ${SMTP_PORT:1025}
@@ -145,6 +153,9 @@ app:
     max-services: 5
     # open (PENDING_BARBER / AWAITING_PAYMENT) requests per email address — anti-spam
     max-open-requests-per-email: ${APP_BOOKING_MAX_OPEN_REQUESTS:3}
+  db:
+    # true: migrate on start (local); false: validate only, a migration job runs first (prod)
+    migrate: ${APP_DB_MIGRATE:true}
   jobs:
     enabled: ${APP_JOBS_ENABLED:true}
     interval: ${APP_JOBS_INTERVAL:PT1M}

@@ -2,9 +2,28 @@
 # (point-in-time restore), optional zone-redundant HA and geo-redundant backups.
 # Flyway (in the backend) creates and migrates the schema on start.
 
+# Three logins (docs/DEPLOYMENT.md → Database roles), all generated and kept in Key Vault:
+#   admin     server administrator: only the one-off db-init job (creates the two roles)
+#   migrator  owns the schema; only the migrate job (Flyway) uses it
+#   app       the backend's connection pool: DML only — the prod start-up check refuses more
 resource "random_password" "db" {
   length  = 32
   special = false # URL / JDBC-safe
+}
+
+resource "random_password" "db_migrator" {
+  length  = 32
+  special = false
+}
+
+resource "random_password" "db_app" {
+  length  = 32
+  special = false
+}
+
+locals {
+  db_migrator_role = "barbershop_migrator"
+  db_app_role      = "barbershop_app"
 }
 
 resource "azurerm_postgresql_flexible_server" "this" {

@@ -85,14 +85,19 @@ public abstract class AbstractIntegrationTest {
 
     static {
         POSTGRES.start();
+        // production-like logins: Flyway = owner role, application = DML-only role
+        DbRoles.create(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword());
         MAIL.start();
     }
 
     @DynamicPropertySource
     static void properties(DynamicPropertyRegistry r) {
         r.add("spring.datasource.url", POSTGRES::getJdbcUrl);
-        r.add("spring.datasource.username", POSTGRES::getUsername);
-        r.add("spring.datasource.password", POSTGRES::getPassword);
+        r.add("spring.datasource.username", () -> DbRoles.APP);
+        r.add("spring.datasource.password", () -> DbRoles.APP_PASSWORD);
+        r.add("spring.flyway.user", () -> DbRoles.MIGRATOR);
+        r.add("spring.flyway.password", () -> DbRoles.MIGRATOR_PASSWORD);
+        r.add("spring.flyway.placeholders.app_role", () -> DbRoles.APP);
         r.add("spring.mail.host", () -> "localhost");
         r.add("spring.mail.port", () -> MAIL.getSmtp().getPort());
         r.add("app.jwt.secret", () -> "test-secret-" + UUID.randomUUID() + UUID.randomUUID());

@@ -1,0 +1,12 @@
+#!/bin/sh
+# Runs init-roles.sql as the Postgres superuser. Mounted into /docker-entrypoint-initdb.d,
+# it runs automatically when the data volume is created. For an EXISTING volume run once:
+#   docker compose -f infra/docker-compose.yml exec postgres sh /docker-entrypoint-initdb.d/10-init-roles.sh
+set -eu
+: "${DB_MIGRATION_PASSWORD:?DB_MIGRATION_PASSWORD is required}"
+: "${DB_APP_PASSWORD:?DB_APP_PASSWORD is required}"
+psql -v ON_ERROR_STOP=1 \
+  --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" \
+  -v migrator="${DB_MIGRATION_USERNAME:-barbershop_migrator}" -v migrator_password="$DB_MIGRATION_PASSWORD" \
+  -v app="${DB_APP_USERNAME:-barbershop_app}" -v app_password="$DB_APP_PASSWORD" \
+  -f /opt/barbershop/init-roles.sql

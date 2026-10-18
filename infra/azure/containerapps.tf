@@ -30,7 +30,7 @@ locals {
 
   # Key Vault secret → Container Apps secret name (same name)
   backend_secret_names = concat(
-    ["db-password", "jwt-secret", "token-secret", "appi-conn"],
+    ["db-app-password", "jwt-secret", "token-secret", "appi-conn"],
     tolist(local.optional_secrets),
   )
   secret_ids = merge(
@@ -41,7 +41,8 @@ locals {
   backend_env = {
     SPRING_PROFILES_ACTIVE         = var.public_demo ? "prod,demo" : "prod"
     DB_URL                         = "jdbc:postgresql://${azurerm_postgresql_flexible_server.this.fqdn}:5432/${azurerm_postgresql_flexible_server_database.app.name}?sslmode=require"
-    DB_USERNAME                    = azurerm_postgresql_flexible_server.this.administrator_login
+    DB_USERNAME                    = local.db_app_role # DML-only role, never the admin / owner
+    APP_DB_MIGRATE                 = "false"           # the migrate job runs Flyway (dbjobs.tf)
     APP_FRONTEND_BASE_URL          = local.site_url
     APP_CORS_ALLOWED_ORIGINS       = local.site_url
     APP_COOKIE_SECURE              = "true"
@@ -65,7 +66,7 @@ locals {
   # env var → Container Apps secret
   backend_secret_env = merge(
     {
-      DB_PASSWORD                           = "db-password"
+      DB_PASSWORD                           = "db-app-password"
       APP_JWT_SECRET                        = "jwt-secret"
       APP_TOKEN_SECRET                      = "token-secret"
       APPLICATIONINSIGHTS_CONNECTION_STRING = "appi-conn"

@@ -8,7 +8,10 @@
 #   Mailpit  http://localhost:${MAILPIT_UI_PORT:-8025}
 #   Postgres localhost:${POSTGRES_HOST_PORT:-5432}
 #
-# Production compose (reverse proxy, HTTPS, frontend) follows in phase 4.
+# Production on one server: docker-compose.prod.example.yml (Caddy, HTTPS, frontend).
+#
+# Existing data volume from before the database roles? Create them once:
+#   docker compose -f infra/docker-compose.yml exec postgres sh /docker-entrypoint-initdb.d/10-init-roles.sh
 # ─────────────────────────────────────────────────────────────────────────
 name: barbershop
 
@@ -20,10 +23,18 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-barbershop}
       POSTGRES_USER: ${POSTGRES_USER:-barbershop}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in infra/.env}
+      # roles created on the first start of the volume (postgres/10-init-roles.sh); the
+      # superuser above is for setup only — the backend never connects with it
+      DB_MIGRATION_USERNAME: ${DB_MIGRATION_USERNAME:-barbershop_migrator}
+      DB_MIGRATION_PASSWORD: ${DB_MIGRATION_PASSWORD:?Set DB_MIGRATION_PASSWORD in infra/.env}
+      DB_APP_USERNAME: ${DB_APP_USERNAME:-barbershop_app}
+      DB_APP_PASSWORD: ${DB_APP_PASSWORD:?Set DB_APP_PASSWORD in infra/.env}
     ports:
       - "${POSTGRES_HOST_PORT:-5432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+      - ./postgres/10-init-roles.sh:/docker-entrypoint-initdb.d/10-init-roles.sh:ro
+      - ./postgres/init-roles.sql:/opt/barbershop/init-roles.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
@@ -48,8 +59,11 @@ services:
     environment:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-demo}
       DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-barbershop}
-      DB_USERNAME: ${POSTGRES_USER:-barbershop}
-      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      # least-privilege application role (DML only); Flyway migrates on start with the owner role
+      DB_USERNAME: ${DB_APP_USERNAME:-barbershop_app}
+      DB_PASSWORD: ${DB_APP_PASSWORD}
+      DB_MIGRATION_USERNAME: ${DB_MIGRATION_USERNAME:-barbershop_migrator}
+      DB_MIGRATION_PASSWORD: ${DB_MIGRATION_PASSWORD}
       SMTP_HOST: ${SMTP_HOST:-mailpit}
       SMTP_PORT: ${SMTP_PORT:-1025}
       SMTP_USERNAME: ${SMTP_USERNAME:-}

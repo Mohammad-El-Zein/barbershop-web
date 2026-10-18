@@ -58,8 +58,24 @@ run "dev_defaults_are_private_and_safe" {
     error_message = "One replica without Redis → in-memory rate limits."
   }
   assert {
-    condition     = length([for e in azurerm_container_app.backend.template[0].container[0].env : e if e.name == "DB_PASSWORD" && e.secret_name == "db-password" && e.value == null]) == 1
-    error_message = "The DB password must come from a Key Vault-backed secret, never a plain value."
+    condition     = length([for e in azurerm_container_app.backend.template[0].container[0].env : e if e.name == "DB_PASSWORD" && e.secret_name == "db-app-password" && e.value == null]) == 1
+    error_message = "The backend's DB password is the application role's, from Key Vault — never a plain value."
+  }
+  assert {
+    condition     = [for e in azurerm_container_app.backend.template[0].container[0].env : e.value if e.name == "DB_USERNAME"][0] == "barbershop_app" && [for e in azurerm_container_app.backend.template[0].container[0].env : e.value if e.name == "APP_DB_MIGRATE"][0] == "false"
+    error_message = "The backend connects as the DML-only application role and does not migrate."
+  }
+  assert {
+    condition     = length([for e in azurerm_container_app.backend.template[0].container[0].env : e if startswith(e.name, "DB_MIGRATION") || e.name == "PGPASSWORD"]) == 0 && !contains([for s in azurerm_container_app.backend.secret : s.name], "db-admin-password") && !contains([for s in azurerm_container_app.backend.secret : s.name], "db-migration-password")
+    error_message = "The long-running backend must not know the owner or admin login."
+  }
+  assert {
+    condition     = [for e in azurerm_container_app_job.migrate.template[0].container[0].env : e.value if e.name == "APP_MIGRATE_ONLY"][0] == "true" && [for e in azurerm_container_app_job.migrate.template[0].container[0].env : e.value if e.name == "DB_MIGRATION_USERNAME"][0] == "barbershop_migrator"
+    error_message = "Migrations run in the separate job with the owner role."
+  }
+  assert {
+    condition     = strcontains([for e in azurerm_container_app_job.db_init.template[0].container[0].env : e.value if e.name == "INIT_SQL"][0], "NOSUPERUSER NOCREATEDB NOCREATEROLE")
+    error_message = "The db-init job runs the shared role script."
   }
   assert {
     condition     = contains(keys(azurerm_key_vault_secret.optional), "smtp-password") && !contains(keys(azurerm_key_vault_secret.optional), "captcha-secret")
