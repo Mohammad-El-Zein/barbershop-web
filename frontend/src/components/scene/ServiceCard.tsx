@@ -22,7 +22,7 @@ export function ServiceCard({ service, className = "" }: { service: ServiceCardD
     <article className={`glass flex h-full overflow-hidden rounded-2xl md:flex-col ${className}`}>
       <div className="relative w-28 shrink-0 overflow-hidden md:aspect-[16/10] md:w-full">
         <img
-          src={service.image.src}
+          data-src={service.image.src} // the cards appear late in the scroll: loaded after the first screen (lib/sceneReady)
           alt={service.image.alt || title}
           width={service.image.width}
           height={service.image.height}

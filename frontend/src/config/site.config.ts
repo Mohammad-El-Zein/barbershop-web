@@ -24,6 +24,8 @@ export type Cta = {
 
 export type SceneImage = {
   src: string;
+  /** Optional lighter variant for phones (≤ 1280 px wide), used via srcset. */
+  mobileSrc?: string;
   alt: string;
   /** Intrinsic pixel size of the source image (used for aspect ratio). */
   width: number;
@@ -180,6 +182,8 @@ export const siteConfig = {
 
     backdrop: {
       src: "/scene/backdrop.webp",
+      /** Phone variant (scripts/assets/mobile-variants.mjs), picked via srcset. */
+      mobileSrc: "/scene/backdrop-1280.webp",
       alt: "",
       width: 2560,
       height: 1440,
@@ -192,6 +196,8 @@ export const siteConfig = {
      */
     heroObject: {
       src: "/scene/chair.webp",
+      /** Phone variant (scripts/assets/mobile-variants.mjs), picked via srcset. */
+      mobileSrc: "/scene/chair-640.webp",
       alt: "Barber chair",
       width: turntableManifest.sets[0].width,
       height: turntableManifest.sets[0].height,
@@ -206,8 +212,10 @@ export const siteConfig = {
       enabled: true,
       base: "/scene/chair-turntable",
       manifest: turntableManifest,
-      /** Frames loaded behind the loading screen; the rest stream in afterwards. */
-      eagerFrames: 12,
+      /** Frames loaded behind the loading screen; the rest stream in on first interaction / when idle. */
+      eagerFrames: 8,
+      /** Same on phones (< 768 px), which also get the lighter 400 px set with every 2nd frame. */
+      eagerFramesSmall: 4,
       segments: [
         // chapter 1 → 2: the chair turns away while the products fly in
         { from: 0.035, to: 0.155, frames: [0, 1] },

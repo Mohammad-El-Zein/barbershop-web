@@ -1,12 +1,21 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
 import { BOOKING_OPEN_EVENT, type BookingOpenDetail } from "@/lib/booking";
 import type { Booking } from "@/lib/api/types";
+import { whenSceneReady } from "@/lib/sceneReady";
 import { Dialog } from "../ui/Dialog";
-import { BookingFlow } from "./BookingFlow";
+import { Skeleton } from "../ui/Feedback";
+
+/**
+ * The flow (steps, API client, validation) is loaded on demand: not part of the
+ * initial JavaScript of any page, prefetched when the browser is idle after the
+ * first screen, so the first click still opens instantly.
+ */
+const loadFlow = () => import("./BookingFlow").then((m) => ({ default: m.BookingFlow }));
+const BookingFlow = lazy(loadFlow);
 
 /** Remember the latest status link so the payment page can lead back to it. */
 export function rememberStatus(token?: string) {
@@ -39,7 +48,16 @@ export function BookingDialog() {
       setOpen(true);
     };
     window.addEventListener(BOOKING_OPEN_EVENT, onOpen);
-    return () => window.removeEventListener(BOOKING_OPEN_EVENT, onOpen);
+    let idleId = 0;
+    const stop = whenSceneReady(() => {
+      const idle = window.requestIdleCallback ?? ((cb: () => void) => window.setTimeout(cb, 2000));
+      idleId = idle(() => void loadFlow()) as number;
+    });
+    return () => {
+      window.removeEventListener(BOOKING_OPEN_EVENT, onOpen);
+      stop();
+      window.cancelIdleCallback?.(idleId);
+    };
   }, []);
 
   const close = useCallback(() => setOpen(false), []);
@@ -51,13 +69,17 @@ export function BookingDialog() {
 
   return (
     <Dialog open={open} onClose={close} title={t("title")} size="lg">
-      <BookingFlow
-        key={session}
-        initialServiceIds={preset?.serviceIds}
-        initialStaffId={preset?.staffId}
-        onBooked={onBooked}
-        source={preset?.source}
-      />
+      {open && (
+        <Suspense fallback={<Skeleton className="h-[28rem]" />}>
+          <BookingFlow
+            key={session}
+            initialServiceIds={preset?.serviceIds}
+            initialStaffId={preset?.staffId}
+            onBooked={onBooked}
+            source={preset?.source}
+          />
+        </Suspense>
+      )}
     </Dialog>
   );
 }

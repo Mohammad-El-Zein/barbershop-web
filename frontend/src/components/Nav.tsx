@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { siteConfig } from "@/config/site.config";
 import { openBooking } from "@/lib/booking";
-import { ScrollTrigger } from "@/lib/gsap";
 import { scrollToTarget } from "@/lib/scroll";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { Logo } from "./Logo";
@@ -23,6 +22,9 @@ import { ThemeToggle } from "./ThemeToggle";
  * Horizontal padding is the shared page gutter (--gutter), so the logo's left
  * edge matches the scene text column in every chapter.
  */
+/** Dispatched by the landing scene: detail = true while the nav is over the page after the scene. */
+export const NAV_SURFACE_EVENT = "nav:over-page";
+
 export function Nav({ hasScene = true }: { hasScene?: boolean }) {
   const t = useTranslations();
   const locale = useLocale();
@@ -36,21 +38,13 @@ export function Nav({ hasScene = true }: { hasScene?: boolean }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
+  // Landing page: the scene (which owns GSAP / ScrollTrigger) reports when the nav is over
+  // the page after the scene — the nav itself carries no GSAP code (every page includes it).
   useEffect(() => {
     if (!hasScene) return;
-    const after = document.querySelector("[data-after-scene]");
-    if (!after) return;
-    const st = ScrollTrigger.create({
-      trigger: after,
-      start: "top top+=72",
-      // footer = last element: its bottom never passes the viewport top, so the
-      // trigger stays active down to the last pixel ("max" would deactivate there)
-      end: "bottom top",
-      // refresh after the scene's pin so the position includes the pin spacing
-      refreshPriority: -1,
-      onToggle: (self) => setOverPage(self.isActive),
-    });
-    return () => st.kill();
+    const onSurface = (e: Event) => setOverPage((e as CustomEvent<boolean>).detail);
+    window.addEventListener(NAV_SURFACE_EVENT, onSurface);
+    return () => window.removeEventListener(NAV_SURFACE_EVENT, onSurface);
   }, [hasScene]);
 
   // on app pages the "#anchor" links point back to the landing page

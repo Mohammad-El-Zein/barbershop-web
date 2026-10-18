@@ -38,7 +38,7 @@ export function LanguageSwitcher({ className = "flex" }: { className?: string })
               onClick={(e) => go(e, locale)}
               aria-current={active ? "true" : undefined}
               className={`rounded px-1 py-1 uppercase transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-gold-text ${
-                active ? "text-gold-text" : "text-ink/60 hover:text-ink"
+                active ? "text-gold-text" : "text-ink/70 hover:text-ink" // /70: ≥ 4.5:1 at this small size in both themes
               }`}
             >
               {locale}

@@ -99,7 +99,8 @@ export function StaffBookingCard({
         </div>
         <StatusBadge status={b.status} />
       </div>
-      <dl className="mt-2 grid gap-x-4 gap-y-0.5 text-xs text-muted sm:grid-cols-2">
+      {/* plain list of facts (no term/description pairs, so not a <dl>) */}
+      <div className="mt-2 grid gap-x-4 gap-y-0.5 text-xs text-muted sm:grid-cols-2">
         {b.customerPhone && <div>☎ {b.customerPhone}</div>}
         {b.customerEmail && <div className="truncate">✉ {b.customerEmail}</div>}
         <div>
@@ -117,7 +118,7 @@ export function StaffBookingCard({
             })}
           </div>
         )}
-      </dl>
+      </div>
       {b.note && <p className="mt-2 rounded-lg bg-ink/5 px-3 py-2 text-sm">“{b.note}”</p>}
       {error ? <Alert tone="error" className="mt-3">{errorText(error)}</Alert> : null}
       {actions.length > 0 && (

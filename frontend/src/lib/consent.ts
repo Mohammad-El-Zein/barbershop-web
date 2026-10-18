@@ -11,9 +11,9 @@
  * - Changes are broadcast as a "consent:change" window event so the tracking layer
  *   and the attribution capture react immediately.
  */
-export const CONSENT_VERSION = 1;
-const KEY = "consent";
-const MAX_AGE_MS = 365 * 24 * 60 * 60 * 1000;
+import { CONSENT_KEY as KEY, CONSENT_MAX_AGE_MS as MAX_AGE_MS, CONSENT_VERSION } from "./consent-shared";
+
+export { CONSENT_VERSION };
 export const CONSENT_EVENT = "consent:change";
 export const CONSENT_OPEN_EVENT = "consent:open";
 

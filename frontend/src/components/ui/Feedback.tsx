@@ -55,8 +55,8 @@ const statusTone: Record<BookingStatus, string> = {
   CONFIRMED: "border-[#6fa86b] text-[#7fbb7a] light:text-[#2f6b2c] light:border-[#2f6b2c]",
   COMPLETED: "border-ink/30 text-ink/70",
   DECLINED: "border-[#c25a45]/70 text-[#e0806b] light:text-[#9a3523]",
-  EXPIRED: "border-ink/25 text-ink/55",
-  CANCELLED: "border-ink/25 text-ink/55",
+  EXPIRED: "border-ink/25 text-ink/70", // /70 = the muted token: ≥ 4.5:1 at this small size
+  CANCELLED: "border-ink/25 text-ink/70",
   NO_SHOW: "border-[#c25a45]/70 text-[#e0806b] light:text-[#9a3523]",
 };
 

@@ -4,39 +4,33 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { siteConfig } from "@/config/site.config";
 import { frameUrl, loadFrame, loadRemainingFramesLazily } from "@/lib/frames";
-import { ScrollTrigger } from "@/lib/gsap";
+import { markSceneReady } from "@/lib/sceneReady";
 import { lockScroll, unlockScroll } from "@/lib/scroll";
-import { estimateChairCssHeight, pickSet, preloadEagerFrames } from "@/lib/turntable";
+import { estimateChairCssHeight, isSmallScreen, pickSet, preloadEagerFrames } from "@/lib/turntable";
 
-const MIN_VISIBLE_MS = 700; // avoid a flash on fast connections
-const MAX_WAIT_MS = 10000; // never trap the user behind the loader
+const MIN_VISIBLE_MS = 300; // avoid a flash on fast connections
+// never trap the user behind the loader (phones: shorter, the scene copes with missing frames)
+const maxWaitMs = () => (isSmallScreen() ? 4000 : 8000);
 
-/** All images the first screens need. */
-function criticalImages(): string[] {
-  const { scene, services } = siteConfig;
-  return [
-    scene.backdrop.src,
-    scene.heroObject.src,
-    scene.featureObject.src,
-    ...scene.products.map((p) => p.src),
-    ...services.map((s) => s.image.src),
-  ];
-}
-
-function loadImage(src: string) {
-  return new Promise<void>((resolve) => {
-    const img = new Image();
-    img.onload = img.onerror = () => resolve();
-    img.src = src;
-  });
+/**
+ * Only what the first screen shows: the <img data-critical> elements of the scene
+ * (backdrop + chair poster, in whatever size their srcset picked). Products, the
+ * feature object and the service photos appear later in the scroll and load after
+ * the preloader (lib/sceneReady).
+ */
+function criticalImages(): Promise<void>[] {
+  return [...document.querySelectorAll<HTMLImageElement>("img[data-critical]")].map((img) =>
+    img.complete ? Promise.resolve() : img.decode().catch(() => undefined),
+  );
 }
 
 /**
- * Full-screen loading screen shown while the scene assets preload (always dark:
- * it opens the dark cinematic scene). Waits for the critical images, the first
- * turntable frames (coarse coverage of the whole rotation), optional frame
- * sequence frames and the fonts. Scroll is locked until it finishes; then
- * ScrollTrigger is refreshed so pin positions account for the final font metrics.
+ * Full-screen loading screen shown while the first screen's assets load (always
+ * dark: it opens the dark cinematic scene). Waits for the critical images, the
+ * first turntable frames (coarse coverage of the whole rotation; 4 on phones),
+ * optional frame-sequence frames and the fonts — then marks the scene ready. Scroll
+ * is locked until it finishes; then
+ * the scene timeline is built (lib/sceneReady), so its pin is measured once with the final font metrics.
  */
 export function Preloader() {
   const t = useTranslations("scene");
@@ -56,7 +50,7 @@ export function Preloader() {
 
     const { frames, turntable } = siteConfig.scene;
     const tasks: Promise<void>[] = [
-      ...criticalImages().map(loadImage),
+      ...criticalImages(),
       ...(turntable.enabled ? preloadEagerFrames(pickSet(estimateChairCssHeight())) : []),
       ...(frames.enabled
         ? Array.from({ length: Math.min(frames.eagerCount, frames.count) }, (_, i) => loadFrame(i))
@@ -73,7 +67,7 @@ export function Preloader() {
     );
 
     const startedAt = performance.now();
-    const all = Promise.race([Promise.all(tasks), new Promise((r) => setTimeout(r, MAX_WAIT_MS))]);
+    const all = Promise.race([Promise.all(tasks), new Promise((r) => setTimeout(r, maxWaitMs()))]);
 
     all.then(() => {
       const wait = Math.max(0, MIN_VISIBLE_MS - (performance.now() - startedAt));
@@ -81,7 +75,8 @@ export function Preloader() {
         setProgress(1);
         setDone(true);
         unlockScroll();
-        ScrollTrigger.refresh();
+        // builds the scene timeline (its ScrollTrigger measures itself with the final fonts)
+        markSceneReady();
         if (frames.enabled) loadRemainingFramesLazily(frames.eagerCount);
       }, wait);
     });

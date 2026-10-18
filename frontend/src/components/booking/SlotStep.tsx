@@ -90,7 +90,7 @@ export function SlotStep({
               >
                 <span className="text-[0.65rem] uppercase tracking-wider opacity-75">{p.weekday}</span>
                 <span className="text-lg font-semibold leading-tight">{p.day}</span>
-                <span className="text-[0.6rem] uppercase opacity-60">{p.month}</span>
+                <span className="text-[0.6rem] uppercase opacity-80">{p.month}</span>
               </button>
             );
           })}

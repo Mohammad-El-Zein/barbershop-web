@@ -5,8 +5,10 @@ import { useCallback, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { siteConfig } from "@/config/site.config";
 import { gsap, ScrollTrigger, useGSAP } from "@/lib/gsap";
+import { whenSceneReady } from "@/lib/sceneReady";
 import { registerChapterResolver, scrollToY } from "@/lib/scroll";
 import { turntableFrameCount } from "@/lib/turntable";
+import { NAV_SURFACE_EVENT } from "../Nav";
 import { PlaceholderBadge } from "../PlaceholderBadge";
 import { ChairSequence, type TurntableController } from "./ChairSequence";
 import { ChapterText } from "./ChapterText";
@@ -41,6 +43,12 @@ const CHAIR_FILTER = objectFilter("0 30px 50px rgb(0 0 0 / 0.75)");
  * text at the bottom. Objects are centered with zero-size flex anchors, never
  * with CSS transforms, so GSAP fully owns every animated transform.
  */
+/**
+ * Element (rendered by Experience) that reserves the pinned scroll length until the
+ * timeline is built after the preloader; hidden in the same task the pin spacer appears.
+ */
+export const PIN_PLACEHOLDER_ID = "scene-pin-placeholder";
+
 export function PinnedScene() {
   const t = useTranslations();
   const rootRef = useRef<HTMLElement>(null);
@@ -50,80 +58,104 @@ export function PinnedScene() {
   const triggerRef = useRef<ScrollTrigger | null>(null);
   const activeRef = useRef(0);
   const [active, setActive] = useState(0);
-  // The poster <img> (frame 0) shows until the canvas has drawn its first frame.
-  const [chairCanvasReady, setChairCanvasReady] = useState(false);
-  const onChairReady = useCallback(() => setChairCanvasReady(true), []);
+  // The poster <img> (frame 0) shows until the canvas has drawn its first frame. Hidden
+  // directly in the DOM: a state update here re-rendered the whole scene on phones.
+  const posterRef = useRef<HTMLImageElement>(null);
+  const onChairReady = useCallback(() => posterRef.current?.classList.add("invisible"), []);
 
   useGSAP(
-    () => {
-      const mm = gsap.matchMedia();
+    (_, contextSafe) => {
+      // Built once the preloader is done (fonts + first-screen images in): one build and
+      // one measurement of the pin instead of several refreshes during page load — the
+      // biggest main-thread cost on phones. The preloader covers the scene until then.
+      // contextSafe keeps everything inside useGSAP's context (reverted on unmount).
+      const build = contextSafe!(() => {
+        const mm = gsap.matchMedia();
 
-      mm.add({ isDesktop: "(min-width: 768px)", isMobile: "(max-width: 767px)" }, (context) => {
-        const { isMobile } = context.conditions as { isMobile: boolean };
+        mm.add({ isDesktop: "(min-width: 768px)", isMobile: "(max-width: 767px)" }, (context) => {
+          const { isMobile } = context.conditions as { isMobile: boolean };
 
-        const tl = gsap.timeline({
-          defaults: { ease: "none" },
-          scrollTrigger: {
-            trigger: rootRef.current,
-            start: "top top",
-            end: () => `+=${(window.innerHeight * scene.scrollLengthVh) / 100}`,
-            pin: true,
-            scrub: scene.scrub,
-            anticipatePin: 1,
-            onUpdate: (self) => {
-              const p = self.progress;
-              frameRef.current?.setProgress(p);
-              // Active chapter for the section dots (state only changes on chapter switch).
-              const idx = chapters.findIndex((c) => p >= c.range[0] && p < c.range[1]);
-              const next = idx === -1 ? chapters.length - 1 : idx;
-              if (next !== activeRef.current) {
-                activeRef.current = next;
-                setActive(next);
-              }
+          // the pin spacer takes over the reserved scroll length in this same task: nothing below moves
+          const placeholder = document.getElementById(PIN_PLACEHOLDER_ID);
+          if (placeholder) placeholder.style.display = "none";
+          const tl = gsap.timeline({
+            defaults: { ease: "none" },
+            scrollTrigger: {
+              trigger: rootRef.current,
+              start: "top top",
+              end: () => `+=${(window.innerHeight * scene.scrollLengthVh) / 100}`,
+              pin: true,
+              scrub: scene.scrub,
+              anticipatePin: 1,
+              onUpdate: (self) => {
+                const p = self.progress;
+                frameRef.current?.setProgress(p);
+                // Active chapter for the section dots (state only changes on chapter switch).
+                const idx = chapters.findIndex((c) => p >= c.range[0] && p < c.range[1]);
+                const next = idx === -1 ? chapters.length - 1 : idx;
+                if (next !== activeRef.current) {
+                  activeRef.current = next;
+                  setActive(next);
+                }
+              },
             },
-          },
-        });
+          });
 
-        const { placeOrbit, syncTurntable } = buildSceneTimeline(tl, {
-          root: rootRef.current!,
-          stageBox: stageBoxRef.current!,
-          chapters,
-          products: scene.products,
-          isMobile,
-          turntable: scene.turntable.enabled
-            ? {
-                frameCount: turntableFrameCount,
-                segments: scene.turntable.segments,
-                onFrame: (f) => turntableRef.current?.setFrame(f),
-              }
-            : undefined,
-        });
-        triggerRef.current = tl.scrollTrigger ?? null;
+          const { placeOrbit, syncTurntable } = buildSceneTimeline(tl, {
+            root: rootRef.current!,
+            stageBox: stageBoxRef.current!,
+            chapters,
+            products: scene.products,
+            isMobile,
+            turntable: scene.turntable.enabled
+              ? {
+                  frameCount: turntableFrameCount,
+                  segments: scene.turntable.segments,
+                  onFrame: (f) => turntableRef.current?.setFrame(f),
+                }
+              : undefined,
+          });
+          triggerRef.current = tl.scrollTrigger ?? null;
 
-        // Orbit radius depends on stage size.
-        const onResize = () => placeOrbit();
-        window.addEventListener("resize", onResize);
-        // Refreshes render the timeline with callbacks suppressed: re-sync the chair frame.
-        ScrollTrigger.addEventListener("refresh", syncTurntable);
+          // Nav surface: "over the page" once the content after the scene (footer) is under it.
+          const after = document.querySelector("[data-after-scene]");
+          if (after) {
+            ScrollTrigger.create({
+              trigger: after,
+              start: "top top+=72",
+              // footer = last element: its bottom never passes the viewport top, so the
+              // trigger stays active down to the last pixel ("max" would deactivate there)
+              end: "bottom top",
+              onToggle: (self) => window.dispatchEvent(new CustomEvent(NAV_SURFACE_EVENT, { detail: self.isActive })),
+            });
+          }
 
-        // Let nav links like "#services" jump to a chapter inside the pin.
-        const unregister = registerChapterResolver((anchor) => {
-          const i = chapters.findIndex((c) => c.anchor === anchor);
-          const st = triggerRef.current;
-          if (i === -1 || !st) return null;
-          return st.start + settledProgress(chapters[i], i) * (st.end - st.start);
-        });
+          // Orbit radius depends on stage size.
+          const onResize = () => placeOrbit();
+          window.addEventListener("resize", onResize);
+          // Refreshes render the timeline with callbacks suppressed: re-sync the chair frame.
+          ScrollTrigger.addEventListener("refresh", syncTurntable);
 
-        return () => {
-          window.removeEventListener("resize", onResize);
-          ScrollTrigger.removeEventListener("refresh", syncTurntable);
-          unregister();
-          triggerRef.current = null;
-        };
+          // Let nav links like "#services" jump to a chapter inside the pin.
+          const unregister = registerChapterResolver((anchor) => {
+            const i = chapters.findIndex((c) => c.anchor === anchor);
+            const st = triggerRef.current;
+            if (i === -1 || !st) return null;
+            return st.start + settledProgress(chapters[i], i) * (st.end - st.start);
+          });
+
+          return () => {
+            window.removeEventListener("resize", onResize);
+            ScrollTrigger.removeEventListener("refresh", syncTurntable);
+            unregister();
+            triggerRef.current = null;
+          };
       });
       // No manual mm.revert(): useGSAP reverts its context (including this
       // matchMedia) on unmount. Reverting twice left stale inline transforms
       // behind in React StrictMode's dev double-mount.
+      });
+      return whenSceneReady(build);
     },
     { scope: rootRef },
   );
@@ -156,10 +188,13 @@ export function PinnedScene() {
         <div data-obj="backdrop" className="absolute -inset-[3%] will-change-transform">
           <img
             src={scene.backdrop.src}
+            srcSet={`${scene.backdrop.mobileSrc} 1280w, ${scene.backdrop.src} ${scene.backdrop.width}w`}
+            sizes="106vw"
             alt=""
             width={scene.backdrop.width}
             height={scene.backdrop.height}
             fetchPriority="high"
+            data-critical
             className="h-full w-full object-cover object-[70%_50%]"
           />
         </div>
@@ -244,11 +279,15 @@ export function PinnedScene() {
             <div className="absolute inset-0" style={{ filter: CHAIR_FILTER }}>
               <img
                 src={scene.heroObject.src}
+                srcSet={`${scene.heroObject.mobileSrc} 640w, ${scene.heroObject.src} ${scene.heroObject.width}w`}
+                sizes="(max-width: 767px) 75vw, 45vw"
                 alt={scene.heroObject.alt}
                 width={scene.heroObject.width}
                 height={scene.heroObject.height}
                 fetchPriority="high"
-                className={`absolute inset-0 h-full w-full object-contain ${chairCanvasReady ? "invisible" : ""}`}
+                data-critical
+                ref={posterRef}
+                className="absolute inset-0 h-full w-full object-contain"
               />
               {scene.turntable.enabled && <ChairSequence controlRef={turntableRef} onReady={onChairReady} />}
             </div>
@@ -262,7 +301,7 @@ export function PinnedScene() {
             <div data-orbit={p.id} className="relative shrink-0 will-change-transform" style={{ width: `${p.size * 0.5}cqw` }}>
               <div data-inner>
                 <img
-                  src={p.src}
+                  data-src={p.src} // loaded once the first screen is in (lib/sceneReady)
                   alt=""
                   width={p.width}
                   height={p.height}
@@ -291,7 +330,7 @@ export function PinnedScene() {
               <div data-drift>
                 <div data-inner>
                   <img
-                    src={p.src}
+                    data-src={p.src}
                     alt={p.alt}
                     width={p.width}
                     height={p.height}
@@ -309,7 +348,7 @@ export function PinnedScene() {
         <div className="absolute inset-0 z-20 flex items-center justify-center">
           <div data-obj="feature" className="relative aspect-square w-[min(80%,90vh)] shrink-0 will-change-transform max-md:w-[80%]">
             <img
-              src={scene.featureObject.src}
+              data-src={scene.featureObject.src}
               alt={scene.featureObject.alt}
               width={scene.featureObject.width}
               height={scene.featureObject.height}

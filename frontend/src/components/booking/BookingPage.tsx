@@ -17,6 +17,7 @@ export function BookingPage() {
       initialServiceIds={services}
       initialStaffId={staff}
       source={params.get("source") ?? "booking-page"}
+      headingLevel="h2"
       onBooked={(b: Booking) => {
         rememberStatus(b.statusToken);
         router.push(`/booking/status/${b.statusToken}`);

@@ -30,13 +30,17 @@ export function BookingFlow({
   initialStaffId,
   onBooked,
   source = "unknown",
+  headingLevel = "h3",
 }: {
   initialServiceIds?: string[];
   initialStaffId?: string;
   onBooked: (booking: Booking) => void;
   /** Which button / page opened the flow (analytics). */
   source?: string;
+  /** Step heading level: h3 inside the dialog (its title is h2), h2 on the booking page (below the h1). */
+  headingLevel?: "h2" | "h3";
 }) {
+  const Heading = headingLevel;
   const t = useTranslations("booking");
   const locale = useLocale();
   const errorText = useErrorText();
@@ -169,9 +173,9 @@ export function BookingFlow({
         {t("stepOf", { current: index + 1, total: STEPS.length, label: t(`steps.${step}`) })}
       </p>
 
-      <h3 ref={headingRef} tabIndex={-1} className="display mb-4 text-2xl focus:outline-none sm:text-3xl">
+      <Heading ref={headingRef} tabIndex={-1} className="display mb-4 text-2xl focus:outline-none sm:text-3xl">
         {t(`titles.${step}`)}
-      </h3>
+      </Heading>
 
       {notice && (
         <Alert tone="error" className="mb-4">

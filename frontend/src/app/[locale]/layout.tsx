@@ -8,6 +8,7 @@ import { ConsentManager } from "@/components/consent/ConsentManager";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { siteConfig } from "@/config/site.config";
 import { themeCss } from "@/config/theme-css";
+import { CONSENT_BOOT_SCRIPT } from "@/lib/consent-shared";
 import { routing } from "@/i18n/routing";
 import { AuthProvider } from "@/lib/auth/AuthProvider";
 import "../globals.css";
@@ -58,6 +59,8 @@ export default async function LocaleLayout({ children, params }: LayoutProps<"/[
       <head>
         {/* colour tokens for both themes, generated from site.config.ts */}
         <style dangerouslySetInnerHTML={{ __html: themeCss() }} />
+        {/* first visit: show the server-rendered consent banner before the first paint */}
+        <script dangerouslySetInnerHTML={{ __html: CONSENT_BOOT_SCRIPT }} />
       </head>
       <body>
         <ThemeProvider>

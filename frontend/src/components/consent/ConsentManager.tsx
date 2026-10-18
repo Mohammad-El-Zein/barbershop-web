@@ -20,6 +20,10 @@ import { applyConsent, configuredTools } from "@/lib/tracking";
  * attribution, shows the banner while there is no decision, and re-opens it from
  * the footer ("Cookie settings"). "Accept all" and "Only necessary" are equally
  * prominent; categories can be chosen individually in the settings view.
+ *
+ * The panel is always server-rendered but hidden by CSS; the first-visit display is
+ * switched on by <html data-consent="ask"> (set before paint by CONSENT_BOOT_SCRIPT),
+ * a re-open from the footer by data-open.
  */
 export function ConsentManager() {
   const t = useTranslations("consent");
@@ -39,8 +43,8 @@ export function ConsentManager() {
       setDetails(reopen);
       setOpen(true);
     };
-    // no decision yet → banner (after mount: client-only, never part of the prerendered HTML)
-    if (!c) queueMicrotask(() => show(false));
+    // no decision yet: the head script has already shown the banner (fallback if it didn't run)
+    if (!c) document.documentElement.setAttribute("data-consent", "ask");
     const onOpen = () => {
       returnFocus.current = document.activeElement as HTMLElement | null;
       show(true);
@@ -64,12 +68,12 @@ export function ConsentManager() {
 
   const decide = (c: ConsentChoice) => {
     saveConsent(c);
+    document.documentElement.removeAttribute("data-consent");
     setOpen(false);
     returnFocus.current?.focus();
     returnFocus.current = null;
   };
 
-  if (!open) return null;
   const tools = (category: "statistics" | "marketing") =>
     configuredTools.filter((x) => x.category === category).map((x) => t(`tools.${x.name}`));
 
@@ -78,19 +82,23 @@ export function ConsentManager() {
       ref={panelRef}
       role="dialog"
       aria-modal="false"
+      data-open={open || undefined}
       aria-labelledby="consent-title"
       aria-describedby="consent-text"
       tabIndex={-1}
       onKeyDown={(e) => {
         // Escape closes only a re-opened panel (a first decision must be made explicitly)
         if (e.key === "Escape" && readConsent()) {
+          document.documentElement.removeAttribute("data-consent");
           setOpen(false);
           returnFocus.current?.focus();
         }
       }}
-      className="fixed inset-x-3 bottom-3 z-[90] mx-auto max-h-[85svh] max-w-xl overflow-y-auto rounded-2xl border border-gold/40 bg-surface p-5 text-ink shadow-[0_20px_60px_rgb(0_0_0/0.45)] focus:outline-none sm:inset-x-6 sm:bottom-6"
+      className="consent-panel fixed inset-x-3 bottom-3 z-[110] mx-auto max-h-[85svh] max-w-xl overflow-y-auto rounded-2xl border border-gold/40 bg-surface p-5 text-ink shadow-[0_20px_60px_rgb(0_0_0/0.45)] focus:outline-none sm:inset-x-6 sm:bottom-6"
     >
-      <h2 id="consent-title" className="display text-2xl">
+      {/* body font, not the display face: the swap from the fallback font must not change the
+          panel's height (it is anchored at the bottom — a reflow would be a layout shift) */}
+      <h2 id="consent-title" className="text-lg font-semibold tracking-tight">
         {t("title")}
       </h2>
       <p id="consent-text" className="mt-2 text-sm leading-relaxed text-ink/85">

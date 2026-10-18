@@ -25,6 +25,8 @@ export function StaticScene() {
           {i === 0 && (
             <img
               src={scene.backdrop.src}
+              srcSet={`${scene.backdrop.mobileSrc} 1280w, ${scene.backdrop.src} ${scene.backdrop.width}w`}
+              sizes="100vw"
               alt=""
               aria-hidden="true"
               className="absolute inset-0 h-full w-full object-cover opacity-60"

@@ -456,7 +456,8 @@ export function AdminCustomers() {
       {!rows ? (
         <Skeleton className="h-64" />
       ) : (
-        <div className="overflow-x-auto">
+        // focusable + labelled: keyboard users can scroll the table sideways on small screens
+        <div className="overflow-x-auto" tabIndex={0} role="region" aria-label={t("title")}>
           <table className="w-full min-w-[40rem] text-left text-sm">
             <thead className="text-xs uppercase tracking-wider text-muted">
               <tr>
@@ -607,7 +608,7 @@ function CampaignTable({ range }: { range: { from: string; to: string } }) {
           <p className="mt-3 text-sm">
             {t("summary", { total: data.totalBookings ?? 0, attributed: data.attributedBookings ?? 0 })}
           </p>
-          <div className="mt-3 overflow-x-auto">
+          <div className="mt-3 overflow-x-auto" tabIndex={0} role="region" aria-label={t("title")}>
             <table className="w-full min-w-[34rem] text-left text-sm">
               <caption className="sr-only">{t("title")}</caption>
               <thead className="text-xs uppercase tracking-wider text-muted">

@@ -480,3 +480,13 @@ html.light .grain {
   clip: rect(0 0 0 0);
   white-space: nowrap;
 }
+
+/* Consent banner: server-rendered, shown on a first visit (html[data-consent="ask"], set
+   before paint by the head script) or when re-opened from the footer (data-open). */
+.consent-panel {
+  display: none;
+}
+:root[data-consent="ask"] .consent-panel,
+.consent-panel[data-open] {
+  display: block;
+}

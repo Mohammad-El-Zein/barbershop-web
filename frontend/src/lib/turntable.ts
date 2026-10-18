@@ -20,16 +20,35 @@ const pending = new Map<string, Promise<void>>();
 /** Frames that failed (404 / decode error) are never requested again. */
 const failed = new Set<string>();
 
+/** Sets with "step" (the phone set) only contain every n-th frame (+ the last one). */
+function stepOf(set: FrameSet) {
+  return "step" in set && typeof set.step === "number" ? set.step : 1;
+}
+
+/** The frame of the set that is actually on disk for this index (the nearest one for stepped sets). */
+function snap(set: FrameSet, index: number) {
+  const step = stepOf(set);
+  const last = turntableFrameCount - 1;
+  if (step === 1 || index >= last) return Math.min(index, last);
+  return Math.min(Math.round(index / step) * step, last);
+}
+
 export function frameUrl(set: FrameSet, index: number) {
-  return `${tt.base}/${set.dir}/${String(index).padStart(3, "0")}.webp`;
+  return `${tt.base}/${set.dir}/${String(snap(set, index)).padStart(3, "0")}.webp`;
+}
+
+/** Phones / small screens: lighter assets (fewer frames, lower pixel density for the moving chair). */
+export function isSmallScreen() {
+  return window.innerWidth < 768;
 }
 
 /**
  * Smallest set that still covers the needed device pixels (>= 90%),
- * else the largest. Phones get the small set, desktops the big one.
+ * else the largest. Phones get the small set (density capped at 1.5x for the
+ * moving chair), desktops the big one.
  */
 export function pickSet(cssHeight: number): FrameSet {
-  const need = cssHeight * Math.min(window.devicePixelRatio || 1, 2);
+  const need = cssHeight * Math.min(window.devicePixelRatio || 1, isSmallScreen() ? 1.5 : 2);
   const asc = [...manifest.sets].sort((a, b) => a.height - b.height);
   return asc.find((s) => s.height >= need * 0.9) ?? asc[asc.length - 1];
 }
@@ -107,14 +126,26 @@ export function loadOrder(n = turntableFrameCount) {
   return order;
 }
 
-/** Frames the preloader waits for (coarse coverage of the whole turn). */
+/** Frame indexes of a set in coarse-to-fine order (stepped sets: only the frames on disk). */
+function setOrder(set: FrameSet) {
+  const seen = new Set<string>();
+  return loadOrder().filter((i) => {
+    const url = frameUrl(set, i);
+    if (seen.has(url)) return false;
+    seen.add(url);
+    return true;
+  });
+}
+
+/** Frames the preloader waits for (coarse coverage of the whole turn); fewer on phones. */
 export function preloadEagerFrames(set: FrameSet) {
-  return loadOrder().slice(0, tt.eagerFrames).map((i) => loadFrame(set, i));
+  const count = isSmallScreen() ? tt.eagerFramesSmall : tt.eagerFrames;
+  return setOrder(set).slice(0, count).map((i) => loadFrame(set, i));
 }
 
 /** Stream in every remaining frame, a few at a time, without blocking. */
 export function loadAllFrames(set: FrameSet, concurrency = 4) {
-  const queue = loadOrder().filter((i) => !isLoaded(set, i) && !isFailed(set, i));
+  const queue = setOrder(set).filter((i) => !isLoaded(set, i) && !isFailed(set, i));
   const next = (): Promise<void> | void => {
     const i = queue.shift();
     if (i === undefined) return;

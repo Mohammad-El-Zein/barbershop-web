@@ -13,6 +13,7 @@ import {
   turntableFrameCount,
   type FrameSet,
 } from "@/lib/turntable";
+import { whenSceneReady } from "@/lib/sceneReady";
 
 export type TurntableController = {
   /** Fractional frame index (0 .. frameCount-1), driven by the scroll timeline. */
@@ -129,15 +130,31 @@ export function ChairSequence({
       },
     };
 
-    // first frame now, the rest when the browser is idle
+    // first frame now; the rest only after the first screen is in (preloader done) and
+    // the visitor starts interacting — or a few seconds of idle — so the frames never
+    // compete with the first screen's images
     loadFrame(set, 0).then(request);
-    const idle = window.requestIdleCallback ?? ((cb: () => void) => window.setTimeout(cb, 200));
-    const idleId = idle(() => loadAllFrames(set));
+    let streaming = false;
+    let timer = 0;
+    const INTERACT = ["scroll", "wheel", "touchstart", "pointerdown", "keydown"] as const;
+    const stream = () => {
+      if (streaming) return;
+      streaming = true;
+      INTERACT.forEach((e) => window.removeEventListener(e, stream));
+      window.clearTimeout(timer);
+      loadAllFrames(set);
+    };
+    const stopReady = whenSceneReady(() => {
+      INTERACT.forEach((e) => window.addEventListener(e, stream, { passive: true, once: true }));
+      timer = window.setTimeout(() => (window.requestIdleCallback ?? ((cb: () => void) => cb()))(stream), 4000);
+    });
 
     return () => {
       ro.disconnect();
       cancelAnimationFrame(raf);
-      window.cancelIdleCallback?.(idleId as number);
+      stopReady();
+      window.clearTimeout(timer);
+      INTERACT.forEach((e) => window.removeEventListener(e, stream));
       controlRef.current = null;
     };
   }, [controlRef]);
