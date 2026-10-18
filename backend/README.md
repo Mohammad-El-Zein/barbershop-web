@@ -317,6 +317,13 @@ APP_CAPTCHA_PROVIDER=turnstile     # still protect the public forms
   or a domain you own.
 - Never run a real shop with `PAYMENT_DEMO_ALLOW_IN_PROD=true`: customers would "pay" deposits that never arrive.
 
+## Spring Boot 4 upgrade (deadline 2027-01-31)
+
+Spring Boot 3.5.16 is the last open-source 3.5 release. Patched Tomcat / Netty / Jackson / pgjdbc versions are
+pinned in `pom.xml`. Two Spring MVC CVEs are fixed only in Spring 7. They are accepted in `.trivyignore` until
+**2027-01-31**; after that the Trivy image scan fails and CI builds no release. Migrate to Spring Boot 4 before
+then, then remove the version overrides and the `.trivyignore` entries.
+
 ## API overview
 
 `{tenant}` is the shop slug, e.g. `the-barber-news`. Full schema: Swagger UI.
@@ -403,7 +410,11 @@ Errors are RFC 9457 problem details with a stable `code` and a localized `detail
 
 | Variable | Meaning |
 |---|---|
-| `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` | Database |
+| `DB_URL` | Database |
+| `DB_USERNAME`, `DB_PASSWORD` | **Application role** (`barbershop_app`): DML only. The `prod` profile refuses a superuser / owner / DDL-capable login (`common/db/DatabaseRoleCheck`) |
+| `DB_MIGRATION_USERNAME`, `DB_MIGRATION_PASSWORD` | **Owner role** (`barbershop_migrator`) for Flyway only; the `afterMigrate` callback grants the application role its rights. Roles: `infra/postgres/init-roles.sql` |
+| `APP_DB_MIGRATE` | `true` (default): migrate on start. `false` (production): validate only, refuse to start while migrations are pending |
+| `APP_MIGRATE_ONLY` | `true`: run the migrations (owner login) and exit — the production migration job / `migrate` service |
 | `APP_JWT_SECRET` | **Required**, ≥ 32 bytes. Signs access tokens. Email-link tokens use a derived key unless `APP_TOKEN_SECRET` is set. |
 | `APP_ADMIN_EMAIL`, `APP_ADMIN_PASSWORD`, `APP_ADMIN_TENANT` | Bootstrap admin, created if missing |
 | `APP_TENANT_NAME`, `APP_TENANT_TIMEZONE` | Production without the demo seed: creates the shop `APP_ADMIN_TENANT` on first start if it is missing (default policy; services, barbers and hours are added in the admin area) |

@@ -10,6 +10,10 @@ How to take the barbershop website and booking system to production. There are t
 | Effort | Medium (one-time Terraform + DNS) | Small (one server, one compose file) |
 | Cost | ~50–60 € / month small, ~450–600 € / month HA (see [Costs](#costs)) | ~10–20 € / month |
 
+> **Deadline — Spring Boot 4 upgrade by 2027-01-31.** Spring Boot 3.5 gets no more open-source releases. Two
+> Spring MVC CVEs are accepted in `.trivyignore` only until that date; after it the image scan fails and CI
+> stops building releases. Plan the migration before then ([section 10](#10-security-notes-and-open-points)).
+
 > **Status:** written and validated locally only. Nothing has been deployed to a cloud account. Terraform is
 > formatted, validated and tested with mocked providers. The images, the compose stack and the e2e suite run locally.
 
@@ -21,7 +25,7 @@ How to take the barbershop website and booking system to production. There are t
 2. [Configuration reference](#2-configuration-reference)
 3. [Azure: first deployment](#3-azure-first-deployment)
 4. [CI/CD setup](#4-cicd-setup)
-5. [Database, Flyway, first admin and shop data](#5-database-flyway-first-admin-and-shop-data)
+5. [Database, Flyway, first admin and shop data](#5-database-flyway-first-admin-and-shop-data) (incl. [Database roles](#database-roles))
 6. [DNS and email](#6-dns-and-email)
 7. [Releases and rollback](#7-releases-and-rollback)
 8. [Backup and restore](#8-backup-and-restore)
@@ -59,7 +63,11 @@ How to take the barbershop website and booking system to production. There are t
 | Variable | Required | Meaning |
 |---|---|---|
 | `SPRING_PROFILES_ACTIVE` | ✔ | `prod` (image default). `prod,demo` only for a public demo (loads the demo shop seed) |
-| `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` | ✔ | JDBC URL, e.g. `jdbc:postgresql://host:5432/barbershop?sslmode=require` |
+| `DB_URL` | ✔ | JDBC URL, e.g. `jdbc:postgresql://host:5432/barbershop?sslmode=require` |
+| `DB_USERNAME`, `DB_PASSWORD` | ✔ | The **application role** (`barbershop_app`, DML only). With the prod profile the backend refuses a superuser, owner or DDL-capable login ([Database roles](#database-roles)) |
+| `DB_MIGRATION_USERNAME`, `DB_MIGRATION_PASSWORD` | migration run | The **owner role** (`barbershop_migrator`), used only by Flyway. In production only the migration job / `migrate` service gets it |
+| `APP_MIGRATE_ONLY` | migration run | `true` = run Flyway with the owner login, then exit (no web server, no jobs) |
+| `APP_DB_MIGRATE` | – | `true` (default, local) = migrate on start; `false` (production) = only validate, refuse to start while migrations are pending |
 | `APP_JWT_SECRET` | ✔ | ≥ 32 random characters (`openssl rand -base64 48`); weak or placeholder values are refused |
 | `APP_TOKEN_SECRET` | – | Key for email-link tokens (default: derived from the JWT secret) |
 | `APP_FRONTEND_BASE_URL` | ✔ | `https://www.example-barber.de` — base of every link in emails |
@@ -153,15 +161,30 @@ Set `backend_image` / `frontend_image` in the tfvars to these tags.
 **Step 5. Everything else.**
 
 ```bash
-terraform plan -var-file=env/prod.tfvars -out=prod.tfplan   # review: ~35 resources
+terraform plan -var-file=env/prod.tfvars -out=prod.tfplan   # review: ~37 resources
 terraform apply prod.tfplan
 ```
 
-On its first start the backend:
+The backend app can't become ready yet: the database has no roles and no schema.
 
-1. runs the Flyway migrations;
-2. creates the shop (`tenant_name`) and the first admin;
-3. becomes *ready*.
+**Step 5b. Database roles and the first migration** ([Database roles](#database-roles)):
+
+```bash
+RG=$(terraform output -raw resource_group)
+JOB_INIT=$(terraform output -raw db_init_job_name)
+az containerapp job start -g $RG -n $JOB_INIT                      # once: creates the two roles
+az containerapp job execution list -g $RG -n $JOB_INIT -o table    # wait for "Succeeded"
+sh scripts/run-migrate-job.sh $RG $(terraform output -raw migrate_job_name) \
+  $(terraform output -raw acr_login_server)/barbershop-backend:$TAG
+```
+
+The migration job:
+
+1. runs the Flyway migrations with the owner login;
+2. creates the shop (`tenant_name`) and the first admin.
+
+The backend, which has only the application login, then validates the schema and becomes *ready* on its next
+probe. If it gave up while waiting, restart it with `az containerapp revision restart`.
 
 Check it:
 
@@ -233,14 +256,19 @@ In GitHub, add **required reviewers** to the `prod` environment. That makes the 
   tag with `prod`; GitLab: play `deploy:prod` in the tag pipeline).
 - The deploy:
   1. copies the scanned images into ACR;
-  2. updates the backend first (Flyway migrates on start), then the frontend;
-  3. waits for `/actuator/health/readiness`.
+  2. runs the **migrate job** with the release image (owner login, `infra/azure/scripts/run-migrate-job.sh`)
+     and stops the deploy if a migration fails;
+  3. updates the backend (application login, validates the schema), then the frontend;
+  4. waits for `/actuator/health/readiness`.
 
 ## 5. Database, Flyway, first admin and shop data
 
-- **Migrations** (`backend/src/main/resources/db/migration/V1…V8`) run automatically when the backend starts.
-  Flyway takes a database lock, so parallel starts are safe. A failing migration stops the start: the new revision
-  never becomes ready and the old one keeps serving.
+- **Migrations** (`backend/src/main/resources/db/migration/V1…V8`):
+  - Production runs them as a separate step before the rollout: the Azure migrate job, or the `migrate`
+    service of the VPS compose.
+  - Locally the backend runs them on start.
+  - Flyway takes a database lock, so parallel runs are safe.
+  - A failing migration stops the deploy; the running backend keeps serving the old version.
 - **Writing migrations:** additive and backward compatible ("expand, then contract"), so the previous backend
   version still works against the new schema. That keeps a rollback possible without restoring the database. Never
   edit a migration that already ran.
@@ -261,6 +289,35 @@ In GitHub, add **required reviewers** to the `prod` environment. That makes the 
   5. Do a test booking with your own email address: request → accept → (demo) payment → confirmation → cancel via
      the manage link. A test account can delete itself (My account → Delete account). Cancelled test bookings are
      anonymised by the retention job after 6 months.
+
+### Database roles
+
+The backend never connects with an admin or owner login. Three logins, three jobs:
+
+| Login | Rights | Used by |
+|---|---|---|
+| Server admin (local/VPS: the `POSTGRES_USER` superuser; Azure: `barbershop_admin`) | everything | Only `infra/postgres/init-roles.sql` (once) and backups |
+| `barbershop_migrator` (`DB_MIGRATION_USERNAME`) | owns the database, schema `public` and all tables; no superuser / `CREATEROLE` / `CREATEDB` | Flyway only: migrate job (Azure), `migrate` service (VPS), backend start (local dev) |
+| `barbershop_app` (`DB_USERNAME`) | `SELECT`/`INSERT`/`UPDATE`/`DELETE` on the tables, `SELECT` on the Flyway history; no DDL, owns nothing | The backend's connection pool |
+
+- **Creating the roles:** `infra/postgres/init-roles.sql` is idempotent; running it again updates
+  passwords and ownership. It is run by:
+  - Docker compose: `infra/postgres/10-init-roles.sh`, automatically when the volume is created;
+  - Azure: the `db-init` job.
+- **Grants:** after every migration, the Flyway callback `db/migration/afterMigrate.sql` gives the app
+  role its DML rights on all tables, including tables added by new migrations.
+- **Start-up check:** with the `prod` profile, the backend refuses to start if `DB_USERNAME` can do
+  more than that: superuser, `CREATEROLE`/`CREATEDB`/`BYPASSRLS`/replication, database or
+  table owner (or member of the owner role), or `CREATE` in schema `public`. Outside prod it only
+  logs a warning.
+- **Validate, don't migrate:** in production the backend runs with `APP_DB_MIGRATE=false`. It checks that
+  the schema matches its migrations and refuses to start while one is pending.
+- **Existing database from before the roles** (e.g. a local dev volume): run the script once, then restart the
+  backend:
+  `docker compose -f infra/docker-compose.yml exec postgres sh /docker-entrypoint-initdb.d/10-init-roles.sh`.
+  It hands the existing tables to the migrator.
+- **Tests:** the integration tests use the same script and both roles, and `DatabaseRolesIT` checks the
+  rules. A missing grant therefore fails the tests, not production.
 
 ## 6. DNS and email
 
@@ -393,18 +450,16 @@ Implemented:
 
 Open, in order of importance:
 
-1. **Spring Boot 4 upgrade.** Spring Boot 3.5.16 is the last open-source 3.5 release. Its security fixes are
+1. **Spring Boot 4 upgrade — deadline 2027-01-31.** Spring Boot 3.5.16 is the last open-source 3.5 release. Its security fixes are
    pinned in `backend/pom.xml` (Tomcat, Netty, Jackson, pgjdbc). Two Spring MVC CVEs are fixed only in Spring 7.
    They are not reachable in this API (no XsltView, SSE or views) and are accepted in `.trivyignore` until
    2027-01-31; after that the scan fails again. Plan the Boot 4 migration before that date.
-2. **Database user:** the backend uses the server admin login (Flyway needs DDL rights). Better: a dedicated owner
-   role for migrations and a restricted app role.
-3. **CSP keeps `'unsafe-inline'` for scripts:** Next.js inline bootstrap scripts; nonces would make every page
+2. **CSP keeps `'unsafe-inline'` for scripts:** Next.js inline bootstrap scripts; nonces would make every page
    dynamic. Third-party hosts are pinned per configured integration.
-4. **Rate limits are per instance** unless Redis is configured. Terraform refuses `backend_max_replicas > 1`
+3. **Rate limits are per instance** unless Redis is configured. Terraform refuses `backend_max_replicas > 1`
    without it.
-5. **Payments are demo only** (see the checklist).
-6. **Legal texts are templates** (see the checklist).
+4. **Payments are demo only** (see the checklist).
+5. **Legal texts are templates** (see the checklist).
 
 ## 11. Public demo deployment
 
@@ -460,7 +515,9 @@ apt install unattended-upgrades
 # app
 git clone <repo> barbershop && cd barbershop
 cp infra/.env.prod.example infra/.env.prod && chmod 600 infra/.env.prod
-#   fill in domains, secrets (openssl rand -base64 48), SMTP, Turnstile, TENANT_NAME, admin
+#   fill in domains, secrets (openssl rand -base64 48), the three DB passwords, SMTP, Turnstile, TENANT_NAME, admin
+# first start: Postgres creates the roles, "migrate" runs Flyway (owner login) and exits,
+# then the backend starts with the application login
 docker compose -f infra/docker-compose.prod.example.yml --env-file infra/.env.prod up -d --build
 docker compose -f infra/docker-compose.prod.example.yml --env-file infra/.env.prod ps   # all healthy
 curl -fsS https://api.example-barber.de/actuator/health/readiness

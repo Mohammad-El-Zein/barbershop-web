@@ -8,6 +8,10 @@ Monorepo:
 | `backend/` | Java 21 + Spring Boot 3 REST API, PostgreSQL, Flyway — booking lifecycle (barber approval → deposit → confirmed), accounts, loyalty, DEMO payments | Phase 2b ✅ |
 | `infra/` | Production images, docker-compose (local, e2e, VPS with Caddy), GitHub Actions + GitLab CI, Azure Terraform (`infra/azure`, not applied) | Phase 4 ✅ — guide: [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) |
 
+> **Deadline: upgrade to Spring Boot 4 before 2027-01-31.** Spring Boot 3.5 is out of open-source support; two
+> Spring MVC CVEs (not reachable in this API) are accepted in `.trivyignore` only until then. After that date
+> the image scan in CI fails and no release can be built. Details: `docs/DEPLOYMENT.md` → Security notes.
+
 ## Backend quick start
 
 Needs Docker. Details are in [`backend/README.md`](backend/README.md).

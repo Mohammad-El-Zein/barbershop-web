@@ -86,7 +86,7 @@ export TF_VAR_admin_password=…       # first start only; unset afterwards and 
 export TF_VAR_rate_limit_redis_url=… # only with backend_max_replicas > 1
 ```
 
-The DB password and the JWT and link-token secrets are generated (`random_password`) and stored in Key Vault. The
+The three DB logins (admin, owner `barbershop_migrator`, application `barbershop_app`) and the JWT and link-token secrets are generated (`random_password`) and stored in Key Vault. The backend app receives only the application login; the owner login goes only to the `migrate` job, the admin only to `db-init` (`dbjobs.tf`). The
 apps read them through Key Vault references with their managed identity. To rotate one, taint it (e.g.
 `terraform apply -replace=random_password.jwt`) and restart the backend. A new JWT secret logs everyone out, and a
 new link-token secret invalidates the email links that are still open.
