@@ -1,6 +1,6 @@
 "use client";
 
-import { useId } from "react";
+import { useEffect, useId, useRef, type ChangeEvent } from "react";
 
 type Common = {
   label: string;
@@ -8,6 +8,26 @@ type Common = {
   hint?: React.ReactNode;
   className?: string;
 };
+
+/**
+ * Text typed (or autofilled / restored by the browser) BEFORE React hydrated sits in the DOM
+ * while the controlled state is still empty — the form would then submit "". On mount, hand
+ * such a value to onChange once, as if it had just been typed.
+ */
+function useAdoptPrefilledValue<E extends HTMLInputElement | HTMLTextAreaElement>(
+  value: unknown,
+  onChange: ((e: ChangeEvent<E>) => void) | undefined,
+) {
+  const ref = useRef<E>(null);
+  const initial = useRef({ value, onChange });
+  useEffect(() => {
+    const el = ref.current;
+    const { value: v, onChange: change } = initial.current;
+    if (!el || !change || v === undefined || el.type === "checkbox" || el.type === "radio") return;
+    if (el.value !== String(v ?? "")) change({ target: el, currentTarget: el } as unknown as ChangeEvent<E>);
+  }, []);
+  return ref;
+}
 
 /** Labelled input with error + hint, wired with aria-invalid / aria-describedby. */
 export function Field({
@@ -18,13 +38,14 @@ export function Field({
   ...input
 }: Common & React.InputHTMLAttributes<HTMLInputElement>) {
   const id = useId();
+  const ref = useAdoptPrefilledValue(input.value, input.onChange);
   const describedBy = [error ? `${id}-err` : null, hint ? `${id}-hint` : null].filter(Boolean).join(" ") || undefined;
   return (
     <div className={className}>
       <label htmlFor={id} className="label">
         {label}
       </label>
-      <input id={id} className="input" aria-invalid={error ? true : undefined} aria-describedby={describedBy} {...input} />
+      <input ref={ref} id={id} className="input" aria-invalid={error ? true : undefined} aria-describedby={describedBy} {...input} />
       <FieldMessages id={id} error={error} hint={hint} />
     </div>
   );
@@ -38,6 +59,7 @@ export function TextArea({
   ...input
 }: Common & React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
   const id = useId();
+  const ref = useAdoptPrefilledValue(input.value, input.onChange);
   const describedBy = [error ? `${id}-err` : null, hint ? `${id}-hint` : null].filter(Boolean).join(" ") || undefined;
   return (
     <div className={className}>
@@ -45,6 +67,7 @@ export function TextArea({
         {label}
       </label>
       <textarea
+        ref={ref}
         id={id}
         className="input min-h-28 resize-y"
         aria-invalid={error ? true : undefined}

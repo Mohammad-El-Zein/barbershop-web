@@ -76,6 +76,29 @@ test("guest manage link: details, refund info before confirming, cancelled", asy
   await shot(page, info, "72-manage-cancelled");
 });
 
+test("text typed before the page hydrated is not lost (forgot password)", async ({ page }, info) => {
+  const { lang } = variant(info);
+  // hold back the JavaScript: the server HTML is usable, React is not running yet
+  let release!: () => void;
+  const gate = new Promise<void>((r) => (release = r));
+  await page.route("**/_next/static/chunks/*.js", async (route) => {
+    await gate;
+    await route.continue();
+  });
+  await page.goto(`/${lang}/account/forgot-password`, { waitUntil: "domcontentloaded" });
+  const email = uniqueEmail("prehydration");
+  await page.getByLabel(T[lang].email, { exact: true }).fill(email);
+
+  release();
+  await page.waitForLoadState("load");
+  await expect
+    .poll(() => page.evaluate(() => Object.keys(document.querySelector("form")!).some((k) => k.startsWith("__react"))))
+    .toBe(true);
+  const sent = page.waitForRequest((r) => r.url().includes("/auth/forgot-password") && r.method() === "POST");
+  await page.getByRole("button", { name: P[lang].forgotButton }).click();
+  expect((await sent).postDataJSON()).toMatchObject({ email });
+});
+
 test("account pages: reset password, profile, my bookings", async ({ page }, info) => {
   const { lang } = variant(info);
   const t = T[lang];
