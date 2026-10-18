@@ -1,5 +1,7 @@
 package com.barbershop.booking;
 
+import com.barbershop.booking.BookingDtos.CampaignRow;
+import com.barbershop.booking.BookingDtos.CampaignStatsView;
 import com.barbershop.booking.BookingDtos.DayCount;
 import com.barbershop.booking.BookingDtos.ServiceCount;
 import com.barbershop.booking.BookingDtos.StatsView;
@@ -87,5 +89,49 @@ public class StatsService {
         long booked = perDay.stream().mapToLong(DayCount::booked).sum();
         long cancelled = perDay.stream().mapToLong(DayCount::cancelled).sum();
         return new StatsView(start, end, tenant.getTimezone(), booked, cancelled, perDay, perService);
+    }
+
+    /** Online bookings created in [from, to] (shop-local dates), grouped by first-touch campaign. */
+    public CampaignStatsView campaigns(UUID tenantId, LocalDate from, LocalDate to) {
+        Tenant tenant = tenants.require(tenantId);
+        ZoneId zone = tenant.zone();
+        LocalDate end = to != null ? to : LocalDate.now(clock.withZone(zone));
+        LocalDate start = from != null ? from : end.minusDays(29);
+        if (end.isBefore(start) || ChronoUnit.DAYS.between(start, end) > 366) {
+            throw ApiException.unprocessable("stats.invalid_range");
+        }
+        List<CampaignRow> rows = jdbc.sql("""
+                        select coalesce(b.attr_source,
+                                        case when b.attr_gclid is not null then 'google'
+                                             when b.attr_fbclid is not null then 'facebook' end,
+                                        '(direct)') as source,
+                               coalesce(b.attr_medium,
+                                        case when b.attr_gclid is not null then 'cpc'
+                                             when b.attr_fbclid is not null then 'paid_social' end,
+                                        '(none)') as medium,
+                               coalesce(b.attr_campaign,
+                                        case when b.attr_landing_path ~ '^/[a-z]{2}/lp/[^/?#]+'
+                                             then 'lp:' || split_part(b.attr_landing_path, '/', 4) end,
+                                        '(not set)') as campaign,
+                               count(*) as bookings,
+                               count(*) filter (where b.confirmed_at is not null) as confirmed,
+                               coalesce(sum(b.price_total_cents - b.loyalty_discount_cents)
+                                        filter (where b.confirmed_at is not null), 0) as revenue
+                        from booking b
+                        where b.tenant_id = :tenant and b.source = 'ONLINE'
+                          and b.created_at >= :from and b.created_at < :to
+                        group by 1, 2, 3
+                        order by bookings desc, confirmed desc, 1, 2, 3""")
+                .param("tenant", tenantId)
+                .param("from", java.sql.Timestamp.from(start.atStartOfDay(zone).toInstant()))
+                .param("to", java.sql.Timestamp.from(end.plusDays(1).atStartOfDay(zone).toInstant()))
+                .query((rs, i) -> new CampaignRow(rs.getString("source"), rs.getString("medium"),
+                        rs.getString("campaign"), rs.getLong("bookings"), rs.getLong("confirmed"),
+                        rs.getLong("revenue")))
+                .list();
+        long total = rows.stream().mapToLong(CampaignRow::bookings).sum();
+        long direct = rows.stream().filter(r -> "(direct)".equals(r.source()) && "(not set)".equals(r.campaign()))
+                .mapToLong(CampaignRow::bookings).sum();
+        return new CampaignStatsView(start, end, tenant.getTimezone(), tenant.getCurrency(), total, total - direct, rows);
     }
 }

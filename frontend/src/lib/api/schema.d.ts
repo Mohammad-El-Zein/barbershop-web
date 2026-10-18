@@ -317,6 +317,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/stats/campaigns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Online bookings and confirmed bookings per source / medium / campaign (by booking creation date; default: last 30 days) */
+        get: operations["campaigns"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/time-off": {
         parameters: {
             query?: never;
@@ -1100,6 +1117,28 @@ export interface components {
             start?: string;
             time?: string;
         };
+        AttributionRequest: {
+            campaign?: string;
+            /** Format: date-time */
+            capturedAt?: string;
+            content?: string;
+            fbclid?: string;
+            gclid?: string;
+            landingPath?: string;
+            medium?: string;
+            source?: string;
+            term?: string;
+        };
+        AttributionView: {
+            campaign?: string;
+            content?: string;
+            fbclid?: boolean;
+            gclid?: boolean;
+            landingPath?: string;
+            medium?: string;
+            source?: string;
+            term?: string;
+        };
         AvailableDaysView: {
             days?: string[];
             /** Format: date */
@@ -1132,6 +1171,7 @@ export interface components {
             /** Format: date-time */
             acceptedAt?: string;
             allowedTransitions?: ("PENDING_BARBER" | "AWAITING_PAYMENT" | "CONFIRMED" | "COMPLETED" | "DECLINED" | "EXPIRED" | "CANCELLED" | "NO_SHOW")[];
+            attribution?: components["schemas"]["AttributionView"];
             /** Format: date-time */
             barberDeadline?: string;
             /** Format: date-time */
@@ -1225,6 +1265,30 @@ export interface components {
             statusToken?: string;
             timezone?: string;
         };
+        CampaignRow: {
+            /** Format: int64 */
+            bookings?: number;
+            campaign?: string;
+            /** Format: int64 */
+            confirmed?: number;
+            /** Format: int64 */
+            confirmedRevenueCents?: number;
+            medium?: string;
+            source?: string;
+        };
+        CampaignStatsView: {
+            /** Format: int64 */
+            attributedBookings?: number;
+            campaigns?: components["schemas"]["CampaignRow"][];
+            currency?: string;
+            /** Format: date */
+            from?: string;
+            timezone?: string;
+            /** Format: date */
+            to?: string;
+            /** Format: int64 */
+            totalBookings?: number;
+        };
         CatalogPrice: {
             amount?: number;
             /** Format: int32 */
@@ -1238,6 +1302,7 @@ export interface components {
             newPassword: string;
         };
         CreateBookingRequest: {
+            attribution?: components["schemas"]["AttributionRequest"];
             consent?: boolean;
             /** Format: email */
             customerEmail?: string;
@@ -2414,6 +2479,29 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StatsView"];
+                };
+            };
+        };
+    };
+    campaigns: {
+        parameters: {
+            query?: {
+                from?: string;
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignStatsView"];
                 };
             };
         };

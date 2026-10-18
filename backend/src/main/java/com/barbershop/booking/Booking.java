@@ -6,6 +6,7 @@ import com.barbershop.service.BarberService;
 import com.barbershop.staff.Staff;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
+import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -115,6 +116,10 @@ public class Booking implements Persistable<UUID> {
     @Enumerated(EnumType.STRING)
     @Column(name = "loyalty_status", nullable = false)
     private LoyaltyStatus loyaltyStatus = LoyaltyStatus.NONE;
+
+    /** Marketing first touch (only with the visitor's marketing consent); null for most bookings. */
+    @Embedded
+    private BookingAttribution attribution;
 
     @Column(name = "barber_deadline_at")
     private Instant barberDeadlineAt;
@@ -235,6 +240,12 @@ public class Booking implements Persistable<UUID> {
         this.loyaltyDiscountCents = p.loyaltyDiscountCents();
         this.depositCents = p.depositCents();
         this.amountDueAtShopCents = p.amountDueAtShopCents();
+    }
+
+    public BookingAttribution getAttribution() { return attribution; }
+
+    public void setAttribution(BookingAttribution attribution) {
+        this.attribution = attribution;
     }
 
     public void setLoyaltyStatus(LoyaltyStatus loyaltyStatus) {

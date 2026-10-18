@@ -108,6 +108,15 @@ export function StaffBookingCard({
         {b.payment && <div>{t("payment", { status: t(`paymentStatus.${b.payment.status}`) })}</div>}
         {b.status === "PENDING_BARBER" && b.barberDeadline && <div>{t("respondUntil", { time: dateTime(b.barberDeadline, locale) })}</div>}
         {b.source && b.source !== "ONLINE" && <div>{t(`source.${b.source}`)}</div>}
+        {b.attribution && (
+          <div>
+            {t("attribution", {
+              value: [b.attribution.source ?? (b.attribution.gclid ? "google" : b.attribution.fbclid ? "facebook" : undefined), b.attribution.campaign ?? b.attribution.landingPath]
+                .filter(Boolean)
+                .join(" · "),
+            })}
+          </div>
+        )}
       </dl>
       {b.note && <p className="mt-2 rounded-lg bg-ink/5 px-3 py-2 text-sm">“{b.note}”</p>}
       {error ? <Alert tone="error" className="mt-3">{errorText(error)}</Alert> : null}

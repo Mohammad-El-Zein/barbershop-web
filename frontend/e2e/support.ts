@@ -14,6 +14,8 @@ export const BEARD = "7b3f1c2e-0000-4000-8000-000000000102";
 export const LUCA = "7b3f1c2e-0000-4000-8000-000000000201";
 export const MO = "7b3f1c2e-0000-4000-8000-000000000202";
 export const STATE_FILE = resolve(here, ".state.json");
+/** Browser storage (consent decision) every project starts with, written by global-setup. */
+export const STORAGE_FILE = resolve(here, ".storage.json");
 
 export type E2EState = { adminEmail: string; adminPassword: string; barberEmail: string; barberPassword: string };
 

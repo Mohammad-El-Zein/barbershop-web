@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { hasLocale, NextIntlClientProvider } from "next-intl";
 import { getMessages, getTranslations } from "next-intl/server";
 import { BookingDialog } from "@/components/booking/BookingDialog";
+import { ConsentManager } from "@/components/consent/ConsentManager";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { siteConfig } from "@/config/site.config";
 import { themeCss } from "@/config/theme-css";
@@ -62,6 +63,8 @@ export default async function LocaleLayout({ children, params }: LayoutProps<"/[
         <ThemeProvider>
           <NextIntlClientProvider locale={locale} messages={messages}>
             <AuthProvider>
+              {/* first in the tab order; renders only while no decision exists (or when re-opened) */}
+              <ConsentManager />
               {children}
               {/* opened by every "Book" button (lib/booking.ts → openBooking) */}
               <BookingDialog />

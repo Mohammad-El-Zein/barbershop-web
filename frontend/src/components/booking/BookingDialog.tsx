@@ -56,6 +56,7 @@ export function BookingDialog() {
         initialServiceIds={preset?.serviceIds}
         initialStaffId={preset?.staffId}
         onBooked={onBooked}
+        source={preset?.source}
       />
     </Dialog>
   );

@@ -8,6 +8,7 @@ import { api, call } from "@/lib/api/client";
 import type { Booking, BookingStatus } from "@/lib/api/types";
 import { useErrorText } from "@/lib/api/useErrorText";
 import { dateTime } from "@/lib/format";
+import { bookingParams, trackOnce } from "@/lib/tracking";
 import { Alert, Skeleton, Spinner, StatusBadge } from "../ui/Feedback";
 import { BookingSummary, LinkProblem } from "./LinkState";
 
@@ -54,6 +55,13 @@ export function StatusView() {
       document.removeEventListener("visibilitychange", onVisible);
     };
   }, [load]);
+
+  // conversion: the booking reached "confirmed" (once per booking, also if seen on the payment page)
+  useEffect(() => {
+    if (booking?.id && (booking.status === "CONFIRMED" || booking.status === "COMPLETED")) {
+      trackOnce(`confirmed:${booking.id}`, "booking_confirmed", bookingParams(booking));
+    }
+  }, [booking]);
 
   const pay = async () => {
     setPaying(true);

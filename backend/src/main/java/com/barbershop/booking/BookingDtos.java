@@ -1,6 +1,7 @@
 package com.barbershop.booking;
 
 import com.barbershop.payment.PaymentStatus;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
@@ -43,7 +44,28 @@ public final class BookingDtos {
             @Email(message = "{validation.email}") @Size(max = 254, message = "{validation.size.max}") String customerEmail,
             @Pattern(regexp = "de|en", message = "{validation.lang}") String lang,
             @Size(max = 500, message = "{validation.size.max}") String note,
-            Boolean consent) {}
+            Boolean consent,
+            /** First-touch campaign data; only sent by the website with marketing consent. */
+            @Valid AttributionRequest attribution) {}
+
+    /**
+     * UTM parameters, click ids and landing page as captured by the website (first touch,
+     * 30-day window). Over-long values are rejected; the backend also cleans and cuts them.
+     */
+    public record AttributionRequest(
+            @Size(max = 300, message = "{validation.size.max}") String source,
+            @Size(max = 300, message = "{validation.size.max}") String medium,
+            @Size(max = 300, message = "{validation.size.max}") String campaign,
+            @Size(max = 300, message = "{validation.size.max}") String term,
+            @Size(max = 300, message = "{validation.size.max}") String content,
+            @Size(max = 500, message = "{validation.size.max}") String gclid,
+            @Size(max = 500, message = "{validation.size.max}") String fbclid,
+            @Size(max = 500, message = "{validation.size.max}") String landingPath,
+            OffsetDateTime capturedAt) {}
+
+    /** Attribution as shown to admins (null fields are omitted). */
+    public record AttributionView(String source, String medium, String campaign, String term, String content,
+                                  boolean gclid, boolean fbclid, String landingPath) {}
 
     public record PricePreviewRequest(
             @NotEmpty(message = "{validation.required}") @Size(max = 10, message = "{validation.size.max}")
@@ -120,7 +142,7 @@ public final class BookingDtos {
                                    PaymentInfo payment, OffsetDateTime barberDeadline, OffsetDateTime acceptedAt,
                                    OffsetDateTime confirmedAt, OffsetDateTime completedAt, OffsetDateTime cancelledAt,
                                    Actor cancelledBy, String statusReason, Set<BookingStatus> allowedTransitions,
-                                   OffsetDateTime createdAt) {}
+                                   OffsetDateTime createdAt, AttributionView attribution) {}
 
     public record LoyaltyInfo(int visitsInCurrentCycle, int threshold, int discountPercent,
                               boolean nextDiscountAvailable, boolean appliesToThisBooking) {}
@@ -149,4 +171,16 @@ public final class BookingDtos {
 
     public record StatsView(LocalDate from, LocalDate to, String timezone, long totalBooked, long totalCancelled,
                             List<DayCount> perDay, List<ServiceCount> perService) {}
+
+    /**
+     * Online bookings per campaign. source / medium / campaign fall back to the click id
+     * ("google" / "cpc" for gclid, "facebook" / "paid_social" for fbclid), the ad landing page
+     * ("lp:<slug>"), or "(direct)" / "(none)" / "(not set)". "confirmed" = the booking reached
+     * confirmation (even if cancelled later); revenue = their price after loyalty discount.
+     */
+    public record CampaignRow(String source, String medium, String campaign, long bookings, long confirmed,
+                              long confirmedRevenueCents) {}
+
+    public record CampaignStatsView(LocalDate from, LocalDate to, String timezone, String currency,
+                                    long totalBookings, long attributedBookings, List<CampaignRow> campaigns) {}
 }

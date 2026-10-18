@@ -2764,6 +2764,52 @@
         ]
       }
     },
+    "/api/admin/stats/campaigns": {
+      "get": {
+        "tags": [
+          "Admin: dashboard"
+        ],
+        "summary": "Online bookings and confirmed bookings per source / medium / campaign (by booking creation date; default: last 30 days)",
+        "operationId": "campaigns",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampaignStatsView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/api/admin/customers": {
       "get": {
         "tags": [
@@ -3234,6 +3280,55 @@
           }
         }
       },
+      "AttributionRequest": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string",
+            "maxLength": 300,
+            "minLength": 0
+          },
+          "medium": {
+            "type": "string",
+            "maxLength": 300,
+            "minLength": 0
+          },
+          "campaign": {
+            "type": "string",
+            "maxLength": 300,
+            "minLength": 0
+          },
+          "term": {
+            "type": "string",
+            "maxLength": 300,
+            "minLength": 0
+          },
+          "content": {
+            "type": "string",
+            "maxLength": 300,
+            "minLength": 0
+          },
+          "gclid": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 0
+          },
+          "fbclid": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 0
+          },
+          "landingPath": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 0
+          },
+          "capturedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
       "CreateBookingRequest": {
         "type": "object",
         "properties": {
@@ -3280,6 +3375,9 @@
           },
           "consent": {
             "type": "boolean"
+          },
+          "attribution": {
+            "$ref": "#/components/schemas/AttributionRequest"
           }
         },
         "required": [
@@ -3785,6 +3883,35 @@
           "password"
         ]
       },
+      "AttributionView": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string"
+          },
+          "medium": {
+            "type": "string"
+          },
+          "campaign": {
+            "type": "string"
+          },
+          "term": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "gclid": {
+            "type": "boolean"
+          },
+          "fbclid": {
+            "type": "boolean"
+          },
+          "landingPath": {
+            "type": "string"
+          }
+        }
+      },
       "BookingAdminView": {
         "type": "object",
         "properties": {
@@ -3921,6 +4048,9 @@
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "attribution": {
+            "$ref": "#/components/schemas/AttributionView"
           }
         }
       },
@@ -4743,6 +4873,65 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/ServiceCount"
+            }
+          }
+        }
+      },
+      "CampaignRow": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string"
+          },
+          "medium": {
+            "type": "string"
+          },
+          "campaign": {
+            "type": "string"
+          },
+          "bookings": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "confirmed": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "confirmedRevenueCents": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "CampaignStatsView": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date"
+          },
+          "to": {
+            "type": "string",
+            "format": "date"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "totalBookings": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "attributedBookings": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "campaigns": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CampaignRow"
             }
           }
         }

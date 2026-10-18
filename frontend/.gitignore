@@ -45,3 +45,4 @@ next-env.d.ts
 /test-results/
 /playwright-report/
 /e2e/.state.json
+/e2e/.storage.json

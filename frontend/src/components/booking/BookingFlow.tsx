@@ -7,6 +7,8 @@ import { TENANT } from "@/lib/api/config";
 import type { Booking } from "@/lib/api/types";
 import { useErrorText } from "@/lib/api/useErrorText";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { currentAttribution } from "@/lib/attribution";
+import { bookingParams, track } from "@/lib/tracking";
 import { rulesOf, useShop } from "@/lib/useShop";
 import { Alert } from "../ui/Feedback";
 import { useServices, useStaff } from "./data";
@@ -27,10 +29,13 @@ export function BookingFlow({
   initialServiceIds = [],
   initialStaffId,
   onBooked,
+  source = "unknown",
 }: {
   initialServiceIds?: string[];
   initialStaffId?: string;
   onBooked: (booking: Booking) => void;
+  /** Which button / page opened the flow (analytics). */
+  source?: string;
 }) {
   const t = useTranslations("booking");
   const locale = useLocale();
@@ -56,6 +61,12 @@ export function BookingFlow({
   const asCustomer = status === "authenticated" && user?.role === "CUSTOMER";
   const chosenServices = (services.data ?? []).filter((s) => serviceIds.includes(s.id!));
   const index = STEPS.indexOf(step);
+
+  useEffect(() => {
+    track("booking_started", { source, preselected: initialServiceIds.length > 0 });
+    // once per flow instance (the dialog remounts the flow for every opening)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // move focus to the step heading on every step change (screen readers + keyboard)
   const first = useRef(true);
@@ -84,6 +95,7 @@ export function BookingFlow({
       setErrors(e);
       if (Object.keys(e).length) return;
     }
+    track("booking_step_completed", { step, step_number: index + 1, source });
     setStep(STEPS[Math.min(index + 1, STEPS.length - 1)]);
   };
   const back = () => {
@@ -110,10 +122,13 @@ export function BookingFlow({
               customerPhone: guest.phone.trim(),
               consent,
             }),
+        // first-touch campaign data, only present with marketing consent
+        attribution: currentAttribution(),
       };
       const booking = (await call(() =>
         api.POST("/api/public/{tenant}/bookings", { params: { path: { tenant: TENANT } }, body }),
       )) as Booking;
+      track("booking_submitted", { ...bookingParams(booking), source });
       onBooked(booking);
     } catch (e) {
       const msg = errorText(e);

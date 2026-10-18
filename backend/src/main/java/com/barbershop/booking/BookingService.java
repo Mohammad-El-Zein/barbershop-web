@@ -203,7 +203,7 @@ public class BookingService {
         for (Staff staff : free) {
             try {
                 Inserted inserted = writeTx.execute(tx -> insertRequest(tenant, staff, account, start, services,
-                        customer, req.note()));
+                        customer, req.note(), req.attribution()));
                 Booking saved = inserted.booking();
                 log.info("Booking request {} created: tenant={} staff={} start={} services={}", saved.getId(),
                         tenant.getSlug(), staff.getId(), start, services.size());
@@ -220,7 +220,8 @@ public class BookingService {
     private record Inserted(Booking booking, String statusToken) {}
 
     private Inserted insertRequest(Tenant tenant, Staff staff, AppUser account, Instant start,
-                                  List<BarberService> services, Customer c, String note) {
+                                  List<BarberService> services, Customer c, String note,
+                                  BookingDtos.AttributionRequest attribution) {
         BookingPolicy policy = tenant.policy();
         Instant now = Instant.now(clock);
         Booking b = new Booking(tenant.getId(), staff, account == null ? null : account.getId(), BookingSource.ONLINE,
@@ -230,6 +231,7 @@ public class BookingService {
                 policy.deadlineBeforeStart()));
         b.applyPricing(BookingPricing.calculate(lines(services), policy.getDepositCents(), false,
                 policy.getLoyaltyPercent()));
+        b.setAttribution(BookingAttribution.of(attribution, now));
         bookings.saveAndFlush(b); // ← exclusion constraint fires here
         if (account != null && loyalty.tryReserve(account.getId(), tenant.getId(), b.getId(), policy)) {
             b.applyPricing(BookingPricing.calculate(lines(services), policy.getDepositCents(), true,

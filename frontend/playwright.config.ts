@@ -23,6 +23,8 @@ export default defineConfig({
     baseURL: process.env.E2E_BASE_URL ?? "http://localhost:3000",
     trace: "retain-on-failure",
     timezoneId: "Europe/Berlin",
+    // "only necessary" consent stored (written by global-setup); consent.spec.ts overrides it
+    storageState: "./e2e/.storage.json",
   },
   projects: [
     { name: "desktop-de-dark", use: { viewport: { width: 1440, height: 900 }, colorScheme: "dark", locale: "de-DE" } },

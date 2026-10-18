@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { api, LUCA, linkIn, MAILPIT, sql, STATE_FILE, uniqueEmail, waitForMail } from "./support";
+import { api, LUCA, linkIn, MAILPIT, sql, STATE_FILE, STORAGE_FILE, uniqueEmail, waitForMail } from "./support";
 
 /**
  * Once per run: checks the stack is up, cancels bookings left by earlier runs, reads the
@@ -47,4 +47,10 @@ export default async function globalSetup() {
   if (reset.status !== 200) throw new Error(`barber password failed: ${reset.status}`);
 
   writeFileSync(STATE_FILE, JSON.stringify({ adminEmail, adminPassword, barberEmail, barberPassword }, null, 2));
+
+  // browser storage for all specs: an "only necessary" cookie decision, so the consent
+  // banner doesn't cover the page (consent.spec.ts starts without it)
+  const origin = new URL(process.env.E2E_BASE_URL ?? "http://localhost:3000").origin;
+  const consent = { v: 1, at: new Date().toISOString(), statistics: false, marketing: false };
+  writeFileSync(STORAGE_FILE, JSON.stringify({ cookies: [], origins: [{ origin, localStorage: [{ name: "consent", value: JSON.stringify(consent) }] }] }));
 }

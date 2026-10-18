@@ -387,21 +387,7 @@
     "toAccount": "Zu deinem Konto",
     "adminArea": "Admin-Bereich",
     "barberArea": "Barber-Bereich",
-    "profile": {
-      "title": "Shop-Profil",
-      "lead": "Adresse und Kontakt für Website und Suchmaschinen (strukturierte Daten). Die Öffnungszeiten ergeben sich aus den Arbeitszeiten der Barber.",
-      "saved": "Gespeichert.",
-      "save": "Profil speichern",
-      "street": "Straße und Hausnummer",
-      "postalCode": "PLZ",
-      "city": "Ort",
-      "country": "Land",
-      "countryHint": "Zwei Großbuchstaben, z. B. DE",
-      "phone": "Telefon",
-      "email": "E-Mail",
-      "priceRange": "Preisklasse",
-      "priceRangeHint": "1–4 × €, z. B. €€"
-    },
+    "profile": "Mein Profil",
     "sections": "Bereiche",
     "adminOnly": "Nur für Admins.",
     "tabs": {
@@ -444,7 +430,8 @@
         "refund": "Einbehaltene Anzahlung erstatten?"
       },
       "cancelRefund": "Bei einer Stornierung durch den Laden wird die Anzahlung erstattet.",
-      "reason": "Grund / Nachricht (optional)"
+      "reason": "Grund / Nachricht (optional)",
+      "attribution": "Kampagne: {value}"
     },
     "calendar": {
       "title": "Kalender",
@@ -593,6 +580,35 @@
       "loyaltyPercent": "Treuerabatt (%)",
       "autoCompleteAfterMin": "Automatisch erledigt nach (Min.)",
       "reminderBeforeMin": "Erinnerung vorher (Min.)"
+    },
+    "campaigns": {
+      "title": "Kampagnen",
+      "lead": "Online-Buchungen im Zeitraum (nach Buchungsdatum) nach Herkunft – erfasst nur bei Marketing-Einwilligung der Besucher. „Bestätigt“ = Termin wurde bestätigt; Umsatz = Preis dieser Termine.",
+      "empty": "Keine Online-Buchungen in diesem Zeitraum.",
+      "summary": "{total} Online-Buchungen, davon {attributed} einer Kampagne oder Anzeige zugeordnet.",
+      "source": "Quelle",
+      "medium": "Medium",
+      "campaign": "Kampagne",
+      "bookings": "Buchungen",
+      "confirmed": "Bestätigt",
+      "revenue": "Umsatz (bestätigt)",
+      "direct": "Direkt / unbekannt",
+      "landingPage": "Landingpage {slug}"
+    },
+    "shopProfile": {
+      "title": "Shop-Profil",
+      "lead": "Adresse und Kontakt für Website und Suchmaschinen (strukturierte Daten). Die Öffnungszeiten ergeben sich aus den Arbeitszeiten der Barber.",
+      "saved": "Gespeichert.",
+      "save": "Profil speichern",
+      "street": "Straße und Hausnummer",
+      "postalCode": "PLZ",
+      "city": "Ort",
+      "country": "Land",
+      "countryHint": "Zwei Großbuchstaben, z. B. DE",
+      "phone": "Telefon",
+      "email": "E-Mail",
+      "priceRange": "Preisklasse",
+      "priceRangeHint": "1–4 × €, z. B. €€"
     }
   },
   "errorPages": {
@@ -607,6 +623,33 @@
     "error": {
       "title": "Da ist etwas schiefgelaufen",
       "text": "Ein unerwarteter Fehler ist aufgetreten. Versuch es bitte noch einmal – deine bisherigen Angaben wurden nicht gespeichert."
+    }
+  },
+  "consent": {
+    "title": "Cookies & Datenschutz",
+    "text": "Wir nutzen technisch notwendige Speicherungen, damit Buchung und Anmeldung funktionieren. Mit deiner Einwilligung messen wir außerdem anonymisiert, wie die Website genutzt wird (Statistik), und welche Anzeige zu einer Buchung geführt hat (Marketing). Du kannst deine Auswahl jederzeit unter „Cookie-Einstellungen“ ändern. Mehr in der <link>Datenschutzerklärung</link>.",
+    "categories": "Kategorien",
+    "acceptAll": "Alle akzeptieren",
+    "rejectAll": "Nur notwendige",
+    "settings": "Einstellungen",
+    "save": "Auswahl speichern",
+    "noTool": "Derzeit kein Dienst aktiv.",
+    "necessary": {
+      "title": "Notwendig",
+      "text": "Sprache, Farbschema, Anmeldung und diese Auswahl. Immer aktiv."
+    },
+    "statistics": {
+      "title": "Statistik",
+      "text": "Hilft uns zu verstehen, welche Seiten und Buchungsschritte genutzt werden."
+    },
+    "marketing": {
+      "title": "Marketing",
+      "text": "Misst, über welche Anzeige oder Kampagne du gekommen bist (30 Tage, auch mit deiner Buchung)."
+    },
+    "tools": {
+      "ga4": "Google Analytics 4",
+      "google-ads": "Google Ads Conversion-Tracking",
+      "meta-pixel": "Meta-Pixel"
     }
   }
 }

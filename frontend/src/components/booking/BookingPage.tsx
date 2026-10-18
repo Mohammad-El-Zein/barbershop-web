@@ -16,6 +16,7 @@ export function BookingPage() {
     <BookingFlow
       initialServiceIds={services}
       initialStaffId={staff}
+      source={params.get("source") ?? "booking-page"}
       onBooked={(b: Booking) => {
         rememberStatus(b.statusToken);
         router.push(`/booking/status/${b.statusToken}`);

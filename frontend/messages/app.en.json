@@ -387,21 +387,7 @@
     "toAccount": "To your account",
     "adminArea": "Admin area",
     "barberArea": "Barber area",
-    "profile": {
-      "title": "Shop profile",
-      "lead": "Address and contact for the website and search engines (structured data). Opening hours follow from the barbers' working hours.",
-      "saved": "Saved.",
-      "save": "Save profile",
-      "street": "Street and number",
-      "postalCode": "Postal code",
-      "city": "City",
-      "country": "Country",
-      "countryHint": "Two capital letters, e.g. DE",
-      "phone": "Phone",
-      "email": "Email",
-      "priceRange": "Price range",
-      "priceRangeHint": "1–4 × €, e.g. €€"
-    },
+    "profile": "My profile",
     "sections": "Sections",
     "adminOnly": "Admins only.",
     "tabs": {
@@ -444,7 +430,8 @@
         "refund": "Refund the kept deposit?"
       },
       "cancelRefund": "When the shop cancels, the deposit is refunded.",
-      "reason": "Reason / message (optional)"
+      "reason": "Reason / message (optional)",
+      "attribution": "Campaign: {value}"
     },
     "calendar": {
       "title": "Calendar",
@@ -593,6 +580,35 @@
       "loyaltyPercent": "Loyalty discount (%)",
       "autoCompleteAfterMin": "Auto-complete after (min)",
       "reminderBeforeMin": "Reminder before (min)"
+    },
+    "campaigns": {
+      "title": "Campaigns",
+      "lead": "Online bookings in the period (by booking date) per source – only captured with the visitor's marketing consent. “Confirmed” = the appointment was confirmed; revenue = the price of those appointments.",
+      "empty": "No online bookings in this period.",
+      "summary": "{total} online bookings, {attributed} of them attributed to a campaign or ad.",
+      "source": "Source",
+      "medium": "Medium",
+      "campaign": "Campaign",
+      "bookings": "Bookings",
+      "confirmed": "Confirmed",
+      "revenue": "Revenue (confirmed)",
+      "direct": "Direct / unknown",
+      "landingPage": "Landing page {slug}"
+    },
+    "shopProfile": {
+      "title": "Shop profile",
+      "lead": "Address and contact for the website and search engines (structured data). Opening hours follow from the barbers' working hours.",
+      "saved": "Saved.",
+      "save": "Save profile",
+      "street": "Street and number",
+      "postalCode": "Postal code",
+      "city": "City",
+      "country": "Country",
+      "countryHint": "Two capital letters, e.g. DE",
+      "phone": "Phone",
+      "email": "Email",
+      "priceRange": "Price range",
+      "priceRangeHint": "1–4 × €, e.g. €€"
     }
   },
   "errorPages": {
@@ -607,6 +623,33 @@
     "error": {
       "title": "Something went wrong",
       "text": "An unexpected error occurred. Please try again – nothing you entered has been saved."
+    }
+  },
+  "consent": {
+    "title": "Cookies & privacy",
+    "text": "We use technically necessary storage so booking and sign-in work. With your consent we also measure how the website is used (statistics) and which ad led to a booking (marketing). You can change your choice at any time under “Cookie settings”. More in the <link>privacy policy</link>.",
+    "categories": "Categories",
+    "acceptAll": "Accept all",
+    "rejectAll": "Only necessary",
+    "settings": "Settings",
+    "save": "Save selection",
+    "noTool": "No service active at the moment.",
+    "necessary": {
+      "title": "Necessary",
+      "text": "Language, colour scheme, sign-in and this choice. Always on."
+    },
+    "statistics": {
+      "title": "Statistics",
+      "text": "Helps us understand which pages and booking steps are used."
+    },
+    "marketing": {
+      "title": "Marketing",
+      "text": "Measures which ad or campaign brought you here (30 days, also with your booking)."
+    },
+    "tools": {
+      "ga4": "Google Analytics 4",
+      "google-ads": "Google Ads conversion tracking",
+      "meta-pixel": "Meta Pixel"
     }
   }
 }

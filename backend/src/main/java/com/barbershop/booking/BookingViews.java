@@ -1,6 +1,7 @@
 package com.barbershop.booking;
 
 import com.barbershop.booking.BookingDtos.Actions;
+import com.barbershop.booking.BookingDtos.AttributionView;
 import com.barbershop.booking.BookingDtos.BookingAdminView;
 import com.barbershop.booking.BookingDtos.BookingView;
 import com.barbershop.booking.BookingDtos.MoneyView;
@@ -77,7 +78,14 @@ public class BookingViews {
                 price(b, lang), b.getLoyaltyStatus(), payment(b, payment, zone, lang),
                 at(b.getBarberDeadlineAt(), zone), at(b.getAcceptedAt(), zone), at(b.getConfirmedAt(), zone),
                 at(b.getCompletedAt(), zone), at(b.getCancelledAt(), zone), b.getCancelledBy(), b.getStatusReason(),
-                BookingStateMachine.targets(b.getStatus(), viewer), at(b.getCreatedAt(), zone));
+                BookingStateMachine.targets(b.getStatus(), viewer), at(b.getCreatedAt(), zone),
+                attribution(b.getAttribution()));
+    }
+
+    private static AttributionView attribution(BookingAttribution a) {
+        if (a == null) return null;
+        return new AttributionView(a.getSource(), a.getMedium(), a.getCampaign(), a.getTerm(), a.getContent(),
+                a.getGclid() != null, a.getFbclid() != null, a.getLandingPath());
     }
 
     public List<ServiceLine> lines(Booking b, Lang lang) {

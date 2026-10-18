@@ -7,6 +7,7 @@ import { Link } from "@/i18n/navigation";
 import { api, call } from "@/lib/api/client";
 import type { PaymentPage } from "@/lib/api/types";
 import { dateTime } from "@/lib/format";
+import { bookingParams, trackOnce } from "@/lib/tracking";
 import { Alert, DemoBanner, Skeleton, StatusBadge } from "../ui/Feedback";
 import { ConfirmDialog } from "../ui/Dialog";
 import { BookingSummary, ErrorBox, LinkProblem } from "./LinkState";
@@ -43,6 +44,9 @@ export function PayView() {
     try {
       const r = await call(() => api.POST("/api/public/payments/{token}/simulate", { params: { path: { token } } }));
       setOutcome({ kind: "paid", bookingStatus: r?.bookingStatus, already: !!r?.alreadyProcessed });
+      if (r?.bookingStatus === "CONFIRMED" && page?.booking?.id) {
+        trackOnce(`confirmed:${page.booking.id}`, "booking_confirmed", bookingParams(page.booking));
+      }
     } catch (e) {
       setError(e);
     } finally {

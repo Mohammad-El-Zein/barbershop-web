@@ -1,9 +1,11 @@
 "use client";
 
+import { track } from "./tracking";
+
 export const BOOKING_OPEN_EVENT = "booking:open";
 
 export type BookingOpenDetail = {
-  /** Where the click came from (later: analytics). */
+  /** Where the click came from (analytics: book_click / booking_started "source"). */
   source: string;
   /** Preselected service ids (service-card buttons, "rebook"). */
   serviceIds?: string[];
@@ -18,6 +20,7 @@ export type BookingOpenDetail = {
  * full-page booking flow.
  */
 export function openBooking(source = "unknown", preset: Omit<BookingOpenDetail, "source"> = {}) {
+  track("book_click", { source });
   const detail: BookingOpenDetail = { source, ...preset };
   const event = new CustomEvent<BookingOpenDetail>(BOOKING_OPEN_EVENT, { detail, cancelable: true });
   const notHandled = window.dispatchEvent(event); // false if a listener called preventDefault()

@@ -3,9 +3,19 @@
 import { useCallback, useEffect, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { api, ApiError, call } from "@/lib/api/client";
-import type { CustomerRow, Policy, ServiceAdmin, ShopProfile, StaffAdmin, Stats, TimeOff, WorkingHoursEntry } from "@/lib/api/types";
+import type {
+  CampaignStats,
+  CustomerRow,
+  Policy,
+  ServiceAdmin,
+  ShopProfile,
+  StaffAdmin,
+  Stats,
+  TimeOff,
+  WorkingHoursEntry,
+} from "@/lib/api/types";
 import { useErrorText } from "@/lib/api/useErrorText";
-import { addDays, dateTime, dayParts, shopDay } from "@/lib/format";
+import { addDays, dateTime, dayParts, money, shopDay } from "@/lib/format";
 import { Alert, Skeleton } from "../ui/Feedback";
 import { Checkbox, Field, Select, TextArea } from "../ui/Field";
 import { toShopIso } from "./AdminBookings";
@@ -559,9 +569,74 @@ export function AdminStats() {
           </section>
         </>
       )}
+      <CampaignTable range={range} />
       <AdminSettings />
       <AdminProfile />
     </div>
+  );
+}
+
+/** "Which ad produced which booking": online bookings per first-touch campaign (by booking date). */
+function CampaignTable({ range }: { range: { from: string; to: string } }) {
+  const t = useTranslations("staff.campaigns");
+  const locale = useLocale();
+  const errorText = useErrorText();
+  const [data, setData] = useState<CampaignStats | null>(null);
+  const [error, setError] = useState<unknown>(null);
+  useEffect(() => {
+    call(() => api.GET("/api/admin/stats/campaigns", { params: { query: range } })).then(
+      (s) => setData(s as CampaignStats),
+      setError,
+    );
+  }, [range]);
+  const label = (v?: string) =>
+    v === "(direct)" ? t("direct") : v === "(none)" || v === "(not set)" ? "–" : v?.startsWith("lp:") ? t("landingPage", { slug: v.slice(3) }) : v;
+  return (
+    <section className="card p-5" aria-labelledby="campaigns-h">
+      <h2 id="campaigns-h" className="label">
+        {t("title")}
+      </h2>
+      <p className="mt-1 text-xs text-muted">{t("lead")}</p>
+      {error ? <Alert tone="error">{errorText(error)}</Alert> : null}
+      {!data ? (
+        <Skeleton className="mt-4 h-32" />
+      ) : (data.campaigns ?? []).length === 0 ? (
+        <p className="mt-4 text-sm text-muted">{t("empty")}</p>
+      ) : (
+        <>
+          <p className="mt-3 text-sm">
+            {t("summary", { total: data.totalBookings ?? 0, attributed: data.attributedBookings ?? 0 })}
+          </p>
+          <div className="mt-3 overflow-x-auto">
+            <table className="w-full min-w-[34rem] text-left text-sm">
+              <caption className="sr-only">{t("title")}</caption>
+              <thead className="text-xs uppercase tracking-wider text-muted">
+                <tr className="border-b border-line">
+                  <th scope="col" className="py-2 pr-3 font-semibold">{t("source")}</th>
+                  <th scope="col" className="py-2 pr-3 font-semibold">{t("medium")}</th>
+                  <th scope="col" className="py-2 pr-3 font-semibold">{t("campaign")}</th>
+                  <th scope="col" className="py-2 pr-3 text-right font-semibold">{t("bookings")}</th>
+                  <th scope="col" className="py-2 pr-3 text-right font-semibold">{t("confirmed")}</th>
+                  <th scope="col" className="py-2 text-right font-semibold">{t("revenue")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(data.campaigns ?? []).map((c) => (
+                  <tr key={`${c.source}|${c.medium}|${c.campaign}`} className="border-b border-line last:border-0">
+                    <td className="py-2 pr-3">{label(c.source)}</td>
+                    <td className="py-2 pr-3">{label(c.medium)}</td>
+                    <td className="py-2 pr-3">{label(c.campaign)}</td>
+                    <td className="py-2 pr-3 text-right tabular-nums">{c.bookings}</td>
+                    <td className="py-2 pr-3 text-right tabular-nums">{c.confirmed}</td>
+                    <td className="py-2 text-right tabular-nums">{money(c.confirmedRevenueCents ?? 0, locale, data.currency ?? "EUR")}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </section>
   );
 }
 
@@ -577,7 +652,7 @@ const PROFILE_FIELDS: { key: keyof ShopProfile; type?: string; autoComplete?: st
 
 /** Public address + contact (website structured data). Opening hours come from the barbers' working hours. */
 function AdminProfile() {
-  const t = useTranslations("staff.profile");
+  const t = useTranslations("staff.shopProfile");
   const errorText = useErrorText();
   const [p, setP] = useState<ShopProfile | null>(null);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);

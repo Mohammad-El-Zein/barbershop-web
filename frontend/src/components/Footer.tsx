@@ -1,5 +1,6 @@
 import { useLocale, useTranslations } from "next-intl";
 import { siteConfig } from "@/config/site.config";
+import { CookieSettingsButton } from "./consent/ConsentManager";
 import { CopyrightYear } from "./CopyrightYear";
 import { Logo } from "./Logo";
 import { NewsletterForm } from "./NewsletterForm";
@@ -93,7 +94,7 @@ export function Footer({ onLanding = true }: { onLanding?: boolean } = {}) {
           <p>
             © <CopyrightYear /> {brand.name}. {t("footer.rights")}
           </p>
-          <ul className="flex gap-6">
+          <ul className="flex flex-wrap gap-x-6 gap-y-2">
             {footer.legal.map((l) => (
               <li key={l.labelKey}>
                 <a href={`/${locale}${l.href}`} className="hover:text-gold-text">
@@ -101,6 +102,9 @@ export function Footer({ onLanding = true }: { onLanding?: boolean } = {}) {
                 </a>
               </li>
             ))}
+            <li>
+              <CookieSettingsButton label={t("footer.legal.cookies")} />
+            </li>
           </ul>
         </div>
       </div>

@@ -30,6 +30,7 @@ export type WorkingHoursEntry = S["WorkingHoursEntry"];
 export type TimeOff = S["TimeOffView"];
 export type ShopProfile = S["ProfileDto"];
 export type OpeningRange = S["OpeningRange"];
+export type CampaignStats = S["CampaignStatsView"];
 
 /** Booking lifecycle statuses (backend BookingStatus). */
 export type BookingStatus =
