@@ -310,6 +310,66 @@
         ]
       }
     },
+    "/api/admin/settings/profile": {
+      "get": {
+        "tags": [
+          "Admin: settings"
+        ],
+        "summary": "The public shop profile (address, contact) used on the website and in its structured data",
+        "operationId": "profile",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "Admin: settings"
+        ],
+        "summary": "Replace the public shop profile (empty strings clear a field)",
+        "operationId": "updateProfile",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfileDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/api/admin/services/{id}": {
       "get": {
         "tags": [
@@ -2067,7 +2127,7 @@
         "tags": [
           "Public: shop"
         ],
-        "summary": "Shop info (name, timezone, currency, theme) and the booking rules customers see",
+        "summary": "Shop info (name, timezone, currency, theme, address, opening hours) and the booking rules customers see",
         "operationId": "get_3",
         "parameters": [
           {
@@ -3044,6 +3104,44 @@
           "reminderBeforeMin",
           "slotStepMin"
         ]
+      },
+      "ProfileDto": {
+        "type": "object",
+        "properties": {
+          "street": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 0
+          },
+          "postalCode": {
+            "type": "string",
+            "maxLength": 20,
+            "minLength": 0
+          },
+          "city": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 0
+          },
+          "country": {
+            "type": "string",
+            "pattern": "^$|^[A-Z]{2}$"
+          },
+          "phone": {
+            "type": "string",
+            "pattern": "^$|^\\+?[0-9 ()/-]{6,30}$"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 254,
+            "minLength": 0
+          },
+          "priceRange": {
+            "type": "string",
+            "pattern": "^$|^€{1,4}$|^\\${1,4}$"
+          }
+        }
       },
       "ServiceRequest": {
         "type": "object",
@@ -4173,6 +4271,47 @@
           }
         }
       },
+      "OpeningRange": {
+        "type": "object",
+        "properties": {
+          "weekday": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "opens": {
+            "type": "string"
+          },
+          "closes": {
+            "type": "string"
+          }
+        }
+      },
+      "ProfileView": {
+        "type": "object",
+        "properties": {
+          "street": {
+            "type": "string"
+          },
+          "postalCode": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "country": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "priceRange": {
+            "type": "string"
+          }
+        }
+      },
       "TenantView": {
         "type": "object",
         "properties": {
@@ -4200,6 +4339,15 @@
           },
           "bookingRules": {
             "$ref": "#/components/schemas/BookingRules"
+          },
+          "profile": {
+            "$ref": "#/components/schemas/ProfileView"
+          },
+          "openingHours": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OpeningRange"
+            }
           }
         }
       },

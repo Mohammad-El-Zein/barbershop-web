@@ -150,6 +150,11 @@ export function DetailsStep({
                       {c}
                     </Link>
                   ),
+                  terms: (c) => (
+                    <Link href="/agb" target="_blank" className="text-gold-text underline underline-offset-2">
+                      {c}
+                    </Link>
+                  ),
                 })}
               />
               <p className="text-xs text-muted sm:col-span-2">

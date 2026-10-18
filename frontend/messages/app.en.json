@@ -80,7 +80,7 @@
       "phoneInvalid": "Please enter a valid phone number.",
       "nameRequired": "Please enter your name.",
       "emailInvalid": "Please enter a valid email address.",
-      "consentRequired": "Please accept the privacy policy.",
+      "consentRequired": "Please accept the terms and cancellation policy.",
       "note": "Note for your barber (optional)",
       "notePlaceholder": "e.g. wishes, allergies, a description of your reference look",
       "noteCount": "{count}/{max} characters",
@@ -92,7 +92,7 @@
       "name": "Name",
       "email": "Email",
       "emailHint": "We’ll send the confirmation and your manage link here.",
-      "consent": "I have read the <link>privacy policy</link> and agree to my data being processed for this booking.",
+      "consent": "I accept the <terms>terms and cancellation policy</terms> and have read the <link>privacy policy</link>.",
       "registerHint": "With a customer account you collect visits for the loyalty reward: <link>create an account</link>. You can still book as a guest now.",
       "password": "Password",
       "loginButton": "Log in",
@@ -310,7 +310,7 @@
       "password": "Password",
       "passwordHint": "At least 10 characters.",
       "lang": "Language for emails",
-      "consent": "I have read the <link>privacy policy</link> and agree to my data being processed for the customer account.",
+      "consent": "I accept the <terms>terms</terms> (incl. loyalty programme) and have read the <link>privacy policy</link>.",
       "button": "Register",
       "haveAccount": "Already have an account? Log in",
       "doneTitle": "Account created",
@@ -320,7 +320,7 @@
         "email": "Please enter a valid email address.",
         "phone": "Please enter a valid phone number.",
         "password": "At least 10 characters.",
-        "consent": "Please accept the privacy policy."
+        "consent": "Please accept the terms."
       }
     },
     "forgot": {
@@ -387,7 +387,21 @@
     "toAccount": "To your account",
     "adminArea": "Admin area",
     "barberArea": "Barber area",
-    "profile": "My profile",
+    "profile": {
+      "title": "Shop profile",
+      "lead": "Address and contact for the website and search engines (structured data). Opening hours follow from the barbers' working hours.",
+      "saved": "Saved.",
+      "save": "Save profile",
+      "street": "Street and number",
+      "postalCode": "Postal code",
+      "city": "City",
+      "country": "Country",
+      "countryHint": "Two capital letters, e.g. DE",
+      "phone": "Phone",
+      "email": "Email",
+      "priceRange": "Price range",
+      "priceRangeHint": "1–4 × €, e.g. €€"
+    },
     "sections": "Sections",
     "adminOnly": "Admins only.",
     "tabs": {
@@ -581,42 +595,18 @@
       "reminderBeforeMin": "Reminder before (min)"
     }
   },
-  "privacy": {
-    "eyebrow": "Legal",
-    "title": "Privacy",
-    "placeholder": "PLACEHOLDER: so far only the online-booking part is written. The full privacy policy (controller, hosting, cookies, your rights, supervisory authority …) follows and must be reviewed legally.",
-    "booking": {
-      "title": "Online booking",
-      "text": [
-        "For an appointment request we process your name, email address, phone number, the chosen services, barber, date/time and your optional note – to carry out the appointment (Art. 6(1)(b) GDPR).",
-        "Guests manage their booking only via the links in our emails. These links are personal, single-use and expire."
-      ]
+  "errorPages": {
+    "retry": "Try again",
+    "home": "Back to home",
+    "book": "Book appointment",
+    "reference": "Error reference: {id}",
+    "notFound": {
+      "title": "Page not found",
+      "text": "This page doesn't exist (any more). Maybe there's a typo – or start again from the home page."
     },
-    "account": {
-      "title": "Customer account",
-      "text": [
-        "With an account we additionally store your password (only as a secure hash), your language and your loyalty points. If you create and confirm an account with the same email, earlier guest bookings are added to your account.",
-        "You can export all data stored for your account as a file in your profile at any time."
-      ]
-    },
-    "emails": {
-      "title": "Emails",
-      "text": [
-        "We only send you emails about your appointments (received, accepted, payment, confirmation with calendar file, reminder, cancellation) and your account. No advertising."
-      ]
-    },
-    "deletion": {
-      "title": "Deleting your account",
-      "text": [
-        "You can delete your account in your profile at any time. Open future appointments are then cancelled – the normal refund rule applies: if cancelled at least 24 hours before the appointment, the deposit is refunded; later, it is kept.",
-        "Afterwards all your bookings are anonymised (name, email, phone and note are removed; date and amounts stay for the shop’s accounting) and your account, login data and loyalty points are deleted."
-      ]
-    },
-    "payments": {
-      "title": "Payments",
-      "text": [
-        "No real payment provider is connected at the moment (demo mode). No payment or card data is collected."
-      ]
+    "error": {
+      "title": "Something went wrong",
+      "text": "An unexpected error occurred. Please try again – nothing you entered has been saved."
     }
   }
 }

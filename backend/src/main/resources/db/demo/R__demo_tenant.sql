@@ -83,3 +83,15 @@ INSERT INTO working_hours (id, tenant_id, staff_id, weekday, start_time, end_tim
 VALUES ('7b3f1c2e-0000-4000-8001-000000000506', '7b3f1c2e-0000-4000-8000-000000000001',
         '7b3f1c2e-0000-4000-8000-000000000202', 6, '09:00', '18:00')
 ON CONFLICT (id) DO NOTHING;
+
+-- Public shop profile (PLACEHOLDER address, same as the website footer). Only fills
+-- empty fields, so values edited in the admin settings are never overwritten.
+UPDATE tenant
+SET profile_street      = COALESCE(profile_street, 'Musterstraße 1'),
+    profile_postal_code = COALESCE(profile_postal_code, '10115'),
+    profile_city        = COALESCE(profile_city, 'Berlin'),
+    profile_country     = COALESCE(profile_country, 'DE'),
+    profile_phone       = COALESCE(profile_phone, '+49 30 0000000'),
+    profile_email       = COALESCE(profile_email, 'hello@example.com'),
+    profile_price_range = COALESCE(profile_price_range, '€€')
+WHERE id = '7b3f1c2e-0000-4000-8000-000000000001';

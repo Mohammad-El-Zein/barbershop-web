@@ -127,6 +127,12 @@ public abstract class AbstractIntegrationTest {
         jdbc.update("delete from app_user where role <> 'ADMIN'");
         jdbc.update("update app_user set failed_login_count = 0, locked_until = null");
         jdbc.update("delete from time_off");
+        jdbc.update("update staff set active = true where id in (?, ?)", LUCA, MO); // demo barbers only
+        jdbc.update("""
+                update tenant set profile_street = 'Musterstraße 1', profile_postal_code = '10115',
+                  profile_city = 'Berlin', profile_country = 'DE', profile_phone = '+49 30 0000000',
+                  profile_email = 'hello@example.com', profile_price_range = '€€'
+                where id = ?""", TENANT_ID);
         jdbc.update("""
                 update tenant set barber_response_min = 720, payment_deadline_min = 1440,
                   deadline_before_start_min = 120, deposit_cents = 1000, refund_cutoff_min = 1440, online_cancel_cutoff_min = 120,

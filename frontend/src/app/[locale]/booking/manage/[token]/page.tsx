@@ -1,8 +1,9 @@
 import { ManageView } from "@/components/links/ManageView";
 import { TokenPage } from "@/components/links/TokenPage";
+import { PRIVATE_PAGE } from "@/lib/seo";
 
-/** Email-link pages are personal: never indexed. */
-export const metadata = { robots: { index: false, follow: false } };
+/** Personal / private page: never indexed. */
+export const metadata = PRIVATE_PAGE;
 
 /** Customer manage / cancel page (link from the emails). */
 export default function Page() {

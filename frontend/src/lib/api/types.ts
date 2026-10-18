@@ -28,6 +28,8 @@ export type StaffAdmin = S["StaffAdminView"];
 export type ServiceAdmin = S["ServiceAdminView"];
 export type WorkingHoursEntry = S["WorkingHoursEntry"];
 export type TimeOff = S["TimeOffView"];
+export type ShopProfile = S["ProfileDto"];
+export type OpeningRange = S["OpeningRange"];
 
 /** Booking lifecycle statuses (backend BookingStatus). */
 export type BookingStatus =

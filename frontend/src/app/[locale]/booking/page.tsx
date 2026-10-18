@@ -3,11 +3,12 @@ import { getTranslations } from "next-intl/server";
 import { BookingPage } from "@/components/booking/BookingPage";
 import { PageShell, PageTitle } from "@/components/PageShell";
 import { Skeleton } from "@/components/ui/Feedback";
+import { pageMetadata } from "@/lib/seo";
 
 export async function generateMetadata({ params }: PageProps<"/[locale]/booking">) {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "booking" });
-  return { title: t("title"), robots: { index: true } };
+  return pageMetadata({ locale, path: "/booking", title: t("title"), description: t("lead") });
 }
 
 /** Full-page booking flow (also the fallback target of every "Book" button). */

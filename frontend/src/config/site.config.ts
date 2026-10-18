@@ -301,12 +301,18 @@ export const siteConfig = {
     },
   ] satisfies ServiceCard[],
 
-  /** PLACEHOLDER contact data. Replace with the client's real details. Opening hours are in the messages. */
+  /**
+   * PLACEHOLDER contact data. Replace with the client's real details. Opening hours are in the messages.
+   * The structured address is the fallback for the schema.org data when the backend's shop profile
+   * (admin → settings → shop profile) can't be loaded; keep both in sync.
+   */
   contact: {
     anchor: "downtown",
     addressLines: ["Musterstraße 1 (placeholder)", "10115 Berlin"],
+    address: { street: "Musterstraße 1", postalCode: "10115", city: "Berlin", country: "DE" },
     phone: "+49 30 0000000",
     email: "hello@example.com",
+    priceRange: "€€",
   },
 
   footer: {
@@ -335,10 +341,11 @@ export const siteConfig = {
       { label: "Facebook", href: "https://facebook.com/", icon: "facebook" },
       { label: "TikTok", href: "https://tiktok.com/", icon: "tiktok" },
     ] as const,
-    /** Legal pages are built in phase 4. Paths are prefixed with the locale at render time. */
+    /** Legal pages (src/content/legal). Paths are prefixed with the locale at render time. */
     legal: [
       { labelKey: "footer.legal.impressum", href: "/impressum" },
       { labelKey: "footer.legal.privacy", href: "/datenschutz" },
+      { labelKey: "footer.legal.terms", href: "/agb" },
     ] satisfies NavItem[],
   },
 };

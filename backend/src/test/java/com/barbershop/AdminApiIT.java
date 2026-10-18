@@ -157,6 +157,29 @@ class AdminApiIT extends AbstractIntegrationTest {
         assertThat(((Map<?, ?>) get(BASE, "de").getBody().get("bookingRules")).get("depositCents")).isEqualTo(1500);
     }
 
+    @Test
+    @SuppressWarnings("unchecked")
+    void theShopProfileIsValidatedAndPublic() {
+        String token = adminToken();
+        Map<String, Object> profile = new HashMap<>(get("/api/admin/settings/profile", "de", token).getBody());
+        assertThat(profile).containsEntry("city", "Berlin").containsEntry("country", "DE");
+
+        profile.put("country", "de");
+        assertThat(call(HttpMethod.PUT, "/api/admin/settings/profile", profile, "en", token).getBody())
+                .containsEntry("code", "validation.failed");
+        profile.put("country", "AT");
+        profile.put("city", "Wien");
+        profile.put("phone", "");                               // empty clears the field
+        assertThat(call(HttpMethod.PUT, "/api/admin/settings/profile", profile, "en", token).getBody())
+                .containsEntry("city", "Wien").doesNotContainKey("phone"); // null fields are omitted
+        assertThat((Map<String, Object>) get(BASE, "de").getBody().get("profile")).containsEntry("city", "Wien")
+                .containsEntry("country", "AT");
+
+        // admin only
+        assertThat(call(HttpMethod.GET, "/api/admin/settings/profile", null, "en", null).getStatusCode())
+                .isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
+
     // ── catalogue, schedule, stats (from phase 2) ────────────────────────────
 
     @Test

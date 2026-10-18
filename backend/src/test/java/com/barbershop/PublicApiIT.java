@@ -34,6 +34,25 @@ class PublicApiIT extends AbstractIntegrationTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
+    void shopInfoHasTheProfileAndOpeningHoursDerivedFromTheBarbers() {
+        Map<String, Object> shop = get(BASE, "en").getBody();
+        assertThat((Map<String, Object>) shop.get("profile")).containsEntry("street", "Musterstraße 1")
+                .containsEntry("postalCode", "10115").containsEntry("city", "Berlin").containsEntry("country", "DE")
+                .containsEntry("priceRange", "€€");
+        // Luca 09–13 + 14–20, Mo 10–19 → Mon–Fri 09–20; both Sat 09–18; nobody on Sunday
+        List<Map<String, Object>> hours = (List<Map<String, Object>>) shop.get("openingHours");
+        assertThat(hours).hasSize(6).allSatisfy(h -> assertThat((Integer) h.get("weekday")).isBetween(1, 6));
+        assertThat(hours.getFirst()).containsEntry("weekday", 1).containsEntry("opens", "09:00").containsEntry("closes", "20:00");
+        assertThat(hours.getLast()).containsEntry("weekday", 6).containsEntry("opens", "09:00").containsEntry("closes", "18:00");
+
+        // an inactive barber's hours don't count
+        jdbc.update("update staff set active = false where id = ?", LUCA);
+        List<Map<String, Object>> withoutLuca = (List<Map<String, Object>>) get(BASE, "en").getBody().get("openingHours");
+        assertThat(withoutLuca.getFirst()).containsEntry("opens", "10:00").containsEntry("closes", "19:00");
+    }
+
+    @Test
     void servicesAreLocalizedByAcceptLanguageAndLangParameter() {
         List<Map<String, Object>> de = getList(BASE + "/services", "de", null).getBody();
         List<Map<String, Object>> en = getList(BASE + "/services?lang=en", "de", null).getBody();
@@ -218,7 +237,7 @@ class PublicApiIT extends AbstractIntegrationTest {
         ResponseEntity<Map<String, Object>> r = call(HttpMethod.POST, BASE + "/bookings", req, "en", null);
         assertThat(r.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat((Map<String, String>) r.getBody().get("errors"))
-                .containsEntry("consent", "Please accept the privacy policy.")
+                .containsEntry("consent", "Please accept the terms and cancellation policy.")
                 .containsEntry("customerPhone", "Required.");
 
         Map<String, Object> longNote = booking(HAIRCUT, LUCA, at(next(DayOfWeek.FRIDAY), "10:00"), uniqueEmail(), "de");

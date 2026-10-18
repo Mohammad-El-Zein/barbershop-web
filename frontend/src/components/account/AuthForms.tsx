@@ -172,6 +172,11 @@ export function RegisterForm() {
               {c}
             </Link>
           ),
+          terms: (c) => (
+            <Link href="/agb" target="_blank" className="text-gold-text underline underline-offset-2">
+              {c}
+            </Link>
+          ),
         })}
       />
       {error ? (

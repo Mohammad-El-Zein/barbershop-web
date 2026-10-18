@@ -2,7 +2,10 @@
   "meta": {
     "title": "THE BARBER NEWS – Barbershop Downtown | Book online",
     "description": "Premium barbershop for precision haircuts, beard sculpting and styling. Choose your barber and book your appointment online in under a minute.",
-    "ogLocale": "en_US"
+    "ogLocale": "en_US",
+    "ogEyebrow": "BARBERSHOP · DOWNTOWN",
+    "ogTagline": "Precision cuts. Booked online in under a minute.",
+    "ogFooter": "Haircut · Beard sculpting · Grooming"
   },
   "nav": {
     "label": "Main",
@@ -111,7 +114,8 @@
     "rights": "All rights reserved.",
     "legal": {
       "impressum": "Legal notice",
-      "privacy": "Privacy policy"
+      "privacy": "Privacy policy",
+      "terms": "Terms"
     }
   }
 }

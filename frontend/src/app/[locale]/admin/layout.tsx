@@ -1,7 +1,9 @@
 import { Nav } from "@/components/Nav";
 import { StaffShell } from "@/components/staff/StaffShell";
+import { PRIVATE_PAGE } from "@/lib/seo";
 
-export const metadata = { robots: { index: false, follow: false } };
+/** Personal / private page: never indexed. */
+export const metadata = PRIVATE_PAGE;
 
 /** Staff area (barbers + admins): own nav, wide layout, no marketing footer. */
 export default function AdminLayout({ children }: LayoutProps<"/[locale]/admin">) {

@@ -54,6 +54,10 @@ public class Tenant {
     @Embedded
     private BookingPolicy policy = new BookingPolicy();
 
+    /** Public address / contact data (website, schema.org). Null when all its columns are empty. */
+    @Embedded
+    private ShopProfile profile = new ShopProfile();
+
     protected Tenant() {}
 
     public Tenant(UUID id, String name, String slug, String timezone) {
@@ -81,4 +85,9 @@ public class Tenant {
     public Map<String, Object> getTheme() { return theme; }
     public Instant getCreatedAt() { return createdAt; }
     public BookingPolicy policy() { return policy; }
+
+    public ShopProfile profile() {
+        if (profile == null) profile = new ShopProfile(); // Hibernate loads an all-NULL embeddable as null
+        return profile;
+    }
 }

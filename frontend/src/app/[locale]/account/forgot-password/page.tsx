@@ -3,8 +3,10 @@ import { getTranslations } from "next-intl/server";
 import { ForgotForm } from "@/components/account/AuthForms";
 import { PageShell, PageTitle } from "@/components/PageShell";
 import { Skeleton } from "@/components/ui/Feedback";
+import { PRIVATE_PAGE } from "@/lib/seo";
 
-export const metadata = { robots: { index: false } };
+/** Personal / private page: never indexed. */
+export const metadata = PRIVATE_PAGE;
 
 export default async function Page({ params }: PageProps<"/[locale]/account/forgot-password">) {
   const { locale } = await params;

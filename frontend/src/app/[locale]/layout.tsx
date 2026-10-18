@@ -20,27 +20,22 @@ export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
 }
 
+/**
+ * Site-wide defaults only. Canonical URL, hreflang and per-page Open Graph data are
+ * set by each page via lib/seo.ts → pageMetadata (a canonical here would make every
+ * page point at the home page).
+ */
 export async function generateMetadata({ params }: LayoutProps<"/[locale]">): Promise<Metadata> {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "meta" });
-  const languages = Object.fromEntries(routing.locales.map((l) => [l, `/${l}`]));
   return {
     metadataBase: new URL(siteConfig.siteUrl),
-    title: t("title"),
+    title: { default: t("title"), template: `%s | ${siteConfig.brand.name}` },
     description: t("description"),
-    // hreflang alternates for every locale + x-default
-    alternates: {
-      canonical: `/${locale}`,
-      languages: { ...languages, "x-default": `/${routing.defaultLocale}` },
-    },
-    openGraph: {
-      type: "website",
-      siteName: siteConfig.brand.name,
-      title: t("title"),
-      description: t("description"),
-      locale: t("ogLocale"),
-      url: `/${locale}`,
-    },
+    applicationName: siteConfig.brand.name,
+    formatDetection: { telephone: false },
+    openGraph: { type: "website", siteName: siteConfig.brand.name, title: t("title"), description: t("description"), locale: t("ogLocale") },
+    twitter: { card: "summary_large_image", title: t("title"), description: t("description") },
   };
 }
 

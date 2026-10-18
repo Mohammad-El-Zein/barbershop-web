@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { api, ApiError, call } from "@/lib/api/client";
-import type { CustomerRow, Policy, ServiceAdmin, StaffAdmin, Stats, TimeOff, WorkingHoursEntry } from "@/lib/api/types";
+import type { CustomerRow, Policy, ServiceAdmin, ShopProfile, StaffAdmin, Stats, TimeOff, WorkingHoursEntry } from "@/lib/api/types";
 import { useErrorText } from "@/lib/api/useErrorText";
 import { addDays, dateTime, dayParts, shopDay } from "@/lib/format";
 import { Alert, Skeleton } from "../ui/Feedback";
@@ -560,7 +560,65 @@ export function AdminStats() {
         </>
       )}
       <AdminSettings />
+      <AdminProfile />
     </div>
+  );
+}
+
+const PROFILE_FIELDS: { key: keyof ShopProfile; type?: string; autoComplete?: string }[] = [
+  { key: "street", autoComplete: "street-address" },
+  { key: "postalCode", autoComplete: "postal-code" },
+  { key: "city", autoComplete: "address-level2" },
+  { key: "country", autoComplete: "country" },
+  { key: "phone", type: "tel", autoComplete: "tel" },
+  { key: "email", type: "email", autoComplete: "email" },
+  { key: "priceRange" },
+];
+
+/** Public address + contact (website structured data). Opening hours come from the barbers' working hours. */
+function AdminProfile() {
+  const t = useTranslations("staff.profile");
+  const errorText = useErrorText();
+  const [p, setP] = useState<ShopProfile | null>(null);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  useEffect(() => {
+    call(() => api.GET("/api/admin/settings/profile")).then((x) => setP((x ?? {}) as ShopProfile), () => undefined);
+  }, []);
+  if (!p) return <Skeleton className="h-48" />;
+  return (
+    <form
+      className="card space-y-4 p-5"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        setMsg(null);
+        try {
+          setP((await call(() => api.PUT("/api/admin/settings/profile", { body: p }))) as ShopProfile);
+          setMsg({ ok: true, text: t("saved") });
+        } catch (err) {
+          setMsg({ ok: false, text: message(err, errorText) });
+        }
+      }}
+    >
+      <h2 className="display text-2xl">{t("title")}</h2>
+      <p className="text-sm text-muted">{t("lead")}</p>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {PROFILE_FIELDS.map(({ key, type, autoComplete }) => (
+          <Field
+            key={key}
+            label={t(key)}
+            type={type ?? "text"}
+            autoComplete={autoComplete}
+            value={p[key] ?? ""}
+            onChange={(e) => setP({ ...p, [key]: e.target.value })}
+            hint={key === "country" ? t("countryHint") : key === "priceRange" ? t("priceRangeHint") : undefined}
+          />
+        ))}
+      </div>
+      {msg && <Alert tone={msg.ok ? "success" : "error"}>{msg.text}</Alert>}
+      <button type="submit" className="btn btn-primary btn-sm">
+        {t("save")}
+      </button>
+    </form>
   );
 }
 

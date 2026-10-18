@@ -2,7 +2,10 @@
   "meta": {
     "title": "THE BARBER NEWS – Barbershop Downtown | Termin online buchen",
     "description": "Premium-Barbershop für präzise Haarschnitte, Bart-Styling und Grooming. Wähl deinen Barber und buch deinen Termin online – in unter einer Minute.",
-    "ogLocale": "de_DE"
+    "ogLocale": "de_DE",
+    "ogEyebrow": "BARBERSHOP · DOWNTOWN",
+    "ogTagline": "Präzise Schnitte. Online in unter einer Minute gebucht.",
+    "ogFooter": "Haarschnitt · Bart-Styling · Grooming"
   },
   "nav": {
     "label": "Hauptnavigation",
@@ -111,7 +114,8 @@
     "rights": "Alle Rechte vorbehalten.",
     "legal": {
       "impressum": "Impressum",
-      "privacy": "Datenschutz"
+      "privacy": "Datenschutz",
+      "terms": "AGB"
     }
   }
 }

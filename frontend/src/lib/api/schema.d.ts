@@ -201,6 +201,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/settings/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The public shop profile (address, contact) used on the website and in its structured data */
+        get: operations["profile"];
+        /** Replace the public shop profile (empty strings clear a field) */
+        put: operations["updateProfile"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/staff": {
         parameters: {
             query?: never;
@@ -673,7 +691,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Shop info (name, timezone, currency, theme) and the booking rules customers see */
+        /** Shop info (name, timezone, currency, theme, address, opening hours) and the booking rules customers see */
         get: operations["get_3"];
         put?: never;
         post?: never;
@@ -1357,6 +1375,12 @@ export interface components {
             cents?: number;
             formatted?: string;
         };
+        OpeningRange: {
+            closes?: string;
+            opens?: string;
+            /** Format: int32 */
+            weekday?: number;
+        };
         PageViewBookingAdminView: {
             items?: components["schemas"]["BookingAdminView"][];
             /** Format: int32 */
@@ -1472,6 +1496,25 @@ export interface components {
             deposit?: components["schemas"]["MoneyView"];
             loyaltyDiscount?: components["schemas"]["MoneyView"];
             total?: components["schemas"]["MoneyView"];
+        };
+        ProfileDto: {
+            city?: string;
+            country?: string;
+            /** Format: email */
+            email?: string;
+            phone?: string;
+            postalCode?: string;
+            priceRange?: string;
+            street?: string;
+        };
+        ProfileView: {
+            city?: string;
+            country?: string;
+            email?: string;
+            phone?: string;
+            postalCode?: string;
+            priceRange?: string;
+            street?: string;
         };
         ReasonRequest: {
             reason?: string;
@@ -1623,6 +1666,8 @@ export interface components {
             defaultLocale?: string;
             logoUrl?: string;
             name?: string;
+            openingHours?: components["schemas"]["OpeningRange"][];
+            profile?: components["schemas"]["ProfileView"];
             slug?: string;
             theme?: {
                 [key: string]: unknown;
@@ -2090,6 +2135,50 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PolicyDto"];
+                };
+            };
+        };
+    };
+    profile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileDto"];
+                };
+            };
+        };
+    };
+    updateProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProfileDto"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileDto"];
                 };
             };
         };

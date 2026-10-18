@@ -80,7 +80,7 @@
       "phoneInvalid": "Bitte gib eine gültige Telefonnummer ein.",
       "nameRequired": "Bitte gib deinen Namen ein.",
       "emailInvalid": "Bitte gib eine gültige E-Mail-Adresse ein.",
-      "consentRequired": "Bitte stimm der Datenschutzerklärung zu.",
+      "consentRequired": "Bitte akzeptiere die AGB und Stornobedingungen.",
       "note": "Notiz für deinen Barber (optional)",
       "notePlaceholder": "z. B. Wünsche, Allergien, Referenzbild-Beschreibung",
       "noteCount": "{count}/{max} Zeichen",
@@ -92,7 +92,7 @@
       "name": "Name",
       "email": "E-Mail",
       "emailHint": "Hierhin schicken wir die Bestätigung und deinen Verwaltungs-Link.",
-      "consent": "Ich habe die <link>Datenschutzerklärung</link> gelesen und bin mit der Verarbeitung meiner Daten für die Terminbuchung einverstanden.",
+      "consent": "Ich akzeptiere die <terms>AGB und Stornobedingungen</terms> und habe die <link>Datenschutzerklärung</link> zur Kenntnis genommen.",
       "registerHint": "Mit Kundenkonto sammelst du Besuche für den Treuerabatt: <link>Konto erstellen</link>. Du kannst trotzdem jetzt als Gast buchen.",
       "password": "Passwort",
       "loginButton": "Anmelden",
@@ -310,7 +310,7 @@
       "password": "Passwort",
       "passwordHint": "Mindestens 10 Zeichen.",
       "lang": "Sprache für E-Mails",
-      "consent": "Ich habe die <link>Datenschutzerklärung</link> gelesen und stimme der Verarbeitung meiner Daten für das Kundenkonto zu.",
+      "consent": "Ich akzeptiere die <terms>AGB</terms> (inkl. Treueprogramm) und habe die <link>Datenschutzerklärung</link> zur Kenntnis genommen.",
       "button": "Registrieren",
       "haveAccount": "Schon ein Konto? Anmelden",
       "doneTitle": "Konto angelegt",
@@ -320,7 +320,7 @@
         "email": "Bitte gib eine gültige E-Mail-Adresse ein.",
         "phone": "Bitte gib eine gültige Telefonnummer ein.",
         "password": "Mindestens 10 Zeichen.",
-        "consent": "Bitte stimm der Datenschutzerklärung zu."
+        "consent": "Bitte akzeptiere die AGB."
       }
     },
     "forgot": {
@@ -387,7 +387,21 @@
     "toAccount": "Zu deinem Konto",
     "adminArea": "Admin-Bereich",
     "barberArea": "Barber-Bereich",
-    "profile": "Mein Profil",
+    "profile": {
+      "title": "Shop-Profil",
+      "lead": "Adresse und Kontakt für Website und Suchmaschinen (strukturierte Daten). Die Öffnungszeiten ergeben sich aus den Arbeitszeiten der Barber.",
+      "saved": "Gespeichert.",
+      "save": "Profil speichern",
+      "street": "Straße und Hausnummer",
+      "postalCode": "PLZ",
+      "city": "Ort",
+      "country": "Land",
+      "countryHint": "Zwei Großbuchstaben, z. B. DE",
+      "phone": "Telefon",
+      "email": "E-Mail",
+      "priceRange": "Preisklasse",
+      "priceRangeHint": "1–4 × €, z. B. €€"
+    },
     "sections": "Bereiche",
     "adminOnly": "Nur für Admins.",
     "tabs": {
@@ -581,42 +595,18 @@
       "reminderBeforeMin": "Erinnerung vorher (Min.)"
     }
   },
-  "privacy": {
-    "eyebrow": "Rechtliches",
-    "title": "Datenschutz",
-    "placeholder": "PLATZHALTER: Hier steht bisher nur der Teil zur Online-Buchung. Die vollständige Datenschutzerklärung (Verantwortlicher, Hosting, Cookies, Rechte, Aufsichtsbehörde …) folgt und muss rechtlich geprüft werden.",
-    "booking": {
-      "title": "Online-Buchung",
-      "text": [
-        "Für eine Terminanfrage verarbeiten wir Name, E-Mail-Adresse, Telefonnummer, die gewählten Leistungen, Barber, Datum/Uhrzeit und deine optionale Notiz – zur Durchführung des Termins (Art. 6 Abs. 1 lit. b DSGVO).",
-        "Gäste verwalten ihre Buchung ausschließlich über die Links in unseren E-Mails. Diese Links sind persönlich, einmalig nutzbar und laufen ab."
-      ]
+  "errorPages": {
+    "retry": "Nochmal versuchen",
+    "home": "Zur Startseite",
+    "book": "Termin buchen",
+    "reference": "Fehler-Referenz: {id}",
+    "notFound": {
+      "title": "Seite nicht gefunden",
+      "text": "Diese Seite gibt es nicht (mehr). Vielleicht hat sich ein Tippfehler eingeschlichen – oder du findest von der Startseite aus weiter."
     },
-    "account": {
-      "title": "Kundenkonto",
-      "text": [
-        "Mit einem Konto speichern wir zusätzlich dein Passwort (nur als sicherer Hash), deine Sprache und deine Treuepunkte. Wenn du ein Konto mit derselben E-Mail anlegst und bestätigst, werden frühere Gast-Buchungen deinem Konto zugeordnet.",
-        "Du kannst alle zu deinem Konto gespeicherten Daten jederzeit im Profil als Datei exportieren."
-      ]
-    },
-    "emails": {
-      "title": "E-Mails",
-      "text": [
-        "Wir schicken dir nur E-Mails zu deinen Terminen (Eingang, Zusage, Zahlung, Bestätigung mit Kalenderdatei, Erinnerung, Stornierung) und zu deinem Konto. Keine Werbung."
-      ]
-    },
-    "deletion": {
-      "title": "Konto löschen",
-      "text": [
-        "Du kannst dein Konto jederzeit im Profil löschen. Dabei werden offene künftige Termine storniert – es gilt die normale Erstattungsregel: Bei Stornierung mindestens 24 Stunden vor dem Termin wird die Anzahlung erstattet, danach einbehalten.",
-        "Anschließend werden alle deine Buchungen anonymisiert (Name, E-Mail, Telefon und Notiz werden entfernt; Datum und Beträge bleiben für die Buchhaltung des Ladens erhalten) und dein Konto, deine Anmeldedaten und Treuepunkte werden gelöscht."
-      ]
-    },
-    "payments": {
-      "title": "Zahlungen",
-      "text": [
-        "Derzeit ist kein echter Zahlungsanbieter angebunden (Demo-Modus). Es werden keine Zahlungs- oder Kartendaten erhoben."
-      ]
+    "error": {
+      "title": "Da ist etwas schiefgelaufen",
+      "text": "Ein unerwarteter Fehler ist aufgetreten. Versuch es bitte noch einmal – deine bisherigen Angaben wurden nicht gespeichert."
     }
   }
 }
