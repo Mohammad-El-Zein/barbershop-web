@@ -36,3 +36,6 @@ venv/
 imgenv/
 turntable-work/
 tt-work/
+
+# database dumps of the VPS setup (infra/docker-compose.prod.example.yml) — never commit
+infra/backups/

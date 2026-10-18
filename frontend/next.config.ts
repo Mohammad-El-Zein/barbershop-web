@@ -82,6 +82,11 @@ function contentSecurityPolicy(): string {
   return directives.join("; ");
 }
 
+const PRIVATE_PATHS = ["admin", "account", "barber", "pay", "booking/manage"].flatMap((p) => [
+  `/:locale(de|en)/${p}`,
+  `/:locale(de|en)/${p}/:path*`,
+]);
+
 function securityHeaders() {
   const headers = [
     { key: "Content-Security-Policy", value: contentSecurityPolicy() },
@@ -92,7 +97,6 @@ function securityHeaders() {
       key: "Permissions-Policy",
       value: "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=(), browsing-topics=()",
     },
-    { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
   ];
   // HSTS only for an https site (browsers ignore it over http, but localhost must never get it)
   if (!isDev && env("NEXT_PUBLIC_SITE_URL").startsWith("https://")) {
@@ -113,7 +117,16 @@ const nextConfig: NextConfig = {
   },
   poweredByHeader: false,
   async headers() {
-    return [{ source: "/:path*", headers: securityHeaders() }];
+    return [
+      { source: "/:path*", headers: securityHeaders() },
+      // Cross-window isolation where sessions and email-link tokens live. Not on the public
+      // marketing pages: in Lighthouse it cost ~200 ms TBT on the mobile landing page
+      // (process swap), with nothing to protect there.
+      ...PRIVATE_PATHS.map((source) => ({
+        source,
+        headers: [{ key: "Cross-Origin-Opener-Policy", value: "same-origin" }],
+      })),
+    ];
   },
   turbopack: {
     rules: {
