@@ -1,0 +1,283 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# CI/CD (GitLab) — same stages as .github/workflows/ci.yml:
+#   lint → test (Testcontainers on docker-in-docker) → scan (dependencies)
+#   → build (images, pushed as sha-<short sha>) → scan (images) → release (version tags)
+#   → e2e (Playwright against docker compose) → deploy (manual)
+#
+# No secrets in this file. Uses GitLab's built-in registry variables and, for the deploy,
+# CI/CD VARIABLES (protected, per environment) — see docs/DEPLOYMENT.md → CI/CD:
+#   AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID (OIDC federated credential,
+#   no client secret), AZURE_RESOURCE_GROUP, ACR_NAME, BACKEND_APP_NAME,
+#   FRONTEND_APP_NAME, API_URL, and the frontend build values NEXT_PUBLIC_SITE_URL,
+#   NEXT_PUBLIC_API_URL, NEXT_PUBLIC_TENANT, NEXT_PUBLIC_GA4_ID, … (baked into the image).
+# Tags: every pipeline pushes sha-<short sha>; the default branch also gets the branch
+# name, a git tag vX.Y.Z also X.Y.Z and X.Y (only after the image scan passed).
+# ─────────────────────────────────────────────────────────────────────────────
+stages: [lint, test, scan, build, scan-images, release, e2e, deploy]
+
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
+      when: never # no duplicate branch pipeline while an MR is open
+    - if: $CI_COMMIT_BRANCH
+    - if: $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/
+
+default:
+  interruptible: true
+
+variables:
+  NODE_IMAGE: node:24-bookworm
+  MAVEN_IMAGE: maven:3.9.11-eclipse-temurin-21
+  DOCKER_IMAGE: docker:29-cli
+  DIND_IMAGE: docker:29-dind
+  TRIVY_IMAGE: aquasec/trivy:0.76.0
+  PLAYWRIGHT_IMAGE: mcr.microsoft.com/playwright:v1.64.1-noble
+  AZURE_CLI_IMAGE: mcr.microsoft.com/azure-cli:2.78.0
+  # docker-in-docker without TLS on the job-private network (Testcontainers, builds, compose)
+  DOCKER_HOST: tcp://docker:2375
+  DOCKER_TLS_CERTDIR: ""
+  IMAGE_TAG: sha-$CI_COMMIT_SHORT_SHA
+
+.dind:
+  services:
+    - name: $DIND_IMAGE
+      alias: docker
+      command: ["--tls=false"]
+
+.npm:
+  image: $NODE_IMAGE
+  cache:
+    key:
+      files: [frontend/package-lock.json]
+    paths: [.npm/]
+  before_script:
+    - cd frontend
+    - npm ci --cache ../.npm --prefer-offline --no-audit --no-fund
+
+# ── lint ─────────────────────────────────────────────────────────────────────
+frontend:lint:
+  extends: .npm
+  stage: lint
+  script:
+    - npm run lint -- --max-warnings=0
+    - npm run typecheck
+    - npm run check:messages
+    - NEXT_TELEMETRY_DISABLED=1 npm run build
+
+# ── test ─────────────────────────────────────────────────────────────────────
+backend:test:
+  extends: .dind
+  stage: test
+  needs: []
+  image: $MAVEN_IMAGE
+  variables:
+    MAVEN_OPTS: -Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository
+    # Testcontainers: containers run in the dind service, reachable as "docker"
+    TESTCONTAINERS_HOST_OVERRIDE: docker
+  cache:
+    key:
+      files: [backend/pom.xml]
+    paths: [.m2/repository/]
+  script:
+    - cd backend
+    - ./mvnw -B -ntp verify
+  artifacts:
+    when: always
+    reports:
+      junit:
+        - backend/target/surefire-reports/TEST-*.xml
+        - backend/target/failsafe-reports/TEST-*.xml
+    expire_in: 1 week
+
+# ── dependency scan ──────────────────────────────────────────────────────────
+scan:dependencies:
+  stage: scan
+  needs: []
+  image:
+    name: $TRIVY_IMAGE
+    entrypoint: [""]
+  cache:
+    key: trivy-db
+    paths: [.trivycache/]
+  script:
+    # npm lockfile + accidentally committed secrets; fixable HIGH/CRITICAL fail. Java dependencies
+    # are scanned in the backend image (pom.xml would be resolved live from Maven Central).
+    - trivy fs --cache-dir .trivycache --scanners vuln,secret --severity HIGH,CRITICAL --ignore-unfixed
+      --exit-code 1 --ignorefile .trivyignore --skip-files backend/pom.xml
+      --skip-dirs frontend/node_modules --skip-dirs .m2 --skip-dirs .npm .
+
+scan:npm-audit:
+  extends: .npm
+  stage: scan
+  needs: []
+  script:
+    - npm audit --omit=dev --audit-level=high
+
+# ── images ───────────────────────────────────────────────────────────────────
+build:image:
+  extends: .dind
+  stage: build
+  needs: [frontend:lint, backend:test, scan:dependencies, scan:npm-audit]
+  image: $DOCKER_IMAGE
+  parallel:
+    matrix:
+      - COMPONENT: [backend, frontend]
+  script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+    - docker buildx create --driver docker-container --use
+    - IMAGE="$CI_REGISTRY_IMAGE/$COMPONENT"
+    - >
+      docker buildx build "$COMPONENT"
+      --push --tag "$IMAGE:$IMAGE_TAG"
+      --cache-from "type=registry,ref=$IMAGE:buildcache"
+      --cache-to "type=registry,ref=$IMAGE:buildcache,mode=max"
+      --build-arg VERSION="${CI_COMMIT_TAG:-$IMAGE_TAG}" --build-arg REVISION="$CI_COMMIT_SHA"
+      --build-arg NEXT_PUBLIC_SITE_URL="${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}"
+      --build-arg NEXT_PUBLIC_API_URL="${NEXT_PUBLIC_API_URL:-http://localhost:8080}"
+      --build-arg NEXT_PUBLIC_TENANT="${NEXT_PUBLIC_TENANT:-the-barber-news}"
+      --build-arg NEXT_PUBLIC_GA4_ID="${NEXT_PUBLIC_GA4_ID:-}"
+      --build-arg NEXT_PUBLIC_GOOGLE_ADS_ID="${NEXT_PUBLIC_GOOGLE_ADS_ID:-}"
+      --build-arg NEXT_PUBLIC_GOOGLE_ADS_CONVERSION_LABEL="${NEXT_PUBLIC_GOOGLE_ADS_CONVERSION_LABEL:-}"
+      --build-arg NEXT_PUBLIC_META_PIXEL_ID="${NEXT_PUBLIC_META_PIXEL_ID:-}"
+      --build-arg NEXT_PUBLIC_TURNSTILE_SITE_KEY="${NEXT_PUBLIC_TURNSTILE_SITE_KEY:-}"
+
+scan:image:
+  stage: scan-images
+  needs: [build:image]
+  image:
+    name: $TRIVY_IMAGE
+    entrypoint: [""]
+  parallel:
+    matrix:
+      - COMPONENT: [backend, frontend]
+  variables:
+    TRIVY_USERNAME: $CI_REGISTRY_USER
+    TRIVY_PASSWORD: $CI_REGISTRY_PASSWORD
+  cache:
+    key: trivy-db
+    paths: [.trivycache/]
+  script:
+    - trivy image --cache-dir .trivycache --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1
+      --ignorefile .trivyignore "$CI_REGISTRY_IMAGE/$COMPONENT:$IMAGE_TAG"
+
+release:image:
+  extends: .dind
+  stage: release
+  needs: [scan:image]
+  image: $DOCKER_IMAGE
+  rules:
+    - if: $CI_COMMIT_TAG
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  parallel:
+    matrix:
+      - COMPONENT: [backend, frontend]
+  script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+    - IMAGE="$CI_REGISTRY_IMAGE/$COMPONENT"
+    - |
+      if [ -n "$CI_COMMIT_TAG" ]; then
+        V="${CI_COMMIT_TAG#v}"
+        docker buildx imagetools create --tag "$IMAGE:$V" --tag "$IMAGE:${V%.*}" "$IMAGE:$IMAGE_TAG"
+      else
+        docker buildx imagetools create --tag "$IMAGE:$CI_COMMIT_REF_SLUG" "$IMAGE:$IMAGE_TAG"
+      fi
+
+# ── e2e against docker compose ───────────────────────────────────────────────
+e2e:
+  extends: .dind
+  stage: e2e
+  needs: [frontend:lint, backend:test]
+  image: $PLAYWRIGHT_IMAGE
+  timeout: 45m
+  variables:
+    # the stack runs inside the dind service: the browser reaches it as "docker"
+    E2E_HOST: docker
+    E2E_BASE_URL: http://docker:3000
+    E2E_API_URL: http://docker:8080
+    E2E_MAILPIT_URL: http://docker:8025
+    E2E_TRACKING_BUILD: "1"
+    COMPOSE: docker compose -f infra/docker-compose.yml -f infra/docker-compose.e2e.yml --env-file infra/.env
+  cache:
+    key:
+      files: [frontend/package-lock.json]
+    paths: [.npm/]
+  before_script:
+    - command -v curl >/dev/null && command -v openssl >/dev/null
+      || (apt-get update -qq && apt-get install -y -qq curl openssl >/dev/null)
+    # docker CLI + compose plugin (the e2e helpers also use `docker exec` for SQL checks)
+    - curl -fsSL https://download.docker.com/linux/static/stable/x86_64/docker-28.5.1.tgz
+      | tar xz --strip-components=1 -C /usr/local/bin docker/docker
+    - mkdir -p /usr/local/lib/docker/cli-plugins
+    - curl -fsSL -o /usr/local/lib/docker/cli-plugins/docker-compose
+      https://github.com/docker/compose/releases/download/v2.40.3/docker-compose-linux-x86_64
+    - chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+    # throw-away secrets for the test stack
+    - cp infra/.env.example infra/.env
+    - sed -i "s|^APP_JWT_SECRET=.*|APP_JWT_SECRET=$(openssl rand -base64 48 | tr -d '\n')|" infra/.env
+    - sed -i "s|^POSTGRES_PASSWORD=.*|POSTGRES_PASSWORD=$(openssl rand -hex 24)|" infra/.env
+    - sed -i "s|^APP_ADMIN_PASSWORD=.*|APP_ADMIN_PASSWORD=$(openssl rand -hex 24)|" infra/.env
+  script:
+    - $COMPOSE up -d --build --wait backend mailpit
+    # prerendered against the running backend (build network "host" = the dind daemon)
+    - $COMPOSE build frontend
+    - $COMPOSE up -d --wait frontend
+    - cd frontend
+    - npm ci --cache ../.npm --prefer-offline --no-audit --no-fund
+    - npx playwright test
+  after_script:
+    - docker compose -f infra/docker-compose.yml -f infra/docker-compose.e2e.yml --env-file infra/.env
+      logs --no-color --tail=300 > compose.log || true
+  artifacts:
+    when: on_failure
+    paths: [frontend/test-results/, compose.log]
+    expire_in: 1 week
+
+# ── deploy (manual) ──────────────────────────────────────────────────────────
+.deploy:
+  stage: deploy
+  image: $AZURE_CLI_IMAGE
+  needs: [release:image, e2e]
+  interruptible: false
+  id_tokens:
+    AZURE_JWT:
+      aud: api://AzureADTokenExchange # federated credential on the Entra app (OIDC)
+  script:
+    - az login --service-principal -u "$AZURE_CLIENT_ID" --tenant "$AZURE_TENANT_ID" --federated-token "$AZURE_JWT"
+      --output none
+    - az account set --subscription "$AZURE_SUBSCRIPTION_ID"
+    # copy the scanned images into the environment's ACR (Container Apps pull with a managed identity)
+    - |
+      for c in backend frontend; do
+        az acr import --name "$ACR_NAME" --force \
+          --source "$CI_REGISTRY_IMAGE/$c:$IMAGE_TAG" --image "barbershop-$c:$IMAGE_TAG" \
+          --username "$CI_REGISTRY_USER" --password "$CI_REGISTRY_PASSWORD"
+      done
+    # backend first: Flyway migrates on start; the readiness probe gates the traffic switch
+    - az containerapp update -g "$AZURE_RESOURCE_GROUP" -n "$BACKEND_APP_NAME"
+      --image "$ACR_NAME.azurecr.io/barbershop-backend:$IMAGE_TAG" --output none
+    - az containerapp update -g "$AZURE_RESOURCE_GROUP" -n "$FRONTEND_APP_NAME"
+      --image "$ACR_NAME.azurecr.io/barbershop-frontend:$IMAGE_TAG" --output none
+    - |
+      for _ in $(seq 1 30); do
+        curl -fsS "$API_URL/actuator/health/readiness" && exit 0
+        sleep 10
+      done
+      echo "backend not ready after 5 min — roll back: docs/DEPLOYMENT.md → Rollback" >&2
+      exit 1
+
+deploy:dev:
+  extends: .deploy
+  environment: { name: dev }
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      when: manual
+      allow_failure: true
+
+deploy:prod:
+  extends: .deploy
+  environment: { name: prod }
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: manual
+      allow_failure: false

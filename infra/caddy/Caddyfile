@@ -1,0 +1,36 @@
+# Caddy: automatic HTTPS (Let's Encrypt / ZeroSSL), HTTP→HTTPS redirect, HTTP/2 + HTTP/3.
+# Domains come from the environment (docker-compose.prod.example.yml).
+{
+	email {$ACME_EMAIL}
+	# servers { trusted_proxies static private_ranges }   # only if another proxy/CDN sits in front
+}
+
+(common) {
+	encode zstd gzip
+	# Caddy forwards X-Forwarded-For/-Proto/-Host; the backend trusts them from private
+	# networks only (Tomcat RemoteIpValve) → per-client rate limits and https detection work.
+	header -Server
+	log {
+		output stdout
+		format json
+	}
+}
+
+# Website. The security headers (CSP, HSTS, …) come from Next.js itself (next.config.ts).
+{$SITE_DOMAIN} {
+	import common
+	reverse_proxy frontend:3000
+}
+
+# Optional: apex → www (or the other way round). Uncomment and set APEX_DOMAIN.
+# {$APEX_DOMAIN} {
+# 	redir https://{$SITE_DOMAIN}{uri} permanent
+# }
+
+# API. Headers come from Spring Security; the actuator and API docs are not public.
+{$API_DOMAIN} {
+	import common
+	@internal path /actuator* /v3/api-docs* /swagger-ui*
+	respond @internal 404
+	reverse_proxy backend:8080
+}

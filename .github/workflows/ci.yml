@@ -1,0 +1,283 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# CI/CD (GitHub Actions) — same stages as .gitlab-ci.yml:
+#   lint+test (backend with Testcontainers, frontend lint/types/build)
+#   → dependency scan → docker build + image scan → push (main / tags)
+#   → e2e against the docker compose stack → deploy (manual only)
+#
+# No secrets in this file. Deploy uses GitHub OIDC → Azure (no stored password) and
+# repository / environment VARIABLES (see docs/DEPLOYMENT.md → CI/CD):
+#   AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID, AZURE_RESOURCE_GROUP,
+#   ACR_NAME, BACKEND_APP_NAME, FRONTEND_APP_NAME, API_URL (health check),
+#   NEXT_PUBLIC_SITE_URL, NEXT_PUBLIC_API_URL, NEXT_PUBLIC_TENANT, optional
+#   NEXT_PUBLIC_GA4_ID / _GOOGLE_ADS_ID / _GOOGLE_ADS_CONVERSION_LABEL / _META_PIXEL_ID /
+#   _TURNSTILE_SITE_KEY (frontend images bake these in at build time).
+# Image tags: sha-<7>, branch name, and on a vX.Y.Z git tag: X.Y.Z and X.Y.
+# Actions are pinned to commit SHAs (tag in the comment) — update them deliberately.
+# ─────────────────────────────────────────────────────────────────────────────
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*.*.*"]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: "Deploy the images of this ref to Azure Container Apps"
+        type: choice
+        options: ["no", "dev", "prod"]
+        default: "no"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  TRIVY_IMAGE: aquasec/trivy:0.76.0
+
+jobs:
+  backend:
+    name: Backend · test
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      # unit tests (surefire) + integration tests (failsafe; Testcontainers: Postgres, Redis,
+      # GreenMail) — the runner's Docker daemon is used directly
+      - run: ./mvnw -B -ntp verify
+      - if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: backend-test-reports
+          path: backend/target/*-reports/
+          retention-days: 7
+
+  frontend:
+    name: Frontend · lint, types, build
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm run lint -- --max-warnings=0
+      - run: npm run typecheck
+      - run: npm run check:messages
+      - run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
+
+  dependency-scan:
+    name: Dependencies · vulnerability scan
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      # npm lockfile + accidentally committed secrets; fixable HIGH/CRITICAL fail the build.
+      # Java dependencies are scanned in the backend IMAGE (the real jars) — scanning pom.xml
+      # would resolve the whole tree live from Maven Central (rate limits → flaky builds).
+      - name: Trivy filesystem scan
+        run: >
+          docker run --rm -v "$PWD:/src" -v trivy-cache:/root/.cache/trivy ${{ env.TRIVY_IMAGE }}
+          fs --scanners vuln,secret --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1
+          --ignorefile /src/.trivyignore --skip-files /src/backend/pom.xml
+          --skip-dirs /src/frontend/node_modules /src
+      - name: npm audit (production dependencies)
+        working-directory: frontend
+        run: npm audit --omit=dev --audit-level=high
+
+  images:
+    name: Image · ${{ matrix.component }}
+    needs: [backend, frontend, dependency-scan]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write # push to ghcr.io
+    strategy:
+      matrix:
+        component: [backend, frontend]
+    env:
+      PUSH: ${{ github.event_name != 'pull_request' }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: Image name (ghcr needs lower case)
+        run: echo "IMAGE=ghcr.io/${GITHUB_REPOSITORY,,}/${{ matrix.component }}" >> "$GITHUB_ENV"
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+      - uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5
+        id: meta
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=sha,prefix=sha-
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+      # NEXT_PUBLIC_* are only used by the frontend image (baked in at build time)
+      - name: Build arguments
+        id: args
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+          SITE_URL: ${{ vars.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000' }}
+          API_URL: ${{ vars.NEXT_PUBLIC_API_URL || 'http://localhost:8080' }}
+          TENANT: ${{ vars.NEXT_PUBLIC_TENANT || 'the-barber-news' }}
+          GA4_ID: ${{ vars.NEXT_PUBLIC_GA4_ID }}
+          ADS_ID: ${{ vars.NEXT_PUBLIC_GOOGLE_ADS_ID }}
+          ADS_LABEL: ${{ vars.NEXT_PUBLIC_GOOGLE_ADS_CONVERSION_LABEL }}
+          META_ID: ${{ vars.NEXT_PUBLIC_META_PIXEL_ID }}
+          TURNSTILE: ${{ vars.NEXT_PUBLIC_TURNSTILE_SITE_KEY }}
+        run: |
+          {
+            echo "list<<EOF"
+            echo "VERSION=$VERSION"
+            echo "REVISION=$GITHUB_SHA"
+            echo "NEXT_PUBLIC_SITE_URL=$SITE_URL"
+            echo "NEXT_PUBLIC_API_URL=$API_URL"
+            echo "NEXT_PUBLIC_TENANT=$TENANT"
+            echo "NEXT_PUBLIC_GA4_ID=$GA4_ID"
+            echo "NEXT_PUBLIC_GOOGLE_ADS_ID=$ADS_ID"
+            echo "NEXT_PUBLIC_GOOGLE_ADS_CONVERSION_LABEL=$ADS_LABEL"
+            echo "NEXT_PUBLIC_META_PIXEL_ID=$META_ID"
+            echo "NEXT_PUBLIC_TURNSTILE_SITE_KEY=$TURNSTILE"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+      # 1) build + load locally, 2) scan, 3) push (same cache → no second build)
+      - name: Build
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: ${{ matrix.component }}
+          load: true
+          tags: ${{ matrix.component }}:scan
+          build-args: ${{ steps.args.outputs.list }}
+          cache-from: type=gha,scope=${{ matrix.component }}
+          cache-to: type=gha,scope=${{ matrix.component }},mode=max
+      - name: Trivy image scan
+        run: >
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v trivy-cache:/root/.cache/trivy
+          -v "$PWD/.trivyignore:/.trivyignore:ro"
+          ${{ env.TRIVY_IMAGE }} image --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1
+          --ignorefile /.trivyignore ${{ matrix.component }}:scan
+      - if: env.PUSH == 'true'
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - if: env.PUSH == 'true'
+        name: Push
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: ${{ matrix.component }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: ${{ steps.args.outputs.list }}
+          cache-from: type=gha,scope=${{ matrix.component }}
+
+  e2e:
+    name: E2E · Playwright against docker compose
+    needs: [backend, frontend]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      COMPOSE: docker compose -f infra/docker-compose.yml -f infra/docker-compose.e2e.yml --env-file infra/.env
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Throw-away secrets for the test stack
+        run: |
+          cp infra/.env.example infra/.env
+          sed -i "s|^APP_JWT_SECRET=.*|APP_JWT_SECRET=$(openssl rand -base64 48 | tr -d '\n')|" infra/.env
+          sed -i "s|^POSTGRES_PASSWORD=.*|POSTGRES_PASSWORD=$(openssl rand -hex 24)|" infra/.env
+          sed -i "s|^APP_ADMIN_PASSWORD=.*|APP_ADMIN_PASSWORD=$(openssl rand -hex 24)|" infra/.env
+      - name: Start backend, Postgres, Mailpit
+        run: $COMPOSE up -d --build --wait backend mailpit
+      - name: Build and start the frontend image (prerendered against the running backend)
+        run: |
+          $COMPOSE build frontend
+          $COMPOSE up -d --wait frontend
+      - name: Playwright
+        working-directory: frontend
+        env:
+          E2E_TRACKING_BUILD: "1"
+        run: |
+          npm ci --no-audit --no-fund
+          npx playwright install --with-deps chromium
+          npx playwright test
+      - if: failure()
+        run: $COMPOSE logs --no-color --tail=300 > compose.log
+      - if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: e2e-results
+          path: |
+            frontend/test-results/
+            compose.log
+          retention-days: 7
+
+  deploy:
+    name: Deploy · ${{ inputs.deploy }}
+    if: github.event_name == 'workflow_dispatch' && inputs.deploy != 'no'
+    needs: [images, e2e]
+    runs-on: ubuntu-24.04
+    # GitHub environment "dev" / "prod": add required reviewers there = manual approval
+    environment: ${{ inputs.deploy }}
+    permissions:
+      contents: read
+      packages: read
+      id-token: write # OIDC login to Azure, no client secret
+    steps:
+      - uses: azure/login@7184910d9eb2b1c5e48f7073824a90609bb9b6d6 # v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Copy the images to ACR and roll out new revisions
+        env:
+          RG: ${{ vars.AZURE_RESOURCE_GROUP }}
+          ACR: ${{ vars.ACR_NAME }}
+          BACKEND_APP: ${{ vars.BACKEND_APP_NAME }}
+          FRONTEND_APP: ${{ vars.FRONTEND_APP_NAME }}
+        run: |
+          TAG="sha-${GITHUB_SHA::7}"
+          SRC="ghcr.io/${GITHUB_REPOSITORY,,}"
+          az acr login --name "$ACR"
+          for c in backend frontend; do
+            docker buildx imagetools create --tag "$ACR.azurecr.io/barbershop-$c:$TAG" "$SRC/$c:$TAG"
+          done
+          # backend first: Flyway migrates on start; the readiness probe gates the traffic switch
+          az containerapp update -g "$RG" -n "$BACKEND_APP" --image "$ACR.azurecr.io/barbershop-backend:$TAG"
+          az containerapp update -g "$RG" -n "$FRONTEND_APP" --image "$ACR.azurecr.io/barbershop-frontend:$TAG"
+      - name: Smoke test
+        run: |
+          for _ in $(seq 1 30); do
+            curl -fsS "${{ vars.API_URL }}/actuator/health/readiness" && exit 0
+            sleep 10
+          done
+          echo "backend not ready after 5 min — roll back: docs/DEPLOYMENT.md → Rollback" >&2
+          exit 1

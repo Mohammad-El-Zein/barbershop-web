@@ -1,0 +1,48 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# End-to-end stack for CI (GitHub Actions / GitLab), on top of docker-compose.yml:
+# the PRODUCTION images of backend and frontend + Postgres + Mailpit.
+#
+#   docker compose -f infra/docker-compose.yml -f infra/docker-compose.e2e.yml up -d --wait backend mailpit
+#   docker compose -f infra/docker-compose.yml -f infra/docker-compose.e2e.yml build frontend
+#   docker compose -f infra/docker-compose.yml -f infra/docker-compose.e2e.yml up -d --wait frontend
+#   cd frontend && E2E_TRACKING_BUILD=1 npx playwright test
+#
+# E2E_HOST: the host name the browser uses for the stack (localhost on a CI runner,
+# "docker" inside GitLab's docker-in-docker). Frontend and API on the same host
+# (different ports) are same-site, like in production (www. / api.).
+# The frontend is built with dummy analytics ids (consent tests assert that nothing
+# loads before consent; requests to Google / Meta are answered locally by Playwright).
+# ─────────────────────────────────────────────────────────────────────────────
+services:
+  backend:
+    environment:
+      # one run makes far more logins / bookings than the production limits allow
+      APP_RATE_LIMIT_BOOKINGS: "1000"
+      APP_RATE_LIMIT_LOGIN: "1000"
+      APP_RATE_LIMIT_AUTH_MAIL: "1000"
+      APP_RATE_LIMIT_TOKEN_ACTIONS: "1000"
+      APP_RATE_LIMIT_REFRESH: "1000"
+      APP_CORS_ALLOWED_ORIGINS: http://${E2E_HOST:-localhost}:3000
+      APP_FRONTEND_BASE_URL: http://${E2E_HOST:-localhost}:3000
+
+  frontend:
+    build:
+      context: ../frontend
+      # the build prerenders pages with the shop data from the already running backend
+      network: host
+      args:
+        API_URL_INTERNAL: http://localhost:${BACKEND_HOST_PORT:-8080}
+        NEXT_PUBLIC_SITE_URL: http://${E2E_HOST:-localhost}:3000
+        NEXT_PUBLIC_API_URL: http://${E2E_HOST:-localhost}:${BACKEND_HOST_PORT:-8080}
+        NEXT_PUBLIC_TENANT: the-barber-news
+        NEXT_PUBLIC_GA4_ID: G-E2ETEST000
+        NEXT_PUBLIC_META_PIXEL_ID: "1234567890"
+        NEXT_PUBLIC_GOOGLE_ADS_ID: AW-000000000
+        NEXT_PUBLIC_GOOGLE_ADS_CONVERSION_LABEL: e2e
+    image: barbershop-frontend:e2e
+    environment:
+      API_URL_INTERNAL: http://backend:8080
+    depends_on:
+      backend: { condition: service_healthy }
+    ports:
+      - "3000:3000"

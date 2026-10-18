@@ -1,0 +1,17 @@
+node_modules
+.next
+out
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+# tests, raw assets and tooling are not part of the image
+e2e
+test-results
+playwright-report
+assets-raw
+scripts/assets
+.git
+Dockerfile
+.dockerignore
+npm-debug.log*

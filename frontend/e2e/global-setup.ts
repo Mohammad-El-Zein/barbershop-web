@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { api, LUCA, linkIn, MAILPIT, sql, STATE_FILE, STORAGE_FILE, uniqueEmail, waitForMail } from "./support";
+import { API, api, LUCA, linkIn, MAILPIT, sql, STATE_FILE, STORAGE_FILE, uniqueEmail, waitForMail } from "./support";
 
 /**
  * Once per run: checks the stack is up, cancels bookings left by earlier runs, reads the
@@ -9,8 +9,8 @@ import { api, LUCA, linkIn, MAILPIT, sql, STATE_FILE, STORAGE_FILE, uniqueEmail,
  */
 export default async function globalSetup() {
   for (const [what, url] of [
-    ["backend", "http://localhost:8080/actuator/health/readiness"],
-    ["frontend", "http://localhost:3000/de"],
+    ["backend", `${API}/actuator/health/readiness`],
+    ["frontend", `${new URL(process.env.E2E_BASE_URL ?? "http://localhost:3000").origin}/de`],
     ["Mailpit", `${MAILPIT}/api/v1/messages?limit=1`],
   ]) {
     const ok = await fetch(url).then((r) => r.ok).catch(() => false);

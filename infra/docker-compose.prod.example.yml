@@ -1,0 +1,148 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Production on ONE server (VPS) with docker compose + Caddy (automatic HTTPS).
+# The alternative to Azure Container Apps — see docs/DEPLOYMENT.md → "VPS".
+#
+#   1. DNS: A/AAAA records for SITE_DOMAIN and API_DOMAIN → this server
+#   2. cp infra/.env.prod.example infra/.env.prod   (fill in; never commit it)
+#   3. docker compose -f infra/docker-compose.prod.example.yml --env-file infra/.env.prod up -d
+#
+# Images: built and pushed by CI (BACKEND_IMAGE / FRONTEND_IMAGE with a version tag),
+# or built on the server with `--build` (the build: sections below). The frontend
+# image bakes in its NEXT_PUBLIC_* values at build time.
+#
+# Only Caddy publishes ports (80/443). Postgres sits on an internal network, Redis is
+# optional (profile "redis", needed only with several backend instances).
+# ─────────────────────────────────────────────────────────────────────────────
+name: barbershop-prod
+
+x-hardening: &hardening
+  restart: unless-stopped
+  security_opt: ["no-new-privileges:true"]
+  logging:
+    driver: json-file
+    options: { max-size: "20m", max-file: "5" }
+
+services:
+  caddy:
+    <<: *hardening
+    image: caddy:2.10-alpine
+    depends_on:
+      frontend: { condition: service_healthy }
+      backend: { condition: service_healthy }
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp" # HTTP/3
+    environment:
+      SITE_DOMAIN: ${SITE_DOMAIN:?Set SITE_DOMAIN, e.g. www.example-barber.de}
+      API_DOMAIN: ${API_DOMAIN:?Set API_DOMAIN, e.g. api.example-barber.de}
+      ACME_EMAIL: ${ACME_EMAIL:?Set ACME_EMAIL (Let's Encrypt account / expiry notices)}
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data # certificates — keep this volume
+      - caddy_config:/config
+    networks: [edge]
+
+  frontend:
+    <<: *hardening
+    image: ${FRONTEND_IMAGE:-barbershop-frontend:local}
+    build:
+      context: ../frontend
+      args:
+        NEXT_PUBLIC_SITE_URL: https://${SITE_DOMAIN}
+        NEXT_PUBLIC_API_URL: https://${API_DOMAIN}
+        NEXT_PUBLIC_TENANT: ${TENANT:-the-barber-news}
+        NEXT_PUBLIC_GA4_ID: ${NEXT_PUBLIC_GA4_ID:-}
+        NEXT_PUBLIC_GOOGLE_ADS_ID: ${NEXT_PUBLIC_GOOGLE_ADS_ID:-}
+        NEXT_PUBLIC_GOOGLE_ADS_CONVERSION_LABEL: ${NEXT_PUBLIC_GOOGLE_ADS_CONVERSION_LABEL:-}
+        NEXT_PUBLIC_META_PIXEL_ID: ${NEXT_PUBLIC_META_PIXEL_ID:-}
+        NEXT_PUBLIC_TURNSTILE_SITE_KEY: ${NEXT_PUBLIC_TURNSTILE_SITE_KEY:-}
+    cap_drop: [ALL]
+    environment:
+      # server-side requests (structured data, legal pages) go straight to the backend
+      API_URL_INTERNAL: http://backend:8080
+    depends_on:
+      backend: { condition: service_healthy }
+    networks: [edge]
+
+  backend:
+    <<: *hardening
+    image: ${BACKEND_IMAGE:-barbershop-backend:local}
+    build: ../backend
+    cap_drop: [ALL]
+    read_only: true
+    tmpfs: ["/tmp:size=128m"]
+    stop_grace_period: 30s # > APP_SHUTDOWN_TIMEOUT (20 s): running requests finish
+    depends_on:
+      postgres: { condition: service_healthy }
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
+      DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-barbershop}
+      DB_USERNAME: ${POSTGRES_USER:-barbershop}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      APP_JWT_SECRET: ${APP_JWT_SECRET:?Set APP_JWT_SECRET (openssl rand -base64 48)}
+      APP_TOKEN_SECRET: ${APP_TOKEN_SECRET:-}
+      APP_FRONTEND_BASE_URL: https://${SITE_DOMAIN}
+      APP_CORS_ALLOWED_ORIGINS: https://${SITE_DOMAIN}
+      APP_COOKIE_SECURE: "true"
+      APP_ADMIN_EMAIL: ${APP_ADMIN_EMAIL:-}
+      APP_ADMIN_PASSWORD: ${APP_ADMIN_PASSWORD:-}
+      APP_ADMIN_TENANT: ${TENANT:-the-barber-news}
+      # first start on an empty database: create the shop (no demo seed in production)
+      APP_TENANT_NAME: ${TENANT_NAME:-}
+      APP_TENANT_TIMEZONE: ${TENANT_TIMEZONE:-Europe/Berlin}
+      SMTP_HOST: ${SMTP_HOST:?Set SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_AUTH: ${SMTP_AUTH:-true}
+      SMTP_STARTTLS: ${SMTP_STARTTLS:-true}
+      APP_MAIL_FROM: ${APP_MAIL_FROM:?Set APP_MAIL_FROM}
+      APP_CAPTCHA_PROVIDER: ${APP_CAPTCHA_PROVIDER:-turnstile}
+      APP_CAPTCHA_SECRET: ${APP_CAPTCHA_SECRET:-}
+      APP_CAPTCHA_ALLOW_NONE_IN_PROD: ${APP_CAPTCHA_ALLOW_NONE_IN_PROD:-false}
+      APP_RATE_LIMIT_STORE: ${APP_RATE_LIMIT_STORE:-memory}
+      APP_RATE_LIMIT_REDIS_URL: ${APP_RATE_LIMIT_REDIS_URL:-}
+      PAYMENT_PROVIDER: ${PAYMENT_PROVIDER:-demo}
+      # public demo only (docs/DEPLOYMENT.md → "Public demo"); a real shop needs a real provider
+      PAYMENT_DEMO_ALLOW_IN_PROD: ${PAYMENT_DEMO_ALLOW_IN_PROD:-false}
+      LOG_FORMAT: ${LOG_FORMAT:-ecs}
+    networks: [edge, data]
+
+  postgres:
+    restart: unless-stopped
+    image: postgres:17-alpine
+    security_opt: ["no-new-privileges:true"]
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-barbershop}
+      POSTGRES_USER: ${POSTGRES_USER:-barbershop}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./backups:/backups # pg_dump target, see docs/DEPLOYMENT.md → Backups
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks: [data]
+
+  # optional: shared rate limits for several backend instances
+  # (APP_RATE_LIMIT_STORE=redis, APP_RATE_LIMIT_REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379)
+  redis:
+    profiles: [redis]
+    <<: *hardening
+    image: redis:7.4-alpine
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:-}", "--save", "", "--appendonly", "no"]
+    cap_drop: [ALL]
+    networks: [data]
+
+networks:
+  edge: {}
+  data:
+    internal: true # no route to the internet; only backend ↔ postgres/redis
+
+volumes:
+  pgdata: {}
+  caddy_data: {}
+  caddy_config: {}
