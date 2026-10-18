@@ -6,6 +6,7 @@ import { api, ApiError, call } from "@/lib/api/client";
 import type {
   CampaignStats,
   CustomerRow,
+  OutboxProblem,
   Policy,
   ServiceAdmin,
   ShopProfile,
@@ -571,9 +572,70 @@ export function AdminStats() {
         </>
       )}
       <CampaignTable range={range} />
+      <OutboxProblems />
       <AdminSettings />
       <AdminProfile />
     </div>
+  );
+}
+
+/** Emails that could not be delivered (retrying / given up), with a manual retry. */
+function OutboxProblems() {
+  const t = useTranslations("staff.outbox");
+  const locale = useLocale();
+  const errorText = useErrorText();
+  const [rows, setRows] = useState<OutboxProblem[] | null>(null);
+  const [error, setError] = useState<unknown>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const load = useCallback(
+    () => call(() => api.GET("/api/admin/outbox")).then((r) => setRows((r ?? []) as OutboxProblem[]), setError),
+    [],
+  );
+  useEffect(() => {
+    load();
+  }, [load]);
+  const retry = async (id: string) => {
+    setNotice(null);
+    try {
+      await call(() => api.POST("/api/admin/outbox/{id}/retry", { params: { path: { id } } }));
+      setNotice(t("retried"));
+      await load();
+    } catch (e) {
+      setError(e);
+    }
+  };
+  return (
+    <section className="card p-5" aria-labelledby="outbox-h">
+      <h2 id="outbox-h" className="label">
+        {t("title")}
+      </h2>
+      <p className="mt-1 text-xs text-muted">{t("lead")}</p>
+      {error ? <Alert tone="error">{errorText(error)}</Alert> : null}
+      {notice && <Alert tone="success">{notice}</Alert>}
+      {!rows ? (
+        <Skeleton className="mt-4 h-20" />
+      ) : rows.length === 0 ? (
+        <p className="mt-4 text-sm text-muted">{t("empty")}</p>
+      ) : (
+        <ul className="mt-3 divide-y divide-line">
+          {rows.map((r) => (
+            <li key={r.id} className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm">
+              <div className="min-w-0">
+                <p className="truncate font-semibold">{r.subject}</p>
+                <p className="truncate text-xs text-muted">
+                  {r.recipient} · {r.kind} · {t(`status.${r.status as "RETRY" | "DEAD"}`)} · {t("attempts", { count: r.attempts ?? 0 })}
+                  {r.status === "RETRY" && r.nextAttemptAt ? ` · ${t("nextAttempt", { time: dateTime(r.nextAttemptAt, locale) })}` : ""}
+                </p>
+                {r.lastError && <p className="mt-0.5 truncate text-xs text-muted">{r.lastError}</p>}
+              </div>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => retry(r.id!)}>
+                {t("retry")}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
 

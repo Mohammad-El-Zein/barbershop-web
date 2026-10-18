@@ -50,6 +50,21 @@ body {
   overflow-x: hidden;
 }
 
+/* Demo mode (components/DemoModeBar.tsx): the fixed strip's height, reserved for the page
+   and pushed onto the fixed nav / scroll progress bar. Set server-side → no layout shift. */
+:root {
+  --demo-bar: 0px;
+}
+:root[data-demo] {
+  --demo-bar: 28px;
+}
+:root[data-demo] body {
+  padding-top: var(--demo-bar);
+}
+.demo-bar {
+  height: var(--demo-bar);
+}
+
 ::selection {
   background: var(--gold);
   color: #0a0a0a;

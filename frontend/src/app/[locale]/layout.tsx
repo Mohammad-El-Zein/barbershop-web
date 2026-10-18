@@ -5,12 +5,14 @@ import { hasLocale, NextIntlClientProvider } from "next-intl";
 import { getMessages, getTranslations } from "next-intl/server";
 import { BookingDialog } from "@/components/booking/BookingDialog";
 import { ConsentManager } from "@/components/consent/ConsentManager";
+import { DemoModeBar } from "@/components/DemoModeBar";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { siteConfig } from "@/config/site.config";
 import { themeCss } from "@/config/theme-css";
 import { CONSENT_BOOT_SCRIPT } from "@/lib/consent-shared";
 import { routing } from "@/i18n/routing";
 import { AuthProvider } from "@/lib/auth/AuthProvider";
+import { loadShopData } from "@/lib/shop-server";
 import "../globals.css";
 
 // Condensed display face for headlines, Inter for body copy.
@@ -52,10 +54,13 @@ export default async function LocaleLayout({ children, params }: LayoutProps<"/[
   const { locale } = await params;
   if (!hasLocale(routing.locales, locale)) notFound();
   const messages = await getMessages();
+  // only when the backend confirms it (unknown → no strip; the payment page shows its own)
+  const { shop } = await loadShopData(locale);
+  const demo = shop?.bookingRules?.demoPayments === true;
 
   return (
     // suppressHydrationWarning: next-themes sets the theme class on <html> before React hydrates
-    <html lang={locale} className={`${anton.variable} ${inter.variable}`} suppressHydrationWarning>
+    <html lang={locale} className={`${anton.variable} ${inter.variable}`} data-demo={demo ? "" : undefined} suppressHydrationWarning>
       <head>
         {/* colour tokens for both themes, generated from site.config.ts */}
         <style dangerouslySetInnerHTML={{ __html: themeCss() }} />
@@ -63,6 +68,7 @@ export default async function LocaleLayout({ children, params }: LayoutProps<"/[
         <script dangerouslySetInnerHTML={{ __html: CONSENT_BOOT_SCRIPT }} />
       </head>
       <body>
+        {demo && <DemoModeBar locale={locale} />}
         <ThemeProvider>
           <NextIntlClientProvider locale={locale} messages={messages}>
             <AuthProvider>

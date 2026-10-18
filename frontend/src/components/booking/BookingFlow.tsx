@@ -9,6 +9,8 @@ import { useErrorText } from "@/lib/api/useErrorText";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { currentAttribution } from "@/lib/attribution";
 import { bookingParams, track } from "@/lib/tracking";
+import { CAPTCHA_REQUIRED, captchaHeaders } from "@/lib/captcha";
+import { Turnstile, type TurnstileHandle } from "../security/Turnstile";
 import { rulesOf, useShop } from "@/lib/useShop";
 import { Alert } from "../ui/Feedback";
 import { useServices, useStaff } from "./data";
@@ -61,6 +63,8 @@ export function BookingFlow({
   const [busy, setBusy] = useState(false);
   const [nonce, setNonce] = useState(0);
   const headingRef = useRef<HTMLHeadingElement>(null);
+  const [captcha, setCaptcha] = useState<string | null>(null);
+  const turnstile = useRef<TurnstileHandle>(null);
 
   const asCustomer = status === "authenticated" && user?.role === "CUSTOMER";
   const chosenServices = (services.data ?? []).filter((s) => serviceIds.includes(s.id!));
@@ -130,7 +134,7 @@ export function BookingFlow({
         attribution: currentAttribution(),
       };
       const booking = (await call(() =>
-        api.POST("/api/public/{tenant}/bookings", { params: { path: { tenant: TENANT } }, body }),
+        api.POST("/api/public/{tenant}/bookings", { params: { path: { tenant: TENANT } }, body, headers: captchaHeaders(captcha) }),
       )) as Booking;
       track("booking_submitted", { ...bookingParams(booking), source });
       onBooked(booking);
@@ -148,6 +152,7 @@ export function BookingFlow({
       setNotice(msg);
     } finally {
       setBusy(false);
+      turnstile.current?.reset(); // tokens are single-use
     }
   };
 
@@ -215,7 +220,12 @@ export function BookingFlow({
           />
         )}
         {step === "summary" && choice && (
-          <SummaryStep services={chosenServices} choice={choice} rules={rules} note={note} />
+          <>
+            <SummaryStep services={chosenServices} choice={choice} rules={rules} note={note} />
+            <div className="mt-4">
+              <Turnstile ref={turnstile} onToken={setCaptcha} />
+            </div>
+          </>
         )}
       </div>
 
@@ -228,7 +238,7 @@ export function BookingFlow({
           {choice ? `${choice.time} · ${choice.staffName ?? t("slots.anyBarber")}` : ""}
         </p>
         {step === "summary" ? (
-          <button type="button" className="btn btn-primary" onClick={confirm} disabled={busy} aria-busy={busy}>
+          <button type="button" className="btn btn-primary" onClick={confirm} disabled={busy || (CAPTCHA_REQUIRED && !captcha)} aria-busy={busy}>
             {busy ? t("sending") : t("confirm")}
           </button>
         ) : (

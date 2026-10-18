@@ -22,7 +22,8 @@
     "token_expired": "Dieser Link ist abgelaufen.",
     "token_invalid": "Dieser Link ist ungültig.",
     "validation_failed": "Bitte prüf deine Eingaben.",
-    "service_no_staff": "Für diese Kombination von Leistungen ist gerade kein Barber verfügbar."
+    "service_no_staff": "Für diese Kombination von Leistungen ist gerade kein Barber verfügbar.",
+    "captcha_failed": "Bitte bestätige kurz, dass du kein Roboter bist, und versuch es noch einmal."
   },
   "status": {
     "PENDING_BARBER": "Wartet auf Barber",
@@ -222,6 +223,7 @@
   },
   "pay": {
     "demoBanner": "DEMO-MODUS: keine echte Zahlung",
+    "demoSiteBar": "Demo-Shop · Zahlungen werden nur simuliert, es fließt kein Geld",
     "eyebrow": "Anzahlung",
     "title": "Anzahlung bezahlen",
     "lead": "Mit der Anzahlung ist dein Termin fest gebucht.",
@@ -609,6 +611,19 @@
       "email": "E-Mail",
       "priceRange": "Preisklasse",
       "priceRangeHint": "1–4 × €, z. B. €€"
+    },
+    "outbox": {
+      "title": "E-Mail-Zustellung",
+      "lead": "E-Mails, die nicht zugestellt werden konnten. „Wird wiederholt“ = automatischer neuer Versuch; „Aufgegeben“ = nach mehreren Versuchen gestoppt.",
+      "empty": "Alle E-Mails wurden zugestellt.",
+      "retry": "Erneut senden",
+      "retried": "Wird gesendet.",
+      "status": {
+        "RETRY": "Wird wiederholt",
+        "DEAD": "Aufgegeben"
+      },
+      "attempts": "{count} Versuche",
+      "nextAttempt": "Nächster Versuch {time}"
     }
   },
   "errorPages": {

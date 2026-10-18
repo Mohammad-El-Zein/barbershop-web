@@ -22,7 +22,8 @@
     "token_expired": "This link has expired.",
     "token_invalid": "This link is invalid.",
     "validation_failed": "Please check your input.",
-    "service_no_staff": "No barber is available for this combination of services right now."
+    "service_no_staff": "No barber is available for this combination of services right now.",
+    "captcha_failed": "Please confirm you are not a robot and try again."
   },
   "status": {
     "PENDING_BARBER": "Waiting for barber",
@@ -222,6 +223,7 @@
   },
   "pay": {
     "demoBanner": "DEMO MODE: no real payment",
+    "demoSiteBar": "Demo shop · payments are only simulated, no money is moved",
     "eyebrow": "Deposit",
     "title": "Pay the deposit",
     "lead": "With the deposit your appointment is booked for sure.",
@@ -609,6 +611,19 @@
       "email": "Email",
       "priceRange": "Price range",
       "priceRangeHint": "1–4 × €, e.g. €€"
+    },
+    "outbox": {
+      "title": "Email delivery",
+      "lead": "Emails that could not be delivered. “Retrying” = will be tried again automatically; “Given up” = stopped after several attempts.",
+      "empty": "All emails were delivered.",
+      "retry": "Send again",
+      "retried": "Sending.",
+      "status": {
+        "RETRY": "Retrying",
+        "DEAD": "Given up"
+      },
+      "attempts": "{count} attempts",
+      "nextAttempt": "Next attempt {time}"
     }
   },
   "errorPages": {

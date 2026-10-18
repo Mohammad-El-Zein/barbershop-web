@@ -152,6 +152,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/outbox": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Mails that failed: RETRY (will be tried again) and DEAD (given up), newest first */
+        get: operations["problems"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/outbox/{id}/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Send a failed mail again (fresh attempt budget) */
+        post: operations["retry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/services": {
         parameters: {
             query?: never;
@@ -1446,6 +1480,23 @@ export interface components {
             /** Format: int32 */
             weekday?: number;
         };
+        OutboxProblem: {
+            /** Format: int32 */
+            attempts?: number;
+            /** Format: uuid */
+            bookingId?: string;
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: uuid */
+            id?: string;
+            kind?: string;
+            lastError?: string;
+            /** Format: date-time */
+            nextAttemptAt?: string;
+            recipient?: string;
+            status?: string;
+            subject?: string;
+        };
         PageViewBookingAdminView: {
             items?: components["schemas"]["BookingAdminView"][];
             /** Format: int32 */
@@ -2045,6 +2096,46 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["PageViewCustomerRow"];
                 };
+            };
+        };
+    };
+    problems: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OutboxProblem"][];
+                };
+            };
+        };
+    };
+    retry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

@@ -103,7 +103,10 @@ test("guest books → barber accepts via email link → demo payment → confirm
   await page.getByRole("button", { name: t.payNow }).click();
 
   // DEMO payment page: banner, amount, two buttons, no card fields
-  await expect(page.getByRole("note")).toHaveText(new RegExp(t.demo));
+  await expect(page.getByRole("main").getByRole("note")).toHaveText(new RegExp(t.demo));
+  // plus the site-wide DEMO strip (demoPayments), visible above everything
+  await expect(page.locator(".demo-bar")).toBeVisible();
+  await expect(page.locator(".demo-bar")).toHaveText(new RegExp(t.demoSite));
   await expect(page.locator("main input")).toHaveCount(0);
   await expect(page.getByRole("main")).not.toContainText(FROM_PRICE);
   await expect(page.locator('input[autocomplete^="cc-"], input[name*="card" i]')).toHaveCount(0);

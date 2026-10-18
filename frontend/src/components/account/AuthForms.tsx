@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { Link, useRouter } from "@/i18n/navigation";
@@ -8,6 +8,8 @@ import { api, ApiError, call } from "@/lib/api/client";
 import { TENANT } from "@/lib/api/config";
 import { useErrorText } from "@/lib/api/useErrorText";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { CAPTCHA_REQUIRED, captchaHeaders } from "@/lib/captcha";
+import { Turnstile, type TurnstileHandle } from "../security/Turnstile";
 import { Alert } from "../ui/Feedback";
 import { Checkbox, Field, Select } from "../ui/Field";
 
@@ -100,6 +102,8 @@ export function RegisterForm() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const [done, setDone] = useState<string | null>(null);
+  const [captcha, setCaptcha] = useState<string | null>(null);
+  const turnstile = useRef<TurnstileHandle>(null);
 
   if (done)
     return (
@@ -134,6 +138,7 @@ export function RegisterForm() {
             api.POST("/api/public/{tenant}/auth/register", {
               params: { path: { tenant: TENANT } },
               body: { ...f, name: f.name.trim(), email: f.email.trim(), phone: f.phone.trim() },
+              headers: captchaHeaders(captcha),
             }),
           );
           setDone(r?.message ?? "");
@@ -142,6 +147,7 @@ export function RegisterForm() {
           else setError(err);
         } finally {
           setBusy(false);
+          turnstile.current?.reset(); // tokens are single-use
         }
       }}
     >
@@ -179,13 +185,16 @@ export function RegisterForm() {
           ),
         })}
       />
+      <div className="sm:col-span-2">
+        <Turnstile ref={turnstile} onToken={setCaptcha} />
+      </div>
       {error ? (
         <Alert tone="error" className="sm:col-span-2">
           {errorText(error)}
         </Alert>
       ) : null}
       <div className="flex flex-wrap items-center gap-4 sm:col-span-2">
-        <button type="submit" className="btn btn-primary" disabled={busy} aria-busy={busy}>
+        <button type="submit" className="btn btn-primary" disabled={busy || (CAPTCHA_REQUIRED && !captcha)} aria-busy={busy}>
           {t("button")}
         </button>
         <Link href="/account/login" className="text-sm text-gold-text underline underline-offset-2">
@@ -203,6 +212,8 @@ export function ForgotForm() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [error, setError] = useState<unknown>(null);
+  const [captcha, setCaptcha] = useState<string | null>(null);
+  const turnstile = useRef<TurnstileHandle>(null);
   return (
     <form
       className="card space-y-4 p-6 sm:p-8"
@@ -212,13 +223,18 @@ export function ForgotForm() {
         setError(null);
         try {
           const r = await call(() =>
-            api.POST("/api/public/{tenant}/auth/forgot-password", { params: { path: { tenant: TENANT } }, body: { email } }),
+            api.POST("/api/public/{tenant}/auth/forgot-password", {
+              params: { path: { tenant: TENANT } },
+              body: { email },
+              headers: captchaHeaders(captcha),
+            }),
           );
           setMsg(r?.message ?? "");
         } catch (err) {
           setError(err);
         } finally {
           setBusy(false);
+          turnstile.current?.reset();
         }
       }}
     >
@@ -227,8 +243,9 @@ export function ForgotForm() {
       ) : (
         <>
           <Field label={t("email")} type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+          <Turnstile ref={turnstile} onToken={setCaptcha} />
           {error ? <Alert tone="error">{errorText(error)}</Alert> : null}
-          <button type="submit" className="btn btn-primary" disabled={busy} aria-busy={busy}>
+          <button type="submit" className="btn btn-primary" disabled={busy || (CAPTCHA_REQUIRED && !captcha)} aria-busy={busy}>
             {t("button")}
           </button>
         </>

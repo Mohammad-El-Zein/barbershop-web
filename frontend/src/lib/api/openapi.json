@@ -1674,6 +1674,36 @@
         ]
       }
     },
+    "/api/admin/outbox/{id}/retry": {
+      "post": {
+        "tags": [
+          "Admin: email delivery"
+        ],
+        "summary": "Send a failed mail again (fresh attempt budget)",
+        "operationId": "retry",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/api/admin/bookings": {
       "get": {
         "tags": [
@@ -2798,6 +2828,35 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CampaignStatsView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/admin/outbox": {
+      "get": {
+        "tags": [
+          "Admin: email delivery"
+        ],
+        "summary": "Mails that failed: RETRY (will be tried again) and DEAD (given up), newest first",
+        "operationId": "problems",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OutboxProblem"
+                  }
                 }
               }
             }
@@ -4933,6 +4992,46 @@
             "items": {
               "$ref": "#/components/schemas/CampaignRow"
             }
+          }
+        }
+      },
+      "OutboxProblem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "recipient": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "attempts": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "lastError": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nextAttemptAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "bookingId": {
+            "type": "string",
+            "format": "uuid"
           }
         }
       },

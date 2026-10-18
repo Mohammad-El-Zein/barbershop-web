@@ -57,7 +57,7 @@ export function Nav({ hasScene = true }: { hasScene?: boolean }) {
   const overScene = !overPage;
 
   return (
-    <header data-nav-surface={overScene ? "scene" : "page"} className={`fixed inset-x-0 top-0 z-50 text-ink ${overScene ? "scene-dark" : ""}`}>
+    <header data-nav-surface={overScene ? "scene" : "page"} className={`fixed inset-x-0 top-[var(--demo-bar)] z-50 text-ink ${overScene ? "scene-dark" : ""}`}>
       <a
         href="#main"
         className="sr-only-focusable absolute left-4 top-3 z-10 rounded bg-gold px-3 py-2 text-sm text-black"
