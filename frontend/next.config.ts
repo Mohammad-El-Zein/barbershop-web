@@ -107,6 +107,10 @@ function securityHeaders() {
 
 const nextConfig: NextConfig = {
   cacheComponents: true,
+  experimental: {
+    // complete, server-rendered 404 for unmatched URLs (app/global-not-found.tsx)
+    globalNotFound: true,
+  },
   partialPrefetching: true,
   // self-contained server (.next/standalone) for the production Docker image, which sets
   // NEXT_OUTPUT=standalone; local `npm run build && npm start` keeps the normal output

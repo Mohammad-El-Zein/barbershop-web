@@ -147,3 +147,21 @@ test("staff area: admin calendar, bookings, services, staff, time off, customers
   }
 });
 
+
+test("404: real status and complete server HTML (works without JavaScript)", async ({ browser, request }, info) => {
+  test.skip(info.project.name !== "desktop-de-dark", "routing check, one project is enough");
+  for (const path of ["/de/gibts-nicht", "/en/a/b/c", "/de/lp/unbekannte-kampagne", "/fr/irgendwas"]) {
+    const res = await request.get(path);
+    expect(res.status(), path).toBe(404);
+    expect(await res.text(), path).toContain("Seite nicht gefunden");
+  }
+  const ctx = await browser.newContext({ javaScriptEnabled: false });
+  const page = await ctx.newPage();
+  const res = await page.goto("/de/lp/unbekannte-kampagne");
+  expect(res?.status()).toBe(404);
+  await expect(page.getByRole("heading", { level: 1, name: "Seite nicht gefunden" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 2, name: "Page not found" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Zur Startseite" })).toHaveAttribute("href", "/de");
+  await expect(page).toHaveTitle(/Seite nicht gefunden · Page not found/);
+  await ctx.close();
+});
