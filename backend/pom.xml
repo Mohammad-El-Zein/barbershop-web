@@ -80,6 +80,16 @@
             <artifactId>bucket4j_jdk17-core</artifactId>
             <version>${bucket4j.version}</version>
         </dependency>
+        <!-- optional shared rate-limit store (APP_RATE_LIMIT_STORE=redis, several backend instances) -->
+        <dependency>
+            <groupId>com.bucket4j</groupId>
+            <artifactId>bucket4j_jdk17-lettuce</artifactId>
+            <version>${bucket4j.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.lettuce</groupId>
+            <artifactId>lettuce-core</artifactId>
+        </dependency>
         <dependency>
             <groupId>com.github.ben-manes.caffeine</groupId>
             <artifactId>caffeine</artifactId>

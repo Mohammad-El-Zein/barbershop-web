@@ -120,6 +120,7 @@ public abstract class AbstractIntegrationTest {
         // the previous test's mail listeners must not run against (or mail into) this test
         AsyncTasks.awaitIdle(ASYNC_MAX);
         today = LocalDate.now(BERLIN);
+        jdbc.update("delete from mail_outbox");
         jdbc.update("delete from booking");          // cascades items, payments, payment events, booking tokens
         jdbc.update("delete from action_token");
         jdbc.update("delete from refresh_token");

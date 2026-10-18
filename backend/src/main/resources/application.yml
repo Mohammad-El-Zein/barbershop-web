@@ -8,6 +8,8 @@
 spring:
   application:
     name: barbershop-backend
+  lifecycle:
+    timeout-per-shutdown-phase: ${APP_SHUTDOWN_TIMEOUT:20s}
   threads:
     virtual:
       enabled: true
@@ -54,6 +56,8 @@ spring:
 
 server:
   port: 8080
+  # finish running requests on SIGTERM (container stop / rolling update) before shutting down
+  shutdown: graceful
   # trust X-Forwarded-* only from internal proxies (Tomcat RemoteIpValve defaults),
   # so the rate limiter sees the real client IP behind the reverse proxy
   forward-headers-strategy: native
@@ -65,11 +69,13 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: health            # only /actuator/health, /health/liveness, /health/readiness
   endpoint:
     health:
       probes:
         enabled: true
+      show-details: never
+      show-components: never
 
 springdoc:
   api-docs:
@@ -126,6 +132,12 @@ app:
     tenant: ${APP_ADMIN_TENANT:the-barber-news}
   mail:
     from: ${APP_MAIL_FROM:The Barber News <no-reply@example.com>}
+    outbox:                          # transactional outbox (table mail_outbox), see MailOutbox
+      max-attempts: ${APP_MAIL_MAX_ATTEMPTS:8}   # then DEAD (admin can retry): ~2 h of retries
+      base-backoff: PT30S
+      max-backoff: PT1H
+      poll-interval: ${APP_MAIL_POLL_INTERVAL:PT15S}
+      batch-size: 20
   booking:
     max-services: 5
     # open (PENDING_BARBER / AWAITING_PAYMENT) requests per email address — anti-spam
@@ -134,8 +146,22 @@ app:
     enabled: ${APP_JOBS_ENABLED:true}
     interval: ${APP_JOBS_INTERVAL:PT1M}
     batch-size: 200
+  retention:                        # GDPR storage limitation (RetentionJob) — keep in sync with the privacy policy
+    cancelled-bookings-months: ${APP_RETENTION_CANCELLED_MONTHS:6}     # anonymise declined/expired/cancelled
+    completed-bookings-months: ${APP_RETENTION_COMPLETED_MONTHS:0}     # 0 = keep (tax/bookkeeping decide)
+    unverified-accounts-days: ${APP_RETENTION_UNVERIFIED_DAYS:30}      # delete never-verified accounts
+    outbox-days: ${APP_RETENTION_OUTBOX_DAYS:30}                       # delete the email delivery log
+    cron: ${APP_RETENTION_CRON:0 30 3 * * *}
+  captcha:                          # bot check on booking / register / forgot-password (header X-Captcha-Token)
+    provider: ${APP_CAPTCHA_PROVIDER:none}          # none | turnstile (the prod profile refuses none, see below)
+    secret: ${APP_CAPTCHA_SECRET:}
+    verify-url: ${APP_CAPTCHA_VERIFY_URL:}         # empty = Cloudflare siteverify
+    allow-none-in-prod: ${APP_CAPTCHA_ALLOW_NONE_IN_PROD:false}
   rate-limit:
     enabled: ${APP_RATE_LIMIT_ENABLED:true}
+    # memory = per backend instance (fine for ONE instance); redis = shared, REQUIRED with several replicas
+    store: ${APP_RATE_LIMIT_STORE:memory}
+    redis-url: ${APP_RATE_LIMIT_REDIS_URL:}   # e.g. rediss://:password@host:6380/0
     bookings:                       # POST /api/public/{tenant}/bookings per client IP
       capacity: ${APP_RATE_LIMIT_BOOKINGS:10}
       period: PT1M

@@ -20,18 +20,19 @@ import java.util.List;
 import java.util.UUID;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
 /**
- * Sends booking emails after the booking transaction has committed, on a
- * separate (virtual) thread, so SMTP latency or failures never affect the
- * booking itself. Failures are logged; the booking stays valid.
+ * Booking emails: rendered and put into the {@link MailOutbox} inside the booking's
+ * own transaction (BEFORE_COMMIT), so a mail exists exactly when the booking change
+ * commits. Sending happens after the commit (outbox worker, with retries), so SMTP
+ * latency or failures never affect the booking. A rendering error is logged and never
+ * rolls the booking back (see {@link MailOutbox#enqueue}).
  *
  * <p>Barber emails go to the barber's own account (linked staff profile); if the
  * barber has no login yet, to the shop's admins.
@@ -45,78 +46,62 @@ public class BookingMailListener {
     private final TenantRepository tenants;
     private final AppUserRepository users;
     private final BookingMails mails;
-    private final MailService mail;
+    private final MailOutbox outbox;
     private final PaymentProvider provider;
 
     public BookingMailListener(BookingRepository bookings, TenantRepository tenants, AppUserRepository users,
-                               BookingMails mails, MailService mail, PaymentProvider provider) {
+                               BookingMails mails, MailOutbox outbox, PaymentProvider provider) {
         this.bookings = bookings;
         this.tenants = tenants;
         this.users = users;
         this.mails = mails;
-        this.mail = mail;
+        this.outbox = outbox;
         this.provider = provider;
     }
 
-    @Async
-    @TransactionalEventListener
-    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
+    @TransactionalEventListener(phase = TransactionPhase.BEFORE_COMMIT, fallbackExecution = true)
     public void on(Requested e) {
         send(e.bookingId(), "requested",
                 (b, t) -> mails.requested(b, t, e.manageToken()),
                 (b, t) -> u -> mails.barberRequest(b, t, u, e.decisionToken()));
     }
 
-    @Async
-    @TransactionalEventListener
-    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
+    @TransactionalEventListener(phase = TransactionPhase.BEFORE_COMMIT, fallbackExecution = true)
     public void on(Accepted e) {
         send(e.bookingId(), "accepted",
                 (b, t) -> mails.accepted(b, t, e.paymentUrl(), e.paymentDeadline(), provider.isDemo()), null);
     }
 
-    @Async
-    @TransactionalEventListener
-    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
+    @TransactionalEventListener(phase = TransactionPhase.BEFORE_COMMIT, fallbackExecution = true)
     public void on(Declined e) {
         send(e.bookingId(), "declined", mails::declined, null);
     }
 
-    @Async
-    @TransactionalEventListener
-    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
+    @TransactionalEventListener(phase = TransactionPhase.BEFORE_COMMIT, fallbackExecution = true)
     public void on(Expired e) {
         send(e.bookingId(), "expired", (b, t) -> mails.expired(b, t, e.from()), null);
     }
 
-    @Async
-    @TransactionalEventListener
-    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
+    @TransactionalEventListener(phase = TransactionPhase.BEFORE_COMMIT, fallbackExecution = true)
     public void on(Confirmed e) {
         send(e.bookingId(), "confirmed",
                 (b, t) -> mails.confirmed(b, t, e.manageToken(), e.depositPaid(), provider.isDemo()),
                 e.depositPaid() ? (b, t) -> u -> mails.barberPaid(b, t, u, provider.isDemo()) : null);
     }
 
-    @Async
-    @TransactionalEventListener
-    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
+    @TransactionalEventListener(phase = TransactionPhase.BEFORE_COMMIT, fallbackExecution = true)
     public void on(Cancelled e) {
         send(e.bookingId(), "cancelled",
                 (b, t) -> mails.cancelled(b, t, e.by(), e.deposit(), provider.isDemo()),
                 (b, t) -> u -> mails.barberCancelled(b, t, u, e.by(), e.deposit(), provider.isDemo()));
     }
 
-    @Async
-    @TransactionalEventListener
-    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
+    @TransactionalEventListener(phase = TransactionPhase.BEFORE_COMMIT, fallbackExecution = true)
     public void on(Refunded e) {
         send(e.bookingId(), "refunded", (b, t) -> mails.refunded(b, t, provider.isDemo()), null);
     }
 
-    @Async
-    @TransactionalEventListener
-    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
+    @TransactionalEventListener(phase = TransactionPhase.BEFORE_COMMIT, fallbackExecution = true)
     public void on(Reminder e) {
         send(e.bookingId(), "reminder", (b, t) -> mails.reminder(b, t, e.manageToken()), null);
     }
@@ -137,21 +122,25 @@ public class BookingMailListener {
             return;
         }
         if (toCustomer != null && b.getCustomerEmail() != null) {
-            deliver(toCustomer.apply(b, t), kind, bookingId);
+            deliver(() -> toCustomer.apply(b, t), kind, b);
         }
         if (toBarber != null) {
             Function<AppUser, MailContent> build = toBarber.apply(b, t);
-            barberRecipients(b).forEach(u -> deliver(build.apply(u), "barber-" + kind, bookingId));
+            barberRecipients(b).forEach(u -> deliver(() -> build.apply(u), "barber-" + kind, b));
         }
     }
 
-    private void deliver(MailContent m, String kind, UUID bookingId) {
+    private void deliver(Supplier<MailContent> content, String kind, Booking b) {
+        MailContent m;
         try {
-            mail.send(m);
-            log.info("Sent {} mail for booking {} ({})", kind, bookingId, m.lang().code());
+            m = content.get();
         } catch (Exception ex) {
-            log.error("Could not send {} mail for booking {}: {}", kind, bookingId, ex.getMessage(), ex);
+            // a mail that can't be built must not fail the booking change
+            log.error("Could not build {} mail for booking {}: {}", kind, b.getId(), ex.getMessage(), ex);
+            return;
         }
+        UUID id = outbox.enqueue(m, kind, b.getTenantId(), b.getId(), null); // storing fails the transaction (outbox)
+        if (id != null) log.info("Queued {} mail {} for booking {} ({})", kind, id, b.getId(), m.lang().code());
     }
 
     private List<AppUser> barberRecipients(Booking b) {

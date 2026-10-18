@@ -55,7 +55,7 @@ public class AdminBootstrap implements ApplicationRunner {
         }
         tenants.findBySlug(config.tenant()).ifPresentOrElse(tenant -> {
             if (users.findByTenantAndEmail(tenant.getId(), email.trim()).isPresent()) {
-                log.info("Bootstrap admin {} already exists (password unchanged)", email);
+                log.info("Bootstrap admin {} already exists (password unchanged)", masked(email));
                 return;
             }
             Instant now = Instant.now(clock);
@@ -64,7 +64,14 @@ public class AdminBootstrap implements ApplicationRunner {
                             ? Lang.parse(tenant.getDefaultLocale()) : Lang.DEFAULT, now);
             admin.verifyEmail(now);
             users.save(admin);
-            log.info("Created bootstrap admin {} for tenant {}", email, tenant.getSlug());
+            log.info("Created bootstrap admin {} for tenant {}", masked(email), tenant.getSlug());
         }, () -> log.warn("Bootstrap admin not created: tenant '{}' does not exist", config.tenant()));
+    }
+
+    /** "a***@example.com": enough to recognise the account, no full address in the logs. */
+    static String masked(String email) {
+        String e = email.trim();
+        int at = e.indexOf('@');
+        return at <= 0 ? "***" : e.charAt(0) + "***" + e.substring(at);
     }
 }

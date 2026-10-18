@@ -146,7 +146,24 @@ How the tokens work:
 
 Barber emails go to the barber's own login. While a barber has no login yet, they go to the shop's admins.
 All emails share one layout (`templates/mail/layout.html`), built from `MailContent` in `mail/BookingMails` /
-`mail/AccountMails`. They are sent after the commit, asynchronously, so a mail failure never breaks a booking.
+`mail/AccountMails`.
+
+**Delivery: transactional outbox** (`mail_outbox`, `mail/MailOutbox*`):
+
+1. The mail listeners run `BEFORE_COMMIT` and write the rendered mail into `mail_outbox` **in the business
+   transaction**: no booking without its mail, and no mail for a rolled-back booking.
+2. After the commit, a worker is kicked asynchronously (`MailOutboxWorker.kick`), so mails still leave within
+   about a second. A scheduler polls every 15 s (`APP_MAIL_POLL_INTERVAL`) as the safety net, e.g. after a restart.
+3. Rows are claimed with `FOR UPDATE SKIP LOCKED`, so several instances never send the same mail twice. SMTP
+   runs outside the database transaction. A row stuck in `SENDING` for 5 min (crashed instance) is picked up again.
+4. A failure leads to `RETRY` with exponential backoff (30 s × 2^(n-1), at most 1 h). After 8 attempts
+   (`APP_MAIL_MAX_ATTEMPTS`, about 2 h in total) the row becomes `DEAD`.
+5. Admins see `RETRY`/`DEAD` mails (recipient, subject, attempts, last error) in the admin area under
+   "Email delivery" (`GET /api/admin/outbox`) and can resend one (`POST /api/admin/outbox/{id}/retry`).
+6. A sent mail's content (HTML, text, `.ics`) is cleared right away. The rows themselves are deleted after 30 days
+   (retention).
+
+A mail failure never breaks a booking, and a crash between commit and send loses nothing.
 
 ## Accounts
 
@@ -225,6 +242,80 @@ PaymentLedger                          payment rows + payment_event audit trail 
    - Subscribe the Connect webhook endpoint.
    - Refunds go to the same account.
 6. Remove `PAYMENT_DEMO_ALLOW_IN_PROD`. The guard then no longer matters.
+
+## Production hardening
+
+**Start-up guards** (`prod` profile): the app **refuses to start** when
+
+- the demo payment provider is active (`PAYMENT_DEMO_ALLOW_IN_PROD`);
+- there is no CAPTCHA (`APP_CAPTCHA_ALLOW_NONE_IN_PROD`);
+- `APP_JWT_SECRET` / `APP_TOKEN_SECRET` are shorter than 32 characters, have fewer than 12 distinct characters,
+  or look like a placeholder ("change-me", "secret", "example", …);
+- the refresh cookie isn't `Secure`;
+- a CORS origin is `*` or not `https://`, or `APP_FRONTEND_BASE_URL` isn't `https://`.
+
+Outside `prod` the secret checks only log a warning. Generate a secret with `openssl rand -base64 48`.
+
+**HTTP:**
+
+- Response headers: `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`,
+  `Permissions-Policy`, HSTS (on HTTPS requests) and a `default-src 'none'` CSP on `/api/**`.
+- CORS allows only `APP_CORS_ALLOWED_ORIGINS`, with credentials.
+- Refresh cookie: `HttpOnly; Secure; SameSite=Strict; Path=/api/auth`.
+- Actuator exposes **only** `/actuator/health` (+ `/liveness`, `/readiness`), without details.
+- Swagger and `/v3/api-docs` are off in `prod`.
+- Graceful shutdown.
+
+**Logging:**
+
+- `prod` writes one JSON object per line (ECS).
+- Every request gets a request id: the client's `X-Request-Id` if it is sane, otherwise a fresh UUID. It is
+  echoed in the response and is in every log line (`requestId`).
+- Logs contain no personal data: no request bodies, emails masked (`a***@example.com`), tokens never logged.
+
+**CAPTCHA** (`common/captcha`):
+
+- `CaptchaVerifier` with `NoopCaptchaVerifier` (`none`) and `TurnstileCaptchaVerifier` (Cloudflare `siteverify`).
+- `CaptchaFilter` protects `POST /api/public/{tenant}/bookings`, `/auth/register` and `/auth/forgot-password`.
+- It expects the widget token in `X-Captcha-Token` and answers `400 captcha.failed` otherwise.
+- Fail-closed: when Cloudflare can't be reached, the request is refused.
+
+**Rate limits** (`common/ratelimit`): Bucket4j token buckets per client IP and endpoint group, behind
+`RateLimitStore`:
+
+| Store | When |
+|---|---|
+| `memory` (default) | **One** backend instance (VPS with docker compose, Container Apps with `max_replicas = 1`). Buckets live in the JVM (Caffeine, idle ones expire). A restart resets them, which is harmless. |
+| `redis` | **More than one instance** (Container Apps scaling out, rolling deploys behind a load balancer). With `memory`, every replica would have its own buckets, so the effective limit becomes *limit × replicas* and a client could spread requests across replicas. Redis keeps one shared bucket per client. Any Redis 6+ works (Azure Cache for Redis, Upstash, a container). If Redis is down, requests fail. |
+
+**Retention** (`common/retention`, nightly; the periods must match the privacy policy):
+
+| Data | Rule |
+|---|---|
+| Cancelled / declined / expired / no-show bookings | Anonymised after 6 months. Name → "Anonymised", contact data, note and campaign data removed; date, services and amounts stay for the statistics. |
+| Completed bookings | Kept by default (bookkeeping / tax retention), or anonymised after `APP_RETENTION_COMPLETED_MONTHS`. |
+| Unverified accounts | Deleted after 30 days. |
+| Email outbox rows | Deleted after 30 days. |
+
+The account export (`GET /api/me/export`) and deletion are unchanged.
+
+### Public demo deployment
+
+A public demo (portfolio, sales demos) runs the **demo payment provider on purpose**:
+
+```
+SPRING_PROFILES_ACTIVE=prod,demo   # prod hardening + the demo shop's seed data
+PAYMENT_PROVIDER=demo
+PAYMENT_DEMO_ALLOW_IN_PROD=true    # explicit: "yes, this production deployment is a demo"
+APP_CAPTCHA_PROVIDER=turnstile     # still protect the public forms
+```
+
+- `GET /api/public/{tenant}` then returns `demoPayments: true`. The website shows a striped **DEMO** bar on
+  every page, the payment page has its own banner, and every payment email says "DEMO MODE".
+- No card fields exist anywhere; "Simulate payment" moves no money.
+- Use a separate database for a demo. Emails go to real addresses, so use an SMTP sandbox (e.g. Mailpit, Mailtrap)
+  or a domain you own.
+- Never run a real shop with `PAYMENT_DEMO_ALLOW_IN_PROD=true`: customers would "pay" deposits that never arrive.
 
 ## API overview
 
@@ -322,7 +413,15 @@ Errors are RFC 9457 problem details with a stable `code` and a localized `detail
 | `APP_BOOKING_MAX_OPEN_REQUESTS` | Open requests per email (anti-spam), default 3 |
 | `PAYMENT_PROVIDER`, `PAYMENT_DEMO_ALLOW_IN_PROD` | `demo`; the prod guard switch |
 | `SMTP_*`, `APP_MAIL_FROM` | Mail server (Mailpit locally) |
-| `SPRING_PROFILES_ACTIVE` | `demo` loads the demo shop; `prod` hardens it (secure cookie, no Swagger) |
+| `SPRING_PROFILES_ACTIVE` | `demo` loads the demo shop; `prod` hardens it (secure cookie, no Swagger, JSON logs, start-up guards) |
+| `APP_MAIL_MAX_ATTEMPTS`, `APP_MAIL_POLL_INTERVAL` | Email outbox: attempts before `DEAD` (8); scheduler poll (`PT15S`) |
+| `APP_CAPTCHA_PROVIDER`, `APP_CAPTCHA_SECRET` | `none` (default) or `turnstile` + its secret key. The frontend needs `NEXT_PUBLIC_TURNSTILE_SITE_KEY` |
+| `APP_CAPTCHA_ALLOW_NONE_IN_PROD` | Start with the `prod` profile without a CAPTCHA anyway (default `false` = refuse) |
+| `APP_RATE_LIMIT_ENABLED`, `APP_RATE_LIMIT_STORE`, `APP_RATE_LIMIT_REDIS_URL` | `memory` (default) or `redis` + `redis://[:password@]host:6379` (`rediss://` for TLS) |
+| `APP_RETENTION_CANCELLED_MONTHS` / `_COMPLETED_MONTHS` / `_UNVERIFIED_DAYS` / `_OUTBOX_DAYS` / `_CRON` | Retention: 6 / 0 (= keep) / 30 / 30, nightly at 03:30 |
+| `SPRINGDOC_API_DOCS_ENABLED`, `SPRINGDOC_SWAGGER_UI_ENABLED` | OpenAPI / Swagger UI; **off** in `prod` unless set to `true` |
+| `LOG_FORMAT` | `prod`: structured JSON logs (`ecs`, also `logstash`, `gelf`) |
+| `APP_SHUTDOWN_TIMEOUT` | Graceful shutdown: running requests may finish (`20s`) |
 
 Frontend link paths (`app.links.*` in `application.yml`): `/{lang}/booking`, `/{lang}/booking/manage/{token}`,
 `/{lang}/pay/{token}`, `/{lang}/barber/requests/{token}`, `/{lang}/account/verify/{token}`,

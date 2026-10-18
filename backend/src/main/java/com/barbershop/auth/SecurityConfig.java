@@ -16,6 +16,9 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtGra
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.AccessDeniedHandler;
+import org.springframework.security.web.header.writers.ContentSecurityPolicyHeaderWriter;
+import org.springframework.security.web.header.writers.DelegatingRequestMatcherHeaderWriter;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -52,7 +55,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/password").authenticated()
                         .requestMatchers("/api/public/**", "/api/auth/**").permitAll()
-                        .requestMatchers("/actuator/health/**", "/actuator/info").permitAll()
+                        .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .requestMatchers("/error").permitAll()
                         .requestMatchers("/api/admin/**").hasRole(Role.ADMIN.name())
@@ -65,7 +68,19 @@ public class SecurityConfig {
                         .accessDeniedHandler(forbidden))
                 .exceptionHandling(e -> e.authenticationEntryPoint(unauthorized).accessDeniedHandler(forbidden))
                 .httpBasic(b -> b.disable())
-                .formLogin(f -> f.disable());
+                .formLogin(f -> f.disable())
+                // nosniff and no-cache are Spring defaults; HSTS is sent on HTTPS requests (behind the proxy:
+                // X-Forwarded-Proto). The API never renders HTML: its responses get a "deny everything" CSP
+                // (only /api/** — a dev Swagger UI keeps working).
+                .headers(h -> h
+                        .frameOptions(f -> f.deny())
+                        .referrerPolicy(r -> r.policy(ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
+                        .httpStrictTransportSecurity(hsts -> hsts.includeSubDomains(true).maxAgeInSeconds(31_536_000))
+                        .permissionsPolicyHeader(p -> p.policy("camera=(), microphone=(), geolocation=(), payment=()"))
+                        .addHeaderWriter(new DelegatingRequestMatcherHeaderWriter(
+                                request -> request.getRequestURI().startsWith("/api/"),
+                                new ContentSecurityPolicyHeaderWriter(
+                                        "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"))));
         return http.build();
     }
 
@@ -84,8 +99,10 @@ public class SecurityConfig {
         CorsConfiguration cors = new CorsConfiguration();
         cors.setAllowedOrigins(allowedOrigins(props));
         cors.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        cors.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "Accept-Language"));
-        cors.setExposedHeaders(List.of("Location", "Retry-After", "Content-Language", "Content-Disposition"));
+        cors.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "Accept-Language", "X-Captcha-Token",
+                "X-Request-Id"));
+        cors.setExposedHeaders(List.of("Location", "Retry-After", "Content-Language", "Content-Disposition",
+                "X-Request-Id"));
         cors.setAllowCredentials(true); // refresh cookie
         cors.setMaxAge(3600L);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

@@ -275,6 +275,7 @@ public class Booking implements Persistable<UUID> {
         this.customerEmail = null;
         this.customerPhone = null;
         this.customerNote = null;
+        this.attribution = null; // campaign ids are pseudonymous data too
     }
 
     public void linkToUser(UUID userId) {

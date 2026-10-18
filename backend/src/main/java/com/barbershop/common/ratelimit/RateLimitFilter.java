@@ -2,16 +2,11 @@ package com.barbershop.common.ratelimit;
 
 import com.barbershop.common.config.AppProperties;
 import com.barbershop.common.error.ProblemFactory;
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
-import io.github.bucket4j.Bucket;
-import io.github.bucket4j.ConsumptionProbe;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 import org.springframework.http.HttpStatus;
@@ -23,14 +18,11 @@ import org.springframework.web.filter.OncePerRequestFilter;
  * creating bookings, login, the endpoints that send emails (register, forgot
  * password, resend verification), email-link actions and the token refresh.
  * (Login additionally locks an account after repeated failures, see AuthService.)
- * Buckets live in a bounded, expiring cache
- * (no unbounded memory growth). Over the limit → 429 problem detail with
+ * Buckets live in a {@link RateLimitStore}: in memory per instance by default, in Redis
+ * when several instances run. Over the limit → 429 problem detail with
  * Retry-After. The client IP is the request's remote address; behind the
  * reverse proxy Tomcat's RemoteIpValve resolves X-Forwarded-For from trusted
  * internal proxies only (server.forward-headers-strategy=native).
- *
- * In-memory: limits are per backend instance (fine for one instance; use a
- * shared store such as Redis when scaling out).
  */
 @Component
 public class RateLimitFilter extends OncePerRequestFilter {
@@ -45,14 +37,12 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     private final AppProperties.RateLimit config;
     private final ProblemFactory problems;
-    private final Cache<String, Bucket> buckets = Caffeine.newBuilder()
-            .maximumSize(100_000)
-            .expireAfterAccess(Duration.ofMinutes(10))
-            .build();
+    private final RateLimitStore store;
 
-    public RateLimitFilter(AppProperties props, ProblemFactory problems) {
+    public RateLimitFilter(AppProperties props, ProblemFactory problems, RateLimitStore store) {
         this.config = props.rateLimit();
         this.problems = problems;
+        this.store = store;
     }
 
     @Override
@@ -65,14 +55,13 @@ public class RateLimitFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
         Route route = limitFor(request);
         String key = route.name() + "|" + request.getRemoteAddr();
-        Bucket bucket = buckets.get(key, k -> newBucket(route.limit()));
-        ConsumptionProbe probe = bucket.tryConsumeAndReturnRemaining(1);
-        if (probe.isConsumed()) {
-            response.setHeader("X-RateLimit-Remaining", String.valueOf(probe.getRemainingTokens()));
+        RateLimitStore.Probe probe = store.tryConsume(key, route.limit());
+        if (probe.consumed()) {
+            response.setHeader("X-RateLimit-Remaining", String.valueOf(probe.remaining()));
             chain.doFilter(request, response);
             return;
         }
-        long retryAfter = Math.max(1, TimeUnit.NANOSECONDS.toSeconds(probe.getNanosToWaitForRefill()) + 1);
+        long retryAfter = Math.max(1, TimeUnit.NANOSECONDS.toSeconds(probe.nanosToWait()) + 1);
         response.setHeader("Retry-After", String.valueOf(retryAfter));
         problems.write(request, response, HttpStatus.TOO_MANY_REQUESTS, "rate_limit.exceeded", retryAfter);
     }
@@ -85,12 +74,6 @@ public class RateLimitFilter extends OncePerRequestFilter {
         if (TOKEN_POST.matcher(path).matches()) return new Route("token", config.tokenActions());
         if (REFRESH_POST.equals(path)) return new Route("refresh", config.refresh());
         return null;
-    }
-
-    private static Bucket newBucket(AppProperties.RateLimit.Limit limit) {
-        return Bucket.builder()
-                .addLimit(l -> l.capacity(limit.capacity()).refillGreedy(limit.capacity(), limit.period()))
-                .build();
     }
 
     private record Route(String name, AppProperties.RateLimit.Limit limit) {}

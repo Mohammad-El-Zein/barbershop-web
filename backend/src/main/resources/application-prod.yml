@@ -1,11 +1,21 @@
 # Profile `prod`: production hardening. Combine with your real SMTP settings.
-# The PaymentProviderGuard refuses to start this profile with payment.provider=demo
-# unless PAYMENT_DEMO_ALLOW_IN_PROD=true is set explicitly.
+# Startup guards (the application refuses to start):
+#   - PaymentConfig: payment.provider=demo unless PAYMENT_DEMO_ALLOW_IN_PROD=true
+#   - CaptchaConfig: APP_CAPTCHA_PROVIDER=none unless APP_CAPTCHA_ALLOW_NONE_IN_PROD=true
+#   - ProductionSafetyChecks: weak APP_JWT_SECRET / APP_TOKEN_SECRET, cookie not Secure,
+#     non-https CORS origins or frontend URL
 app:
   auth:
     cookie-secure: ${APP_COOKIE_SECURE:true}
 springdoc:
-  swagger-ui:
-    enabled: ${APP_SWAGGER_ENABLED:false}
+  # the OpenAPI spec and Swagger UI are off in production (enable only for a debugging session)
   api-docs:
-    enabled: ${APP_SWAGGER_ENABLED:false}
+    enabled: ${SPRINGDOC_API_DOCS_ENABLED:false}
+  swagger-ui:
+    enabled: ${SPRINGDOC_SWAGGER_UI_ENABLED:false}
+logging:
+  # one JSON object per line (Elastic Common Schema): Azure Log Analytics / Loki parse it as is.
+  # MDC fields are included: requestId (RequestIdFilter). No personal data is logged.
+  structured:
+    format:
+      console: ${LOG_FORMAT:ecs}

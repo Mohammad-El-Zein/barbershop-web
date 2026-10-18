@@ -1,6 +1,7 @@
 package com.barbershop.common.error;
 
 import com.barbershop.common.i18n.Messages;
+import com.barbershop.common.web.LogSafe;
 import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
 import java.util.LinkedHashMap;
@@ -68,20 +69,20 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     /** Two writers on the same booking/payment at the same moment (row lock timeout). */
     @ExceptionHandler({PessimisticLockingFailureException.class, ObjectOptimisticLockingFailureException.class})
     public ResponseEntity<ProblemDetail> handleLocking(RuntimeException ex, HttpServletRequest request) {
-        log.info("Concurrent modification on {}: {}", request.getRequestURI(), ex.getMessage());
+        log.info("Concurrent modification on {}: {}", LogSafe.path(request.getRequestURI()), ex.getClass().getSimpleName());
         return respond(problem(HttpStatus.CONFLICT, "request.concurrent_update", request));
     }
 
     /** Integrity violations that slip past the services (the booking overlap is handled in BookingService). */
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ProblemDetail> handleIntegrity(DataIntegrityViolationException ex, HttpServletRequest request) {
-        log.warn("Data integrity violation: {}", ex.getMostSpecificCause().getMessage());
+        log.warn("Data integrity violation: {}", LogSafe.text(ex.getMostSpecificCause().getMessage()));
         return respond(problem(HttpStatus.CONFLICT, "request.conflict", request));
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ProblemDetail> handleUnexpected(Exception ex, HttpServletRequest request) {
-        log.error("Unhandled error on {} {}", request.getMethod(), request.getRequestURI(), ex);
+        log.error("Unhandled error on {} {}", request.getMethod(), LogSafe.path(request.getRequestURI()), ex);
         return respond(problem(HttpStatus.INTERNAL_SERVER_ERROR, "error.internal", request));
     }
 

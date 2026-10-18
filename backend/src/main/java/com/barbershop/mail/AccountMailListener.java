@@ -11,13 +11,11 @@ import java.util.UUID;
 import java.util.function.BiFunction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
-/** Account emails after commit, async (same pattern as {@link BookingMailListener}). */
+/** Account emails into the {@link MailOutbox} in the account change's transaction (as {@link BookingMailListener}). */
 @Component
 public class AccountMailListener {
 
@@ -26,45 +24,45 @@ public class AccountMailListener {
     private final AppUserRepository users;
     private final TenantRepository tenants;
     private final AccountMails mails;
-    private final MailService mail;
+    private final MailOutbox outbox;
 
-    public AccountMailListener(AppUserRepository users, TenantRepository tenants, AccountMails mails, MailService mail) {
+    public AccountMailListener(AppUserRepository users, TenantRepository tenants, AccountMails mails, MailOutbox outbox) {
         this.users = users;
         this.tenants = tenants;
         this.mails = mails;
-        this.mail = mail;
+        this.outbox = outbox;
     }
 
-    @Async
-    @TransactionalEventListener
-    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
+    @TransactionalEventListener(phase = TransactionPhase.BEFORE_COMMIT, fallbackExecution = true)
     public void on(VerificationRequested e) {
         send(e.userId(), "verify", (u, t) -> mails.verify(u, t, e.rawToken()));
     }
 
-    @Async
-    @TransactionalEventListener
-    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
+    @TransactionalEventListener(phase = TransactionPhase.BEFORE_COMMIT, fallbackExecution = true)
     public void on(PasswordResetRequested e) {
         send(e.userId(), e.invite() ? "invite" : "reset",
                 (u, t) -> e.invite() ? mails.invite(u, t, e.rawToken()) : mails.reset(u, t, e.rawToken()));
     }
 
-    @Async
-    @TransactionalEventListener
-    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
+    @TransactionalEventListener(phase = TransactionPhase.BEFORE_COMMIT, fallbackExecution = true)
     public void on(AlreadyRegistered e) {
         send(e.userId(), "already-registered", mails::alreadyRegistered);
     }
 
     private void send(UUID userId, String kind, BiFunction<AppUser, Tenant, MailContent> build) {
+        AppUser u;
+        Tenant t;
+        MailContent m;
         try {
-            AppUser u = users.findById(userId).orElseThrow();
-            Tenant t = tenants.findById(u.getTenantId()).orElseThrow();
-            mail.send(build.apply(u, t));
-            log.info("Sent {} mail to account {}", kind, userId);
+            u = users.findById(userId).orElseThrow();
+            t = tenants.findById(u.getTenantId()).orElseThrow();
+            m = build.apply(u, t);
         } catch (Exception ex) {
-            log.error("Could not send {} mail to account {}: {}", kind, userId, ex.getMessage(), ex);
+            // a mail that can't be built must not fail the account change
+            log.error("Could not build {} mail for account {}: {}", kind, userId, ex.getMessage(), ex);
+            return;
         }
+        UUID id = outbox.enqueue(m, kind, t.getId(), null, u.getId()); // storing fails the transaction (outbox)
+        if (id != null) log.info("Queued {} mail {} for account {}", kind, id, userId);
     }
 }

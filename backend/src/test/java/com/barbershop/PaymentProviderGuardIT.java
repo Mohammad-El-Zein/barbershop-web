@@ -50,8 +50,13 @@ class PaymentProviderGuardIT extends AbstractIntegrationTest {
                         "--spring.datasource.password=" + POSTGRES.getPassword(),
                         "--spring.mail.host=localhost",
                         "--spring.mail.port=" + MAIL.getSmtp().getPort(),
-                        "--app.jwt.secret=guard-test-" + UUID.randomUUID() + UUID.randomUUID(),
+                        "--app.jwt.secret=" + UUID.randomUUID() + UUID.randomUUID(),
                         "--app.jobs.enabled=false",
+                        // the other prod guards (ProductionSafetyChecks, captcha) are satisfied here: this test is about payments
+                        "--app.frontend-base-url=https://shop.example",
+                        "--app.cors.allowed-origins=https://shop.example",
+                        "--app.auth.cookie-secure=true",
+                        "--app.captcha.allow-none-in-prod=true",
                         "--payment.provider=demo",
                         "--payment.demo.allow-in-prod=" + allowDemoInProd);
     }

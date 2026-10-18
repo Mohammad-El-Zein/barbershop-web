@@ -27,7 +27,9 @@ public record AppProperties(
         @Valid @NotNull Mail mail,
         @Valid @NotNull Booking booking,
         @Valid @NotNull Jobs jobs,
-        @Valid @NotNull RateLimit rateLimit) {
+        @Valid @NotNull RateLimit rateLimit,
+        @NotNull Captcha captcha,
+        @Valid @NotNull Retention retention) {
 
     public record Cors(@NotNull List<String> allowedOrigins) {}
 
@@ -67,7 +69,14 @@ public record AppProperties(
     /** Bootstrap admin from APP_ADMIN_EMAIL / APP_ADMIN_PASSWORD (optional). */
     public record AdminBootstrap(String email, String password, String tenant) {}
 
-    public record Mail(@NotBlank String from) {}
+    public record Mail(@NotBlank String from, @Valid @NotNull Outbox outbox) {
+        /**
+         * Email outbox: attempts before a mail is DEAD, exponential backoff between attempts
+         * (base × 2^(n-1), capped), how often the scheduler polls, rows per round.
+         */
+        public record Outbox(@Min(1) int maxAttempts, @NotNull Duration baseBackoff, @NotNull Duration maxBackoff,
+                             @NotNull Duration pollInterval, @Min(1) int batchSize) {}
+    }
 
     /** App-wide booking limits (per-shop rules are on the tenant). */
     public record Booking(@Min(1) int maxServices, @Min(1) int maxOpenRequestsPerEmail) {}
@@ -75,7 +84,20 @@ public record AppProperties(
     /** Scheduled jobs: expiry, reminders, auto-complete. */
     public record Jobs(boolean enabled, @NotNull Duration interval, @Min(1) int batchSize) {}
 
+    /**
+     * Data-protection retention periods (RetentionJob); must match the privacy policy.
+     * completedBookingsMonths 0 = keep completed bookings (bookkeeping / tax rules decide).
+     */
+    public record Retention(@Min(1) int cancelledBookingsMonths, @Min(0) int completedBookingsMonths,
+                            @Min(1) int unverifiedAccountsDays, @Min(1) int outboxDays, @NotBlank String cron) {}
+
+    /** Bot protection: provider none | turnstile (secret, optional verify URL for tests), prod guard override. */
+    public record Captcha(String provider, String secret, String verifyUrl, boolean allowNoneInProd) {}
+
+    /** store: memory (per instance) | redis (shared, needs redisUrl) — see RateLimitStore. */
     public record RateLimit(boolean enabled,
+                            @NotBlank String store,
+                            String redisUrl,
                             @Valid @NotNull Limit bookings,
                             @Valid @NotNull Limit login,
                             @Valid @NotNull Limit authMail,
