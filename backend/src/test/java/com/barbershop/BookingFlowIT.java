@@ -263,7 +263,6 @@ class BookingFlowIT extends AbstractIntegrationTest {
         assertThat(outcomes).containsOnly(PaymentService.Outcome.ALREADY_PROCESSED);
 
         mailTo(email, "Appointment confirmed");
-        Thread.sleep(1000); // give any (wrong) duplicate mail time to arrive
         assertThat(countMails(email, "Appointment confirmed")).isEqualTo(1);
         assertThat(countMails(ADMIN_EMAIL, "Anzahlung erhalten: " + nameFor(email))).isEqualTo(1);
         assertThat(jdbc.queryForList("select e.type from payment_event e join payment p on p.id = e.payment_id "

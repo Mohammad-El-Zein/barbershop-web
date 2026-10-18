@@ -28,6 +28,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.context.annotation.Import;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -48,10 +49,14 @@ import org.testcontainers.containers.PostgreSQLContainer;
  * off — tests run {@code BookingJobs.runAll()} themselves.
  *
  * <p>Email links are read from the captured mails exactly like a user would
- * click them ({@link #tokenFromMail}).
+ * click them ({@link #tokenFromMail}). Mails are sent by {@code @Async} listeners;
+ * {@link AsyncTasks} tells when they are done, so the mail helpers wait for exactly
+ * that (no polling, no sleeps), and a test never starts while the previous test's
+ * mails are still being sent.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("demo")
+@Import(AsyncTasks.class)
 // rate limiting off for the functional tests; RateLimitIT overrides this (subclass @TestPropertySource wins)
 @TestPropertySource(properties = {"app.rate-limit.enabled=false", "app.jobs.enabled=false"})
 public abstract class AbstractIntegrationTest {
@@ -101,8 +106,20 @@ public abstract class AbstractIntegrationTest {
     @Autowired
     protected JdbcTemplate jdbc;
 
+    /** How long async work (mail listeners) may take before a helper gives up. */
+    private static final Duration ASYNC_MAX = Duration.ofSeconds(15);
+
+    /**
+     * "Today" for the current test, read once in {@link #cleanDatabase}: dates derived from it
+     * ({@link #next}) can't jump a week if midnight passes between two calls in one test.
+     */
+    private static LocalDate today = LocalDate.now(BERLIN);
+
     @BeforeEach
     void cleanDatabase() throws Exception {
+        // the previous test's mail listeners must not run against (or mail into) this test
+        AsyncTasks.awaitIdle(ASYNC_MAX);
+        today = LocalDate.now(BERLIN);
         jdbc.update("delete from booking");          // cascades items, payments, payment events, booking tokens
         jdbc.update("delete from action_token");
         jdbc.update("delete from refresh_token");
@@ -123,7 +140,7 @@ public abstract class AbstractIntegrationTest {
 
     /** The next given weekday that is at least 3 days away (well beyond lead time, within 60 days). */
     protected static LocalDate next(DayOfWeek day) {
-        return LocalDate.now(BERLIN).plusDays(3).with(TemporalAdjusters.nextOrSame(day));
+        return today.plusDays(3).with(TemporalAdjusters.nextOrSame(day));
     }
 
     protected static OffsetDateTime at(LocalDate date, String time) {
@@ -229,7 +246,7 @@ public abstract class AbstractIntegrationTest {
 
     // ── mail helpers ─────────────────────────────────────────────────────────
 
-    /** Waits for (async) mails to a recipient and returns them. */
+    /** The (async) mails to a recipient, once all mail work has finished. */
     protected static List<MimeMessage> mailsTo(String recipient, int expected) throws Exception {
         return awaitMails(m -> recipients(m).contains(recipient), expected, recipient);
     }
@@ -252,7 +269,9 @@ public abstract class AbstractIntegrationTest {
         }, 1, recipient + " / " + subjectPart + " / " + textPart).getFirst();
     }
 
-    protected static long countMails(String recipient, String subjectPart) {
+    /** How many mails match, counted after all mail work has finished (so "exactly once" is final). */
+    protected static long countMails(String recipient, String subjectPart) throws InterruptedException {
+        AsyncTasks.awaitIdle(ASYNC_MAX);
         return Arrays.stream(MAIL.getReceivedMessages())
                 .filter(m -> recipients(m).contains(recipient) && subject(m).contains(subjectPart)).count();
     }
@@ -281,12 +300,9 @@ public abstract class AbstractIntegrationTest {
 
     private static List<MimeMessage> awaitMails(java.util.function.Predicate<MimeMessage> filter, int expected,
                                                 String what) throws Exception {
-        long deadline = System.currentTimeMillis() + 10_000;
-        while (System.currentTimeMillis() < deadline) {
-            List<MimeMessage> found = Arrays.stream(MAIL.getReceivedMessages()).filter(filter).toList();
-            if (found.size() >= expected) return found;
-            Thread.sleep(100);
-        }
+        AsyncTasks.awaitIdle(ASYNC_MAX);
+        List<MimeMessage> found = Arrays.stream(MAIL.getReceivedMessages()).filter(filter).toList();
+        if (found.size() >= expected) return found;
         throw new AssertionError("expected " + expected + " mail(s) for " + what + "; got: "
                 + Arrays.stream(MAIL.getReceivedMessages()).map(m -> recipients(m) + " " + subject(m)).toList());
     }
