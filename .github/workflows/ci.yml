@@ -236,8 +236,12 @@ jobs:
       - name: Start backend, Postgres, Mailpit
         run: $COMPOSE up -d --build --wait backend mailpit
       - name: Build and start the frontend image (prerendered against the running backend)
+        # The build uses network "host" (docker-compose.e2e.yml). Compose builds with Bake here,
+        # and Bake refuses that without --allow=network.host, which `compose build` can't pass on;
+        # so Compose only prints the bake definition and Bake builds it with the grant.
         run: |
-          $COMPOSE build frontend
+          set -o pipefail
+          $COMPOSE build --print frontend | docker buildx bake --file - --allow=network.host frontend
           $COMPOSE up -d --wait frontend
       - name: Playwright
         working-directory: frontend

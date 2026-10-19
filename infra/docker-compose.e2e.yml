@@ -28,7 +28,9 @@ services:
   frontend:
     build:
       context: ../frontend
-      # the build prerenders pages with the shop data from the already running backend
+      # the build prerenders pages with the shop data from the already running backend.
+      # Built with Bake (buildx installed, e.g. GitHub Actions) this needs the grant:
+      #   docker compose ... build --print frontend | docker buildx bake --file - --allow=network.host frontend
       network: host
       args:
         API_URL_INTERNAL: http://localhost:${BACKEND_HOST_PORT:-8080}
