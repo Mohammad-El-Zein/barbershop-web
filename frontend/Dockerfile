@@ -28,6 +28,8 @@ ARG NEXT_PUBLIC_GOOGLE_ADS_ID=
 ARG NEXT_PUBLIC_GOOGLE_ADS_CONVERSION_LABEL=
 ARG NEXT_PUBLIC_META_PIXEL_ID=
 ARG NEXT_PUBLIC_TURNSTILE_SITE_KEY=
+# site-wide DEMO strip (only shown while the backend runs demo payments); false for production
+ARG NEXT_PUBLIC_SHOW_DEMO_BANNER=true
 # optional, build time only: a backend reachable DURING the build (e.g. with
 # `--network host` and a running stack) → pages are prerendered with the real shop data
 ARG API_URL_INTERNAL=
@@ -40,6 +42,7 @@ ENV NEXT_PUBLIC_SITE_URL=${NEXT_PUBLIC_SITE_URL} \
     NEXT_PUBLIC_GOOGLE_ADS_CONVERSION_LABEL=${NEXT_PUBLIC_GOOGLE_ADS_CONVERSION_LABEL} \
     NEXT_PUBLIC_META_PIXEL_ID=${NEXT_PUBLIC_META_PIXEL_ID} \
     NEXT_PUBLIC_TURNSTILE_SITE_KEY=${NEXT_PUBLIC_TURNSTILE_SITE_KEY} \
+    NEXT_PUBLIC_SHOW_DEMO_BANNER=${NEXT_PUBLIC_SHOW_DEMO_BANNER} \
     NEXT_OUTPUT=standalone \
     NEXT_TELEMETRY_DISABLED=1
 COPY --from=deps /app/node_modules ./node_modules

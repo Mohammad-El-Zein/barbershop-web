@@ -13,6 +13,39 @@ import { Turnstile, type TurnstileHandle } from "../security/Turnstile";
 import { Alert } from "../ui/Feedback";
 import { Checkbox, Field, Select } from "../ui/Field";
 
+/**
+ * Login page: "Customer" (login + register link) or "Barber" (login only — barber and admin
+ * accounts are created by the admin, never by self-registration). Same backend login for both;
+ * `?as=barber` preselects the barber tab.
+ */
+export function LoginChooser() {
+  const t = useTranslations("account.login");
+  const search = useSearchParams();
+  const [mode, setMode] = useState<"customer" | "barber">(search.get("as") === "barber" ? "barber" : "customer");
+  return (
+    <div>
+      <div role="tablist" aria-label={t("as")} className="mb-4 inline-flex rounded-full border border-line p-1">
+        {(["customer", "barber"] as const).map((m) => (
+          <button
+            key={m}
+            type="button"
+            role="tab"
+            aria-selected={mode === m}
+            onClick={() => setMode(m)}
+            className={`rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] transition-colors ${
+              mode === m ? "bg-gold text-[#120d05]" : "text-ink/70 hover:text-ink"
+            }`}
+          >
+            {t(m === "customer" ? "asCustomer" : "asBarber")}
+          </button>
+        ))}
+      </div>
+      {mode === "barber" && <p className="mb-4 text-sm text-muted">{t("barberHint")}</p>}
+      <LoginForm staff={mode === "barber"} />
+    </div>
+  );
+}
+
 /** Login for everybody (customers → account, barbers/admins → staff area). `?next=` returns afterwards. */
 export function LoginForm({ staff = false }: { staff?: boolean }) {
   const t = useTranslations("account.login");

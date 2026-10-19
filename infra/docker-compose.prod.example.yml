@@ -91,6 +91,7 @@ services:
         NEXT_PUBLIC_GOOGLE_ADS_CONVERSION_LABEL: ${NEXT_PUBLIC_GOOGLE_ADS_CONVERSION_LABEL:-}
         NEXT_PUBLIC_META_PIXEL_ID: ${NEXT_PUBLIC_META_PIXEL_ID:-}
         NEXT_PUBLIC_TURNSTILE_SITE_KEY: ${NEXT_PUBLIC_TURNSTILE_SITE_KEY:-}
+        NEXT_PUBLIC_SHOW_DEMO_BANNER: ${NEXT_PUBLIC_SHOW_DEMO_BANNER:-false}
     cap_drop: [ALL]
     environment:
       # server-side requests (structured data, legal pages) go straight to the backend

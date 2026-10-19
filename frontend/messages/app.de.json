@@ -300,7 +300,11 @@
       "forgot": "Passwort vergessen?",
       "register": "Noch kein Konto? Registrieren",
       "resend": "Bestätigungs-E-Mail erneut senden",
-      "resent": "Falls nötig, haben wir dir einen neuen Link geschickt."
+      "resent": "Falls nötig, haben wir dir einen neuen Link geschickt.",
+      "as": "Anmelden als",
+      "asCustomer": "Kunde",
+      "asBarber": "Barber",
+      "barberHint": "Für Barber und Admins. Den Zugang legt der Admin des Shops an – eine Registrierung gibt es hier nicht."
     },
     "register": {
       "eyebrow": "Konto",
@@ -523,9 +527,13 @@
       "addRange": "Zeitraum hinzufügen",
       "saveHours": "Arbeitszeiten speichern",
       "invited": "Einladung verschickt.",
+      "accountCreated": "Login angelegt. Der Barber kann sich jetzt mit dem Startpasswort anmelden.",
       "loginEmail": "E-Mail für den Barber-Login",
-      "loginHint": "Der Barber bekommt einen Link zum Festlegen des Passworts.",
-      "invite": "Login einrichten"
+      "loginHint": "Ohne Startpasswort bekommt der Barber einen Link zum Festlegen des Passworts.",
+      "initialPassword": "Startpasswort (optional)",
+      "initialPasswordHint": "Mindestens 10 Zeichen. Gib es dem Barber persönlich weiter.",
+      "invite": "Login einrichten",
+      "activeHint": "Inaktive Barber erscheinen nicht in der Buchung und können sich nicht mehr anmelden."
     },
     "timeOff": {
       "title": "Abwesenheiten",

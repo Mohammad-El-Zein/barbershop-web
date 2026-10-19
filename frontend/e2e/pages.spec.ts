@@ -43,6 +43,14 @@ test("public pages: landing, booking, login, register, forgot password, privacy"
   await shot(page, info, "61-booking-page");
 
   await page.goto(`/${lang}/account/login`);
+  // "Customer": login + register link; "Barber": login only (accounts come from the admin)
+  const main = page.getByRole("main");
+  await expect(main.getByRole("tab", { name: t.asCustomer, exact: true })).toHaveAttribute("aria-selected", "true");
+  await expect(main.getByRole("link", { name: t.registerLink })).toBeVisible();
+  await main.getByRole("tab", { name: t.asBarber, exact: true }).click();
+  await expect(main.getByRole("link", { name: t.registerLink })).toHaveCount(0);
+  await expect(main.getByRole("button", { name: t.login, exact: true })).toBeVisible();
+  await main.getByRole("tab", { name: t.asCustomer, exact: true }).click();
   await shot(page, info, "62-login");
   await page.goto(`/${lang}/account/register`);
   await shot(page, info, "63-register");

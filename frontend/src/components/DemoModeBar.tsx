@@ -8,6 +8,13 @@ import { getTranslations } from "next-intl/server";
  * shifts the layout; html[data-demo] reserves its height (--demo-bar, globals.css) for
  * the nav, the scroll progress bar and the page.
  */
+
+/**
+ * Build-time switch for the strip: NEXT_PUBLIC_SHOW_DEMO_BANNER=false hides it (production
+ * builds); anything else, or unset, keeps it. The payment page keeps its own demo notice.
+ */
+export const SHOW_DEMO_BANNER = process.env.NEXT_PUBLIC_SHOW_DEMO_BANNER !== "false";
+
 export async function DemoModeBar({ locale }: { locale: string }) {
   const t = await getTranslations({ locale, namespace: "pay" });
   return (

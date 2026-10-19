@@ -218,6 +218,7 @@ function StaffEditor({ staff, services, onSaved }: { staff: StaffAdmin; services
   const [assigned, setAssigned] = useState<string[]>(staff.serviceIds ?? []);
   const [hours, setHours] = useState<WorkingHoursEntry[] | null>(null);
   const [invite, setInvite] = useState("");
+  const [initialPassword, setInitialPassword] = useState("");
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const weekdayName = (d: number) => dayParts(addDays("2026-01-05", d - 1), locale).weekday; // 2026-01-05 = Monday
 
@@ -247,7 +248,10 @@ function StaffEditor({ staff, services, onSaved }: { staff: StaffAdmin; services
         <Field label={t("photoUrl")} value={profile.photoUrl} onChange={(e) => setProfile({ ...profile, photoUrl: e.target.value })} />
         <TextArea label={t("bioDe")} value={profile.bioDe} onChange={(e) => setProfile({ ...profile, bioDe: e.target.value })} />
         <TextArea label={t("bioEn")} value={profile.bioEn} onChange={(e) => setProfile({ ...profile, bioEn: e.target.value })} />
-        <Checkbox label={t("active")} checked={profile.active} onChange={(e) => setProfile({ ...profile, active: e.target.checked })} />
+        <div>
+          <Checkbox label={t("active")} checked={profile.active} onChange={(e) => setProfile({ ...profile, active: e.target.checked })} />
+          <p className="mt-1 text-xs text-muted">{t("activeHint")}</p>
+        </div>
         <div>
           <button
             type="button"
@@ -327,10 +331,24 @@ function StaffEditor({ staff, services, onSaved }: { staff: StaffAdmin; services
         className="flex flex-wrap items-end gap-3"
         onSubmit={(e) => {
           e.preventDefault();
-          run(() => call(() => api.POST("/api/admin/staff/{id}/account", { params: { path: { id } }, body: { email: invite, lang: locale } })), t("invited"));
+          const password = initialPassword || undefined;
+          run(
+            () => call(() => api.POST("/api/admin/staff/{id}/account", { params: { path: { id } }, body: { email: invite, lang: locale, password } })),
+            t(password ? "accountCreated" : "invited"),
+          ).then(() => setInitialPassword(""));
         }}
       >
         <Field className="min-w-60 flex-1" label={t("loginEmail")} type="email" value={invite} onChange={(e) => setInvite(e.target.value)} hint={t("loginHint")} required />
+        <Field
+          className="min-w-60 flex-1"
+          label={t("initialPassword")}
+          type="password"
+          autoComplete="new-password"
+          minLength={10}
+          value={initialPassword}
+          onChange={(e) => setInitialPassword(e.target.value)}
+          hint={t("initialPasswordHint")}
+        />
         <button type="submit" className="btn btn-outline-gold">
           {t("invite")}
         </button>

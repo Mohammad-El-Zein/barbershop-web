@@ -144,6 +144,8 @@ build:image:
     - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
     - docker buildx create --driver docker-container --use
     - IMAGE="$CI_REGISTRY_IMAGE/$COMPONENT"
+    # production builds (release tags) hide the DEMO strip unless the variable says otherwise
+    - if [ -n "${CI_COMMIT_TAG:-}" ]; then DEMO_BANNER=false; else DEMO_BANNER=true; fi
     - >
       docker buildx build "$COMPONENT"
       --push --tag "$IMAGE:$IMAGE_TAG"
@@ -158,6 +160,7 @@ build:image:
       --build-arg NEXT_PUBLIC_GOOGLE_ADS_CONVERSION_LABEL="${NEXT_PUBLIC_GOOGLE_ADS_CONVERSION_LABEL:-}"
       --build-arg NEXT_PUBLIC_META_PIXEL_ID="${NEXT_PUBLIC_META_PIXEL_ID:-}"
       --build-arg NEXT_PUBLIC_TURNSTILE_SITE_KEY="${NEXT_PUBLIC_TURNSTILE_SITE_KEY:-}"
+      --build-arg NEXT_PUBLIC_SHOW_DEMO_BANNER="${NEXT_PUBLIC_SHOW_DEMO_BANNER:-$DEMO_BANNER}"
 
 scan:image:
   stage: scan-images

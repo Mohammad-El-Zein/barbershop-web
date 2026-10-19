@@ -4292,6 +4292,11 @@
           "lang": {
             "type": "string",
             "pattern": "de|en"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 0
           }
         },
         "required": [

@@ -13,9 +13,11 @@ import com.barbershop.booking.BookingEvents.Refunded;
 import com.barbershop.booking.BookingEvents.Reminder;
 import com.barbershop.booking.BookingEvents.Requested;
 import com.barbershop.booking.BookingRepository;
+import com.barbershop.common.config.AppProperties;
 import com.barbershop.payment.PaymentProvider;
 import com.barbershop.tenant.Tenant;
 import com.barbershop.tenant.TenantRepository;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.BiFunction;
@@ -35,7 +37,8 @@ import org.springframework.transaction.event.TransactionalEventListener;
  * rolls the booking back (see {@link MailOutbox#enqueue}).
  *
  * <p>Barber emails go to the barber's own account (linked staff profile); if the
- * barber has no login yet, to the shop's admins.
+ * barber has no login yet, to the shop's admins. A new booking request also goes, as a
+ * copy, to the configured admin account (APP_ADMIN_EMAIL) of the same shop.
  */
 @Component
 public class BookingMailListener {
@@ -48,22 +51,24 @@ public class BookingMailListener {
     private final BookingMails mails;
     private final MailOutbox outbox;
     private final PaymentProvider provider;
+    private final String adminEmail;
 
     public BookingMailListener(BookingRepository bookings, TenantRepository tenants, AppUserRepository users,
-                               BookingMails mails, MailOutbox outbox, PaymentProvider provider) {
+                               BookingMails mails, MailOutbox outbox, PaymentProvider provider, AppProperties props) {
         this.bookings = bookings;
         this.tenants = tenants;
         this.users = users;
         this.mails = mails;
         this.outbox = outbox;
         this.provider = provider;
+        this.adminEmail = props.admin().email();
     }
 
     @TransactionalEventListener(phase = TransactionPhase.BEFORE_COMMIT, fallbackExecution = true)
     public void on(Requested e) {
         send(e.bookingId(), "requested",
                 (b, t) -> mails.requested(b, t, e.manageToken()),
-                (b, t) -> u -> mails.barberRequest(b, t, u, e.decisionToken()));
+                (b, t) -> u -> mails.barberRequest(b, t, u, e.decisionToken()), true);
     }
 
     @TransactionalEventListener(phase = TransactionPhase.BEFORE_COMMIT, fallbackExecution = true)
@@ -106,12 +111,18 @@ public class BookingMailListener {
         send(e.bookingId(), "reminder", (b, t) -> mails.reminder(b, t, e.manageToken()), null);
     }
 
+    private void send(UUID bookingId, String kind, BiFunction<Booking, Tenant, MailContent> toCustomer,
+                      BiFunction<Booking, Tenant, Function<AppUser, MailContent>> toBarber) {
+        send(bookingId, kind, toCustomer, toBarber, false);
+    }
+
     /**
      * @param toCustomer customer email (skipped when the booking has no email, e.g. anonymised walk-in)
      * @param toBarber   barber email per recipient, or null
+     * @param adminCopy  also send the barber email to the configured admin
      */
     private void send(UUID bookingId, String kind, BiFunction<Booking, Tenant, MailContent> toCustomer,
-                      BiFunction<Booking, Tenant, Function<AppUser, MailContent>> toBarber) {
+                      BiFunction<Booking, Tenant, Function<AppUser, MailContent>> toBarber, boolean adminCopy) {
         Booking b;
         Tenant t;
         try {
@@ -126,7 +137,7 @@ public class BookingMailListener {
         }
         if (toBarber != null) {
             Function<AppUser, MailContent> build = toBarber.apply(b, t);
-            barberRecipients(b).forEach(u -> deliver(() -> build.apply(u), "barber-" + kind, b));
+            barberRecipients(b, adminCopy).forEach(u -> deliver(() -> build.apply(u), "barber-" + kind, b));
         }
     }
 
@@ -143,9 +154,18 @@ public class BookingMailListener {
         if (id != null) log.info("Queued {} mail {} for booking {} ({})", kind, id, b.getId(), m.lang().code());
     }
 
-    private List<AppUser> barberRecipients(Booking b) {
+    private List<AppUser> barberRecipients(Booking b, boolean adminCopy) {
         List<AppUser> barbers = users.findByStaffId(b.getStaff().getId()).stream()
                 .filter(u -> u.getRole() == Role.BARBER).toList();
-        return barbers.isEmpty() ? users.findByTenantIdAndRole(b.getTenantId(), Role.ADMIN) : barbers;
+        List<AppUser> recipients = new ArrayList<>(
+                barbers.isEmpty() ? users.findByTenantIdAndRole(b.getTenantId(), Role.ADMIN) : barbers);
+        if (adminCopy && adminEmail != null && !adminEmail.isBlank()) {
+            // only the admin account of this shop; never twice to the same account
+            users.findByTenantAndEmail(b.getTenantId(), adminEmail.trim())
+                    .filter(u -> u.getRole() == Role.ADMIN)
+                    .filter(admin -> recipients.stream().noneMatch(u -> u.getId().equals(admin.getId())))
+                    .ifPresent(recipients::add);
+        }
+        return recipients;
     }
 }

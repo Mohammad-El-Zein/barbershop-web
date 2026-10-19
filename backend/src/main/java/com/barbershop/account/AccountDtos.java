@@ -64,10 +64,12 @@ public final class AccountDtos {
     public record PaymentExport(UUID bookingId, String status, int amountCents, String currency, Instant paidAt,
                                 Instant refundedAt, Instant forfeitedAt) {}
 
+    /** Without {@code password} the barber gets an invite link; with it the admin sets the initial password. */
     public record BarberAccountRequest(
             @NotBlank(message = "{validation.required}") @Email(message = "{validation.email}")
             @Size(max = 254, message = "{validation.size.max}") String email,
-            @Pattern(regexp = "de|en", message = "{validation.lang}") String lang) {}
+            @Pattern(regexp = "de|en", message = "{validation.lang}") String lang,
+            @Size(max = 128, message = "{validation.size.max}") String password) {}
 
     public record BarberAccountView(UUID userId, UUID staffId, String email, String name, boolean inviteSent) {}
 

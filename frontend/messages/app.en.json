@@ -300,7 +300,11 @@
       "forgot": "Forgot your password?",
       "register": "No account yet? Register",
       "resend": "Resend confirmation email",
-      "resent": "If needed, we’ve sent you a new link."
+      "resent": "If needed, we’ve sent you a new link.",
+      "as": "Log in as",
+      "asCustomer": "Customer",
+      "asBarber": "Barber",
+      "barberHint": "For barbers and admins. The shop’s admin creates your login – there is no self-registration here."
     },
     "register": {
       "eyebrow": "Account",
@@ -523,9 +527,13 @@
       "addRange": "Add range",
       "saveHours": "Save working hours",
       "invited": "Invitation sent.",
+      "accountCreated": "Login created. The barber can now log in with the initial password.",
       "loginEmail": "Email for the barber login",
-      "loginHint": "The barber gets a link to set a password.",
-      "invite": "Set up login"
+      "loginHint": "Without an initial password the barber gets a link to set one.",
+      "initialPassword": "Initial password (optional)",
+      "initialPasswordHint": "At least 10 characters. Hand it to the barber in person.",
+      "invite": "Set up login",
+      "activeHint": "Inactive barbers don’t appear in the booking and can no longer log in."
     },
     "timeOff": {
       "title": "Time off",

@@ -5,7 +5,7 @@ import { hasLocale, NextIntlClientProvider } from "next-intl";
 import { getMessages, getTranslations } from "next-intl/server";
 import { BookingDialog } from "@/components/booking/BookingDialog";
 import { ConsentManager } from "@/components/consent/ConsentManager";
-import { DemoModeBar } from "@/components/DemoModeBar";
+import { DemoModeBar, SHOW_DEMO_BANNER } from "@/components/DemoModeBar";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { siteConfig } from "@/config/site.config";
 import { themeCss } from "@/config/theme-css";
@@ -54,9 +54,10 @@ export default async function LocaleLayout({ children, params }: LayoutProps<"/[
   // namespace) only go to /admin (admin/layout.tsx adds them)
   const allMessages = await getMessages();
   const messages = Object.fromEntries(Object.entries(allMessages).filter(([ns]) => ns !== "staff"));
-  // only when the backend confirms it (unknown → no strip; the payment page shows its own)
+  // only when the backend confirms it (unknown → no strip; the payment page shows its own),
+  // and not in builds with NEXT_PUBLIC_SHOW_DEMO_BANNER=false
   const { shop } = await loadShopData(locale);
-  const demo = shop?.bookingRules?.demoPayments === true;
+  const demo = SHOW_DEMO_BANNER && shop?.bookingRules?.demoPayments === true;
 
   return (
     // suppressHydrationWarning: next-themes sets the theme class on <html> before React hydrates

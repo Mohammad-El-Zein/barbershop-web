@@ -10,7 +10,8 @@
 #   ACR_NAME, BACKEND_APP_NAME, MIGRATE_JOB_NAME, FRONTEND_APP_NAME, API_URL (health check),
 #   NEXT_PUBLIC_SITE_URL, NEXT_PUBLIC_API_URL, NEXT_PUBLIC_TENANT, optional
 #   NEXT_PUBLIC_GA4_ID / _GOOGLE_ADS_ID / _GOOGLE_ADS_CONVERSION_LABEL / _META_PIXEL_ID /
-#   _TURNSTILE_SITE_KEY (frontend images bake these in at build time).
+#   _TURNSTILE_SITE_KEY / _SHOW_DEMO_BANNER (frontend images bake these in at build time;
+#   the DEMO strip defaults to off for release tags v*, on otherwise).
 # Image tags: sha-<7>, branch name, and on a vX.Y.Z git tag: X.Y.Z and X.Y.
 # Actions are pinned to commit SHAs (tag in the comment) — update them deliberately.
 # ─────────────────────────────────────────────────────────────────────────────
@@ -159,6 +160,8 @@ jobs:
           ADS_LABEL: ${{ vars.NEXT_PUBLIC_GOOGLE_ADS_CONVERSION_LABEL }}
           META_ID: ${{ vars.NEXT_PUBLIC_META_PIXEL_ID }}
           TURNSTILE: ${{ vars.NEXT_PUBLIC_TURNSTILE_SITE_KEY }}
+          # production builds (release tags) hide the DEMO strip unless the variable says otherwise
+          DEMO_BANNER: ${{ vars.NEXT_PUBLIC_SHOW_DEMO_BANNER || (startsWith(github.ref, 'refs/tags/v') && 'false' || 'true') }}
         run: |
           {
             echo "list<<EOF"
@@ -172,6 +175,7 @@ jobs:
             echo "NEXT_PUBLIC_GOOGLE_ADS_CONVERSION_LABEL=$ADS_LABEL"
             echo "NEXT_PUBLIC_META_PIXEL_ID=$META_ID"
             echo "NEXT_PUBLIC_TURNSTILE_SITE_KEY=$TURNSTILE"
+            echo "NEXT_PUBLIC_SHOW_DEMO_BANNER=$DEMO_BANNER"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
       # 1) build + load locally, 2) scan, 3) push (same cache → no second build)

@@ -234,20 +234,32 @@ public class AccountService {
 
     // ── barber accounts (admin) ──────────────────────────────────────────────
 
-    /** Creates the login for a staff profile and emails a "set your password" link. */
+    /**
+     * Creates the login for a staff profile. Without an initial password the barber gets a
+     * "set your password" link; with one (set by the admin) the account is ready at once.
+     */
     @Transactional
-    public AccountDtos.BarberAccountView createBarberAccount(UUID tenantId, UUID staffId, String email, String lang) {
+    public AccountDtos.BarberAccountView createBarberAccount(UUID tenantId, UUID staffId, String email, String lang,
+                                                             String initialPassword) {
         Staff s = staff.require(tenantId, staffId);
         if (!users.findByStaffId(staffId).isEmpty()) throw ApiException.conflict("account.staff_has_account");
         if (users.findByTenantAndEmail(tenantId, email.trim()).isPresent()) {
             throw ApiException.conflict("account.email_taken");
         }
+        boolean withPassword = initialPassword != null && !initialPassword.isBlank();
+        if (withPassword) requireStrongPassword(initialPassword, email);
         Instant now = Instant.now(clock);
         Lang l = lang != null ? Lang.parse(lang) : Lang.DEFAULT;
-        // unusable random password until the barber sets one via the invite link
+        // without an initial password: unusable random one until the barber sets theirs via the invite link
         AppUser user = new AppUser(tenantId, Role.BARBER, email.trim(),
-                passwordEncoder.encode(UUID.randomUUID() + "" + UUID.randomUUID()), s.getName(), null, l, now);
+                passwordEncoder.encode(withPassword ? initialPassword : UUID.randomUUID() + "" + UUID.randomUUID()),
+                s.getName(), null, l, now);
         user.linkStaff(staffId);
+        if (withPassword) {
+            user.verifyEmail(now); // the admin vouches for the address
+            users.save(user);
+            return new AccountDtos.BarberAccountView(user.getId(), staffId, user.getEmail(), user.getName(), false);
+        }
         users.save(user);
         String raw = tokens.issue(tenantId, TokenPurpose.PASSWORD_RESET, null, user.getId(), null,
                 now.plus(config.barberInviteTtl())).raw();

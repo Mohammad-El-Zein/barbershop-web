@@ -35,11 +35,12 @@ public class AdminAccountController {
 
     @PostMapping("/api/admin/staff/{id}/account")
     @ResponseStatus(HttpStatus.CREATED)
-    @Operation(summary = "Create the barber's own login for this staff profile; an invite email lets them set "
-            + "their password")
+    @Operation(summary = "Create the barber's own login for this staff profile: with `password` the admin sets the "
+            + "initial password, without it an invite email lets the barber set one. Deactivating the staff profile "
+            + "blocks the login.")
     public BarberAccountView createBarberAccount(CurrentUser admin, @PathVariable("id") UUID staffId,
                                                  @Valid @RequestBody BarberAccountRequest req) {
-        return accounts.createBarberAccount(admin.tenantId(), staffId, req.email(), req.lang());
+        return accounts.createBarberAccount(admin.tenantId(), staffId, req.email(), req.lang(), req.password());
     }
 
     @GetMapping("/api/admin/customers")

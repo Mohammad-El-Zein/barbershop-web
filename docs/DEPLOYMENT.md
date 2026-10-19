@@ -101,6 +101,7 @@ Details: `backend/README.md` → Configuration and Production hardening.
 | `NEXT_PUBLIC_API_URL` | **build** | `https://api.example-barber.de` |
 | `NEXT_PUBLIC_TENANT` | **build** | Shop slug |
 | `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | **build** | Turnstile site key (also widens the CSP) |
+| `NEXT_PUBLIC_SHOW_DEMO_BANNER` | **build** | Site-wide DEMO strip while the backend runs demo payments. Unset = shown (local, e2e, dev); `false` = hidden. Production builds set `false`: CI on release tags `v*`, `infra/.env.prod`, and `terraform output ci_variables` for prod. A [public demo](#11-public-demo-deployment) keeps `true`. The payment page always shows its own demo notice |
 | `NEXT_PUBLIC_GA4_ID`, `NEXT_PUBLIC_GOOGLE_ADS_ID`, `NEXT_PUBLIC_GOOGLE_ADS_CONVERSION_LABEL`, `NEXT_PUBLIC_META_PIXEL_ID` | **build** | Optional; loaded only after consent |
 | `API_URL_INTERNAL` | runtime (and optionally build) | Backend address for server-side requests (structured data, legal pages) |
 
@@ -151,7 +152,9 @@ docker build -t $ACR.azurecr.io/barbershop-frontend:$TAG \
   --build-arg NEXT_PUBLIC_SITE_URL=$(terraform output -raw site_url) \
   --build-arg NEXT_PUBLIC_API_URL=$(terraform output -raw api_url) \
   --build-arg NEXT_PUBLIC_TENANT=the-barber-news \
-  --build-arg NEXT_PUBLIC_TURNSTILE_SITE_KEY=<site key> ../../frontend
+  --build-arg NEXT_PUBLIC_TURNSTILE_SITE_KEY=<site key> \
+  --build-arg NEXT_PUBLIC_SHOW_DEMO_BANNER=false \
+  ../../frontend
 docker push $ACR.azurecr.io/barbershop-backend:$TAG
 docker push $ACR.azurecr.io/barbershop-frontend:$TAG
 ```
@@ -243,7 +246,8 @@ environment):
 
 - `AZURE_CLIENT_ID` (= `APP_ID`), `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`;
 - everything in `terraform output ci_variables`: `AZURE_RESOURCE_GROUP`, `ACR_NAME`, `BACKEND_APP_NAME`,
-  `FRONTEND_APP_NAME`, `API_URL`, `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_TENANT`;
+  `MIGRATE_JOB_NAME`, `FRONTEND_APP_NAME`, `API_URL`, `NEXT_PUBLIC_SITE_URL`, `NEXT_PUBLIC_API_URL`,
+  `NEXT_PUBLIC_TENANT`, `NEXT_PUBLIC_SHOW_DEMO_BANNER`;
 - optional `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `NEXT_PUBLIC_GA4_ID`, …
 
 In GitHub, add **required reviewers** to the `prod` environment. That makes the deploy a two-person action.
@@ -277,10 +281,16 @@ In GitHub, add **required reviewers** to the `prod` environment. That makes the 
   1. `APP_TENANT_NAME` / `APP_TENANT_TIMEZONE` create the shop `APP_ADMIN_TENANT` with the default booking rules;
   2. `APP_ADMIN_EMAIL` / `APP_ADMIN_PASSWORD` create its first admin (email already verified).
 
-  Both are idempotent and never overwrite anything.
-- **Real shop data** (log in at `https://<site>/de/account/login`; admins land in the staff area `/de/admin`):
+  Both are idempotent and never overwrite anything. Admin and barber accounts never come from the public
+  registration: it always creates a customer, and the client cannot choose a role.
+- **Real shop data** (log in at `https://<site>/de/account/login` → tab "Barber"; admins land in the staff area
+  `/de/admin`):
   1. **Barbers:** create every barber and their working hours. The opening hours on the website and in the search
-     data are derived from them. "Create login" sends a barber an invite.
+     data are derived from them, and active barbers appear in the booking automatically. "Set up login" with an
+     email only sends the barber an invite link; with an initial password the login works at once. Unticking
+     "Active" removes the barber from the booking and blocks their login. Booking requests go to the barber's
+     login email, with a copy to the configured admin (`APP_ADMIN_EMAIL`); for a barber without a login, all
+     admins get them.
   2. **Services:** name DE/EN, description, duration, exact price. The "ab"/"from" flag is for the landing-page
      cards only.
   3. **Stats → Booking rules:** deposit, response and payment deadlines, cancellation cut-offs, lead time, loyalty.
@@ -466,8 +476,11 @@ Open, in order of importance:
 A public demo (portfolio, sales) shows the full flow with simulated payments:
 
 - Azure: `public_demo = true` (plus a Turnstile secret, or `allow_missing_captcha = true`). The backend then runs
-  `SPRING_PROFILES_ACTIVE=prod,demo` with the demo shop seed and `PAYMENT_DEMO_ALLOW_IN_PROD=true`.
-- VPS: `SPRING_PROFILES_ACTIVE=prod,demo`, `PAYMENT_DEMO_ALLOW_IN_PROD=true` in `infra/.env.prod`.
+  `SPRING_PROFILES_ACTIVE=prod,demo` with the demo shop seed and `PAYMENT_DEMO_ALLOW_IN_PROD=true`, and
+  `ci_variables` sets `NEXT_PUBLIC_SHOW_DEMO_BANNER=true`.
+- VPS: `SPRING_PROFILES_ACTIVE=prod,demo`, `PAYMENT_DEMO_ALLOW_IN_PROD=true` and `NEXT_PUBLIC_SHOW_DEMO_BANNER=true`
+  in `infra/.env.prod`.
+- CI release builds (`v*` tags) hide the strip by default: set the variable `NEXT_PUBLIC_SHOW_DEMO_BANNER=true`.
 
 Every page then shows a striped **DEMO bar** (server-rendered, above everything). The payment page has its own
 banner, and payment emails say "DEMO MODE". No card fields exist, and no money moves.

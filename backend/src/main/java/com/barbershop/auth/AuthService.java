@@ -3,6 +3,7 @@ package com.barbershop.auth;
 import com.barbershop.auth.JwtService.IssuedToken;
 import com.barbershop.common.config.AppProperties;
 import com.barbershop.common.error.ApiException;
+import com.barbershop.staff.StaffRepository;
 import com.barbershop.tenant.Tenant;
 import com.barbershop.tenant.TenantService;
 import com.barbershop.token.TokenHasher;
@@ -32,6 +33,8 @@ import org.springframework.transaction.annotation.Transactional;
  *       revokes the old one. Presenting a rotated token again (outside a short
  *       grace window for parallel tabs) revokes the whole family — a stolen
  *       cookie gets at most one use.</li>
+ *   <li><b>Deactivated barbers:</b> a barber whose staff profile the admin deactivated
+ *       can neither log in nor refresh; open access tokens end within their lifetime (15 min).</li>
  * </ul>
  */
 @Service
@@ -49,6 +52,7 @@ public class AuthService {
     private final JwtEncoder encoder;
     private final TokenHasher hasher;
     private final TenantService tenants;
+    private final StaffRepository staff;
     private final AppProperties.Auth config;
     private final Clock clock;
     /** A real BCrypt hash checked when the email is unknown, so both paths cost the same time. */
@@ -56,7 +60,7 @@ public class AuthService {
 
     public AuthService(AppUserRepository users, RefreshTokenRepository refreshTokens, PasswordEncoder passwordEncoder,
                        JwtService jwt, JwtEncoder encoder, TokenHasher hasher, TenantService tenants,
-                       AppProperties props, Clock clock) {
+                       StaffRepository staff, AppProperties props, Clock clock) {
         this.users = users;
         this.refreshTokens = refreshTokens;
         this.passwordEncoder = passwordEncoder;
@@ -64,6 +68,7 @@ public class AuthService {
         this.encoder = encoder;
         this.hasher = hasher;
         this.tenants = tenants;
+        this.staff = staff;
         this.config = props.auth();
         this.clock = clock;
         this.dummyHash = passwordEncoder.encode(UUID.randomUUID().toString());
@@ -89,6 +94,10 @@ public class AuthService {
         if (!passwordOk) {
             user.recordFailedLogin(now, config.maxFailedLogins(), config.lockout());
             if (user.isLocked(now)) log.warn("Account {} locked after {} failed logins", user.getId(), config.maxFailedLogins());
+            throw ApiException.unauthorized("auth.invalid_credentials");
+        }
+        if (isDeactivatedBarber(user)) {
+            log.info("Login attempt for deactivated barber account {}", user.getId());
             throw ApiException.unauthorized("auth.invalid_credentials");
         }
         if (!user.isEmailVerified()) throw ApiException.forbidden("auth.email_not_verified");
@@ -117,6 +126,10 @@ public class AuthService {
 
         AppUser user = users.findById(current.getUserId())
                 .orElseThrow(() -> ApiException.unauthorized("auth.session_expired"));
+        if (isDeactivatedBarber(user)) {
+            refreshTokens.revokeFamily(current.getFamilyId(), now);
+            throw ApiException.unauthorized("auth.session_expired");
+        }
         Issued next = newSession(user, tenants.require(user.getTenantId()), current.getFamilyId(), now);
         current.rotate(next.refreshTokenId(), now);
         return next.session();
@@ -140,6 +153,12 @@ public class AuthService {
     @Transactional
     public void revokeAllSessions(UUID userId) {
         refreshTokens.revokeAllForUser(userId, Instant.now(clock));
+    }
+
+    /** A barber login stays blocked while its staff profile is inactive (or gone). */
+    private boolean isDeactivatedBarber(AppUser user) {
+        if (user.getRole() != Role.BARBER || user.getStaffId() == null) return false;
+        return staff.findById(user.getStaffId()).map(s -> !s.isActive()).orElse(true);
     }
 
     private Issued newSession(AppUser user, Tenant tenant, UUID familyId, Instant now) {

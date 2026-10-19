@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { getTranslations } from "next-intl/server";
-import { LoginForm } from "@/components/account/AuthForms";
+import { LoginChooser } from "@/components/account/AuthForms";
 import { PageShell, PageTitle } from "@/components/PageShell";
 import { Skeleton } from "@/components/ui/Feedback";
 import { PRIVATE_PAGE } from "@/lib/seo";
@@ -15,7 +15,7 @@ export default async function Page({ params }: PageProps<"/[locale]/account/logi
     <PageShell width="sm">
       <PageTitle eyebrow={t("eyebrow")} title={t("title")} lead={t("lead")} />
       <Suspense fallback={<Skeleton className="h-80" />}>
-        <LoginForm />
+        <LoginChooser />
       </Suspense>
     </PageShell>
   );

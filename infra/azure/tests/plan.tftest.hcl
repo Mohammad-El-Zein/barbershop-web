@@ -135,6 +135,10 @@ run "prod_is_highly_available_with_domains_and_alerts" {
     condition     = length(azurerm_monitor_metric_alert.api_down) == 1 && length(azurerm_monitor_scheduled_query_rules_alert_v2.mail_dead) == 1
     error_message = "Alerts exist when alert_email is set."
   }
+  assert {
+    condition     = output.ci_variables.NEXT_PUBLIC_SHOW_DEMO_BANNER == "false"
+    error_message = "prod: frontend builds hide the DEMO strip."
+  }
 }
 
 run "public_demo_runs_the_demo_seed_and_allows_demo_payments" {
@@ -152,6 +156,10 @@ run "public_demo_runs_the_demo_seed_and_allows_demo_payments" {
   assert {
     condition     = [for e in azurerm_container_app.backend.template[0].container[0].env : e.value if e.name == "PAYMENT_DEMO_ALLOW_IN_PROD"][0] == "true"
     error_message = "Public demo: demo payments explicitly allowed."
+  }
+  assert {
+    condition     = output.ci_variables.NEXT_PUBLIC_SHOW_DEMO_BANNER == "true"
+    error_message = "Public demo: the DEMO strip stays on."
   }
 }
 

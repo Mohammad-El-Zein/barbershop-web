@@ -1184,6 +1184,7 @@ export interface components {
             /** Format: email */
             email: string;
             lang?: string;
+            password?: string;
         };
         BarberAccountView: {
             email?: string;

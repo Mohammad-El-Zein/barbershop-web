@@ -98,6 +98,21 @@ class AccountIT extends AbstractIntegrationTest {
         assertThat(errors(r)).containsEntry("password", "The password must be at least 10 characters long.");
     }
 
+    @Test
+    void publicRegistrationAlwaysCreatesACustomer() throws Exception {
+        String email = uniqueEmail();
+        Map<String, Object> body = registration(email, "de");
+        body.put("role", "ADMIN"); // not part of the API: ignored
+        body.put("staffId", LUCA.toString());
+        post(BASE + "/auth/register", body);
+        post("/api/public/auth/verify-email", Map.of("token", tokenFromMail(email, "Bitte bestätige", VERIFY_LINK)));
+        assertThat(jdbc.queryForObject("select role from app_user where email = ?", String.class, email))
+                .isEqualTo("CUSTOMER");
+        String token = login(email, PASSWORD);
+        assertThat(get("/api/admin/staff", "en", token).getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(get("/api/barber/requests", "en", token).getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+    }
+
     // ── no user enumeration ──────────────────────────────────────────────────
 
     @Test
@@ -297,11 +312,12 @@ class AccountIT extends AbstractIntegrationTest {
         post("/api/public/auth/reset-password", Map.of("token", invite, "newPassword", "lucas-own-password"));
         String luca = login(barberEmail, "lucas-own-password");
 
-        // a request for Luca now goes to Luca himself (not to the admin)
+        // a request for Luca now goes to Luca himself, with a copy to the configured admin (once)
         String customer = uniqueEmail();
         String id = (String) book(booking(HAIRCUT, LUCA, at(next(DayOfWeek.FRIDAY), "15:00"), customer, "en"))
                 .getBody().get("id");
         mailTo(barberEmail, "Neue Terminanfrage: " + nameFor(customer));
+        assertThat(countMails(ADMIN_EMAIL, "Neue Terminanfrage: " + nameFor(customer))).isEqualTo(1);
         String moBooking = (String) book(booking(HAIRCUT, MO, at(next(DayOfWeek.FRIDAY), "15:00"), uniqueEmail(), "en"))
                 .getBody().get("id");
 
@@ -324,6 +340,31 @@ class AccountIT extends AbstractIntegrationTest {
                 "select provider_ref from payment where booking_id = ?::uuid", String.class, id));
         assertThat(call(HttpMethod.POST, "/api/barber/bookings/" + id + "/complete", null, "en", luca).getBody())
                 .containsEntry("code", "booking.not_started");
+    }
+
+    @Test
+    void theAdminCanSetABarbersInitialPasswordAndDeactivateTheBarber() throws Exception {
+        String admin = adminToken();
+        String barberEmail = "mo-" + uniqueEmail();
+        assertThat(errors(call(HttpMethod.POST, "/api/admin/staff/" + MO + "/account",
+                Map.of("email", barberEmail, "lang", "de", "password", "short"), "en", admin))).containsKey("password");
+
+        Map<String, Object> created = call(HttpMethod.POST, "/api/admin/staff/" + MO + "/account",
+                Map.of("email", barberEmail, "lang", "de", "password", "initial-pass-123"), "en", admin).getBody();
+        assertThat(created).containsEntry("inviteSent", false);
+        // ready at once, no invite mail
+        assertThat(login(barberEmail, "initial-pass-123")).isNotBlank();
+        assertThat(countMails(barberEmail, "Dein Barber-Zugang")).isZero();
+
+        // deactivated: gone from the customers' barber selection and no more logins
+        assertThat(call(HttpMethod.DELETE, "/api/admin/staff/" + MO, null, "en", admin).getStatusCode())
+                .isEqualTo(HttpStatus.NO_CONTENT);
+        assertThat(getList(BASE + "/staff", "en", null).getBody()).extracting(s -> s.get("id"))
+                .doesNotContain(MO.toString());
+        ResponseEntity<Map<String, Object>> denied = call(HttpMethod.POST, "/api/auth/" + TENANT + "/login",
+                Map.of("email", barberEmail, "password", "initial-pass-123"), "en", null);
+        assertThat(denied.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(denied.getBody()).containsEntry("code", "auth.invalid_credentials");
     }
 
     // ── helpers ──────────────────────────────────────────────────────────────
