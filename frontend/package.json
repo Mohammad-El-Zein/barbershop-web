@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "next typegen && tsc --noEmit",
     "placeholders": "node scripts/generate-placeholders.mjs",
     "api:generate": "node scripts/api-generate.mjs",
     "e2e": "playwright test",
