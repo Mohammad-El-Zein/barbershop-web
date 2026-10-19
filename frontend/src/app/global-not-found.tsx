@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Anton, Inter } from "next/font/google";
+import { anton, inter } from "./fonts";
 import Link from "next/link";
 import { siteConfig } from "@/config/site.config";
 import { themeCss } from "@/config/theme-css";
@@ -15,8 +15,6 @@ import "./globals.css";
  * while rendering a page would stream an empty shell). There is no locale context here, so the
  * page is bilingual. Noindex is added by Next.js.
  */
-const anton = Anton({ variable: "--font-anton", weight: "400", subsets: ["latin"], display: "swap" });
-const inter = Inter({ variable: "--font-inter", subsets: ["latin"], display: "swap" });
 
 const brand = siteConfig.brand.name;
 const T = { de: de.errorPages, en: en.errorPages };

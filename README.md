@@ -6,7 +6,7 @@ Monorepo:
 |---|---|---|
 | `frontend/` | Next.js 16 (App Router) + TypeScript + Tailwind 4 + GSAP/ScrollTrigger + Lenis | Phase 1 ✅ |
 | `backend/` | Java 21 + Spring Boot 3 REST API, PostgreSQL, Flyway — booking lifecycle (barber approval → deposit → confirmed), accounts, loyalty, DEMO payments | Phase 2b ✅ |
-| `infra/` | Production images, docker-compose (local, e2e, VPS with Caddy), GitHub Actions + GitLab CI, Azure Terraform (`infra/azure`, not applied) | Phase 4 ✅ — guide: [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) |
+| `infra/` | Production images, docker-compose (local, e2e, VPS with Caddy), GitHub Actions + GitLab CI, Azure Terraform (`infra/azure`, not applied) | Phase 4 ✅ — guide: [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md), speed: [`docs/PERFORMANCE.md`](docs/PERFORMANCE.md) |
 
 > **Deadline: upgrade to Spring Boot 4 before 2027-01-31.** Spring Boot 3.5 is out of open-source support; two
 > Spring MVC CVEs (not reachable in this API) are accepted in `.trivyignore` only until then. After that date

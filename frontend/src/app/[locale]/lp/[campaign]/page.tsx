@@ -11,7 +11,7 @@ import { loadShopData } from "@/lib/shop-server";
 /**
  * Ad landing page /[locale]/lp/[campaign], built from config/landing-pages.ts.
  * Made for speed on phones: no preloader, no scroll scene, no smooth scrolling;
- * a text headline and one priority hero image (responsive via next/image).
+ * a text headline and one high-priority hero image (AVIF, sized to the real width).
  * Services and prices come from the backend (cached). noindex by default.
  */
 export function generateStaticParams() {
@@ -45,7 +45,7 @@ export default async function LandingPage({ params }: PageProps<"/[locale]/lp/[c
     <>
       <Nav hasScene={false} />
       <main id="main" className="pt-[var(--nav-h)]">
-        {/* hero: text first (paints immediately), image with priority + responsive sizes */}
+        {/* hero: text first (paints immediately); the image is the LCP element → high priority, AVIF */}
         <section className="mx-auto grid max-w-6xl items-center gap-8 px-4 py-10 sm:px-6 md:grid-cols-2 md:py-16">
           <div>
             <p className="eyebrow">{copy.eyebrow}</p>
@@ -61,9 +61,13 @@ export default async function LandingPage({ params }: PageProps<"/[locale]/lp/[c
               alt={lp.hero.alt[lang]}
               width={lp.hero.width}
               height={lp.hero.height}
-              priority
+              // the LCP element: fetched at high priority right away (with "preload" alone the
+              // measured priority dropped — docs/PERFORMANCE.md)
+              loading="eager"
               fetchPriority="high"
-              sizes="(min-width: 768px) 50vw, 100vw"
+              // the real rendered width: phones = full width minus the 16 px gutters,
+              // desktop = half of the max-w-6xl grid → no oversized download
+              sizes="(min-width: 1152px) 560px, (min-width: 768px) 50vw, calc(100vw - 32px)"
               className="h-full w-full object-cover"
             />
           </div>

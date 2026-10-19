@@ -12,7 +12,8 @@
     "api:generate": "node scripts/api-generate.mjs",
     "e2e": "playwright test",
     "e2e:install": "playwright install chromium",
-    "check:messages": "node scripts/check-messages.mjs"
+    "check:messages": "node scripts/check-messages.mjs",
+    "perf:ab": "node scripts/perf/lighthouse-ab.mjs"
   },
   "dependencies": {
     "@gsap/react": "^2.1.2",
@@ -34,6 +35,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.4.0",
+    "lighthouse": "13.5.0",
     "openapi-typescript": "^7.13.0",
     "schema-dts": "^2.1.0",
     "sharp": "^0.35.5",

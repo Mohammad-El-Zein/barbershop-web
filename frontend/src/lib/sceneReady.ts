@@ -12,12 +12,30 @@
 const EVENT = "scene:ready";
 let ready = false;
 
-export function markSceneReady() {
-  if (ready) return;
-  ready = true;
+function loadDeferredImages() {
   for (const img of document.querySelectorAll<HTMLImageElement>("img[data-src]")) {
     if (!img.getAttribute("src")) img.src = img.dataset.src!;
   }
+}
+
+/**
+ * Phones (lighter variant): the deferred images only start on the first interaction —
+ * they appear further down the scroll scene, the first screen doesn't need them.
+ */
+function loadDeferredImagesOnFirstInteraction() {
+  const events = ["scroll", "wheel", "touchstart", "pointerdown", "keydown"] as const;
+  const go = () => {
+    events.forEach((e) => window.removeEventListener(e, go));
+    loadDeferredImages();
+  };
+  events.forEach((e) => window.addEventListener(e, go, { passive: true, once: true }));
+}
+
+export function markSceneReady() {
+  if (ready) return;
+  ready = true;
+  if (window.innerWidth < 768) loadDeferredImagesOnFirstInteraction();
+  else loadDeferredImages();
   window.dispatchEvent(new Event(EVENT));
 }
 

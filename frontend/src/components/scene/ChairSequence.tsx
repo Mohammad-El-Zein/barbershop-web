@@ -6,6 +6,7 @@ import {
   getFrame,
   isFailed,
   isLoaded,
+  isSmallScreen,
   loadAllFrames,
   loadFrame,
   pickSet,
@@ -130,10 +131,13 @@ export function ChairSequence({
       },
     };
 
-    // first frame now; the rest only after the first screen is in (preloader done) and
-    // the visitor starts interacting — or a few seconds of idle — so the frames never
-    // compete with the first screen's images
-    loadFrame(set, 0).then(request);
+    // The frames never compete with the first screen's images:
+    // - desktop: the first frame now, the rest once the first screen is in (preloader done)
+    //   and the visitor starts interacting — or after a few seconds of idle;
+    // - phones (lighter variant): nothing until the first interaction — the static chair
+    //   poster is shown until then, the rotation only matters once the visitor scrolls.
+    const phone = isSmallScreen();
+    if (!phone) loadFrame(set, 0).then(request);
     let streaming = false;
     let timer = 0;
     const INTERACT = ["scroll", "wheel", "touchstart", "pointerdown", "keydown"] as const;
@@ -142,11 +146,14 @@ export function ChairSequence({
       streaming = true;
       INTERACT.forEach((e) => window.removeEventListener(e, stream));
       window.clearTimeout(timer);
+      if (phone) loadFrame(set, 0).then(request);
       loadAllFrames(set);
     };
     const stopReady = whenSceneReady(() => {
       INTERACT.forEach((e) => window.addEventListener(e, stream, { passive: true, once: true }));
-      timer = window.setTimeout(() => (window.requestIdleCallback ?? ((cb: () => void) => cb()))(stream), 4000);
+      if (!phone) {
+        timer = window.setTimeout(() => (window.requestIdleCallback ?? ((cb: () => void) => cb()))(stream), 4000);
+      }
     });
 
     return () => {

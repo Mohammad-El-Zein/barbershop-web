@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Anton, Inter } from "next/font/google";
+import { anton, inter } from "../fonts";
 import { notFound } from "next/navigation";
 import { hasLocale, NextIntlClientProvider } from "next-intl";
 import { getMessages, getTranslations } from "next-intl/server";
@@ -15,9 +15,6 @@ import { AuthProvider } from "@/lib/auth/AuthProvider";
 import { loadShopData } from "@/lib/shop-server";
 import "../globals.css";
 
-// Condensed display face for headlines, Inter for body copy.
-const anton = Anton({ variable: "--font-anton", weight: "400", subsets: ["latin"], display: "swap" });
-const inter = Inter({ variable: "--font-inter", subsets: ["latin"], display: "swap" }); // latin covers ä ö ü ß
 
 /** /de and /en are prerendered (required with cacheComponents for root params). */
 export function generateStaticParams() {
@@ -53,7 +50,10 @@ export const viewport: Viewport = {
 export default async function LocaleLayout({ children, params }: LayoutProps<"/[locale]">) {
   const { locale } = await params;
   if (!hasLocale(routing.locales, locale)) notFound();
-  const messages = await getMessages();
+  // every page carries its client messages in the HTML: the staff area's texts (the largest
+  // namespace) only go to /admin (admin/layout.tsx adds them)
+  const allMessages = await getMessages();
+  const messages = Object.fromEntries(Object.entries(allMessages).filter(([ns]) => ns !== "staff"));
   // only when the backend confirms it (unknown → no strip; the payment page shows its own)
   const { shop } = await loadShopData(locale);
   const demo = shop?.bookingRules?.demoPayments === true;

@@ -120,9 +120,21 @@ const nextConfig: NextConfig = {
     "/**": ["./src/assets/fonts/**/*"],
   },
   poweredByHeader: false,
+  images: {
+    // AVIF first (~30-50 % smaller than WebP), WebP for browsers without AVIF
+    formats: ["image/avif", "image/webp"],
+    // optimized images are cached for 30 days (the sources are versioned by deploy)
+    minimumCacheTTL: 2592000,
+  },
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders() },
+      // scene images and other static files in public/: not content-hashed, so 30 days +
+      // revalidation instead of "immutable" (_next/static is immutable already)
+      {
+        source: "/scene/:path*",
+        headers: [{ key: "Cache-Control", value: "public, max-age=2592000, stale-while-revalidate=86400" }],
+      },
       // Cross-window isolation where sessions and email-link tokens live. Not on the public
       // marketing pages: in Lighthouse it cost ~200 ms TBT on the mobile landing page
       // (process swap), with nothing to protect there.

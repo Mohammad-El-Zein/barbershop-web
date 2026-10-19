@@ -27,7 +27,7 @@ function criticalImages(): Promise<void>[] {
 /**
  * Full-screen loading screen shown while the first screen's assets load (always
  * dark: it opens the dark cinematic scene). Waits for the critical images, the
- * first turntable frames (coarse coverage of the whole rotation; 4 on phones),
+ * first turntable frames (coarse coverage of the whole rotation; none on phones),
  * optional frame-sequence frames and the fonts — then marks the scene ready. Scroll
  * is locked until it finishes; then
  * the scene timeline is built (lib/sceneReady), so its pin is measured once with the final font metrics.
@@ -51,7 +51,8 @@ export function Preloader() {
     const { frames, turntable } = siteConfig.scene;
     const tasks: Promise<void>[] = [
       ...criticalImages(),
-      ...(turntable.enabled ? preloadEagerFrames(pickSet(estimateChairCssHeight())) : []),
+      // phones: no turntable frames at all here (the static chair poster is critical instead)
+      ...(turntable.enabled && !isSmallScreen() ? preloadEagerFrames(pickSet(estimateChairCssHeight())) : []),
       ...(frames.enabled
         ? Array.from({ length: Math.min(frames.eagerCount, frames.count) }, (_, i) => loadFrame(i))
         : []),
