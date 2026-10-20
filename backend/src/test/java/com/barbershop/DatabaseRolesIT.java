@@ -117,4 +117,32 @@ class DatabaseRolesIT extends AbstractIntegrationTest {
         assertThat(DatabaseRoleCheck.check(jdbc)).isEmpty();
         assertThat(DatabaseRoleCheck.check(as(DbRoles.APP, DbRoles.APP_PASSWORD))).isEmpty();
     }
+
+    /** Password rotation: every run sets both passwords to exactly the env values, also for existing roles. */
+    @Test
+    void everyRunSetsBothPasswordsExactlyAsGiven() {
+        String special = " '\"\\%&+/= $$x$(Y) ";
+        String migratorA = "migrator-A" + special, appA = "app-A" + special;
+        String migratorB = "migrator-B" + special, appB = "app-B" + special;
+        try {
+            String outputA = DbRoles.create(POSTGRES, migratorA, appA);
+            assertThat(as(DbRoles.MIGRATOR, migratorA).queryForObject("select current_user", String.class))
+                    .isEqualTo(DbRoles.MIGRATOR);
+            assertThat(as(DbRoles.APP, appA).queryForObject("select current_user", String.class))
+                    .isEqualTo(DbRoles.APP);
+
+            String outputB = DbRoles.create(POSTGRES, migratorB, appB);
+            assertThat(as(DbRoles.MIGRATOR, migratorB).queryForObject("select current_user", String.class))
+                    .isEqualTo(DbRoles.MIGRATOR);
+            assertThat(as(DbRoles.APP, appB).queryForObject("select current_user", String.class))
+                    .isEqualTo(DbRoles.APP);
+            assertDenied(() -> as(DbRoles.MIGRATOR, migratorA).execute("select 1"), "password authentication failed");
+            assertDenied(() -> as(DbRoles.APP, appA).execute("select 1"), "password authentication failed");
+
+            assertThat(outputA + outputB).doesNotContain(migratorA, appA, migratorB, appB, "migrator-A", "app-B")
+                    .doesNotContain("NOTICE", "WARNING");
+        } finally {
+            DbRoles.create(POSTGRES); // the other tests use the default passwords
+        }
+    }
 }

@@ -319,6 +319,13 @@ The backend never connects with an admin or owner login. Three logins, three job
   in job commands and env values, and the job gets the script as an env value. The passwords come
   from the environment (`MIGRATOR_PASSWORD`, `APP_PASSWORD`), not from the command line, and are never
   printed. `tests/plan.tftest.hcl` and `DatabaseRolesIT` check both.
+- **Rotating the passwords (Azure):** `terraform apply -replace=random_password.db_migrator
+  -replace=random_password.db_app` writes new Key Vault versions. Every run of the script sets both
+  passwords to exactly the values it receives, also for existing roles (`DatabaseRolesIT` checks
+  this). The jobs and apps reference the secrets without a version, so Container Apps fetches the
+  new version only after a while (up to about 30 minutes). Until then, db-init can still set the
+  old password while migrate already has the new one, or the other way round (`28P01 password
+  authentication failed`). So wait, then run db-init, then migrate, then restart the backend.
 - **Grants:** after every migration, the Flyway callback `db/migration/afterMigrate.sql` gives the app
   role its DML rights on all tables, including tables added by new migrations.
 - **Start-up check:** with the `prod` profile, the backend refuses to start if `DB_USERNAME` can do

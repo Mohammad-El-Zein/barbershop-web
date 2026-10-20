@@ -87,7 +87,9 @@ SELECT pg_has_role(:'app', :'migrator', 'MEMBER') AS app_in_migrator \gset
 \endif
 
 -- a non-superuser admin (Azure) needs SET on the migrator to hand ownership to it
-\if :is_superuser
+-- (granted once: a repeated GRANT only adds a NOTICE to the job log)
+SELECT :'is_superuser'::boolean OR pg_has_role(current_user, :'migrator', 'SET') AS can_set_migrator \gset
+\if :can_set_migrator
 \else
   GRANT :"migrator" TO CURRENT_USER WITH INHERIT FALSE, SET TRUE;
 \endif

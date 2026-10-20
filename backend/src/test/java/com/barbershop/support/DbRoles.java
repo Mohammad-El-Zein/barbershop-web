@@ -23,10 +23,15 @@ public final class DbRoles {
 
     /** Runs the script like the db-init job does; returns everything psql printed (stdout + stderr). */
     public static String create(PostgreSQLContainer<?> pg) {
+        return create(pg, MIGRATOR_PASSWORD, APP_PASSWORD);
+    }
+
+    /** The same with other passwords (a rotation); passed as-is, without a shell in between. */
+    public static String create(PostgreSQLContainer<?> pg, String migratorPassword, String appPassword) {
         try {
             pg.copyFileToContainer(MountableFile.forHostPath(SCRIPT), "/tmp/init-roles.sql");
             ExecResult r = pg.execInContainer("env",
-                    "MIGRATOR_PASSWORD=" + MIGRATOR_PASSWORD, "APP_PASSWORD=" + APP_PASSWORD,
+                    "MIGRATOR_PASSWORD=" + migratorPassword, "APP_PASSWORD=" + appPassword,
                     "psql", "-X", "-q", "-v", "ON_ERROR_STOP=1",
                     "-U", pg.getUsername(), "-d", pg.getDatabaseName(),
                     "-v", "migrator=" + MIGRATOR, "-v", "app=" + APP, "-f", "/tmp/init-roles.sql");
