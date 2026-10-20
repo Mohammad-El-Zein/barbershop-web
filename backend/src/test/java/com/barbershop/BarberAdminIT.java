@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.boot.test.system.CapturedOutput;
@@ -24,6 +25,14 @@ import org.springframework.http.ResponseEntity;
  */
 @ExtendWith(OutputCaptureExtension.class)
 class BarberAdminIT extends AbstractIntegrationTest {
+
+    /** Keep the shared demo data clean: only Luca and Mo stay; the other shop goes (cascade). */
+    @AfterEach
+    void removeOwnBarbers() {
+        jdbc.update("delete from booking where staff_id not in (?, ?)", LUCA, MO);
+        jdbc.update("delete from staff where tenant_id = ? and id not in (?, ?)", TENANT_ID, LUCA, MO);
+        jdbc.update("delete from tenant where slug like 'other-%'");
+    }
 
     // ── delete ───────────────────────────────────────────────────────────────
 
