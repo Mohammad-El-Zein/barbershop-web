@@ -48,6 +48,17 @@ export function StaffShell({ children }: { children: React.ReactNode }) {
       </Alert>
     );
 
+  // signed in with a start password from the admin: an own password first
+  if (user?.mustChangePassword)
+    return (
+      <Alert tone="warn" title={t("mustChangeTitle")}>
+        {t("mustChange")}{" "}
+        <Link href="/account/profile" className="underline">
+          {t("toProfile")}
+        </Link>
+      </Alert>
+    );
+
   const tabs = TABS.filter((tab) => (tab.roles as readonly string[]).includes(role));
   return (
     <div>

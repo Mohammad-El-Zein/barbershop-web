@@ -1,10 +1,12 @@
 package com.barbershop.staff;
 
+import jakarta.persistence.LockModeType;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -21,6 +23,11 @@ public interface StaffRepository extends JpaRepository<Staff, UUID> {
     List<Staff> findByTenantIdOrderBySortOrderAscNameAsc(UUID tenantId);
 
     Optional<Staff> findByIdAndTenantId(UUID id, UUID tenantId);
+
+    /** Row lock: a booking for this staff member (FK check) waits until the removal is decided. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select s from Staff s where s.id = :id and s.tenantId = :tenantId")
+    Optional<Staff> findByIdAndTenantIdForUpdate(@Param("id") UUID id, @Param("tenantId") UUID tenantId);
 
     @Query(value = "select service_id from staff_service where staff_id = :staffId", nativeQuery = true)
     List<UUID> findServiceIds(@Param("staffId") UUID staffId);

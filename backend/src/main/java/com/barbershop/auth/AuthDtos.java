@@ -23,11 +23,12 @@ public final class AuthDtos {
         }
     }
 
+    /** mustChangePassword: signed in with a start password from the admin → choose an own one first. */
     public record UserView(UUID id, String email, String name, String phone, String lang, Role role, UUID staffId,
-                           boolean emailVerified, TenantRef tenant) {
+                           boolean emailVerified, boolean mustChangePassword, TenantRef tenant) {
         public static UserView of(AppUser u, Tenant t) {
             return new UserView(u.getId(), u.getEmail(), u.getName(), u.getPhone(), u.getLocale(), u.getRole(),
-                    u.getStaffId(), u.isEmailVerified(), TenantRef.of(t));
+                    u.getStaffId(), u.isEmailVerified(), u.isMustChangePassword(), TenantRef.of(t));
         }
     }
 

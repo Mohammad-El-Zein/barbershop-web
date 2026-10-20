@@ -23,7 +23,9 @@
     "token_invalid": "This link is invalid.",
     "validation_failed": "Please check your input.",
     "service_no_staff": "No barber is available for this combination of services right now.",
-    "captcha_failed": "Please confirm you are not a robot and try again."
+    "captcha_failed": "Please confirm you are not a robot and try again.",
+    "staff_has_bookings": "Has bookings – please set to inactive instead.",
+    "account_no_barber_login": "This barber has no login yet."
   },
   "status": {
     "PENDING_BARBER": "Waiting for barber",
@@ -527,13 +529,42 @@
       "addRange": "Add range",
       "saveHours": "Save working hours",
       "invited": "Invitation sent.",
-      "accountCreated": "Login created. The barber can now log in with the initial password.",
+      "accountCreated": "Login created. The barber signs in with the start password and then has to change it.",
       "loginEmail": "Email for the barber login",
-      "loginHint": "Without an initial password the barber gets a link to set one.",
       "initialPassword": "Initial password (optional)",
       "initialPasswordHint": "At least 10 characters. Hand it to the barber in person.",
       "invite": "Set up login",
-      "activeHint": "Inactive barbers don’t appear in the booking and can no longer log in."
+      "activeHint": "Inactive barbers don’t appear in the booking and can no longer log in.",
+      "login": "Login",
+      "loginState": {
+        "NONE": "No login",
+        "INVITED": "Invite pending",
+        "ACTIVE": "Login active"
+      },
+      "mustChange": "still has to change the start password",
+      "passwordMode": "How does the barber get a password?",
+      "mode": {
+        "invite": "Invite by email",
+        "generate": "Generate a start password",
+        "own": "Set a start password"
+      },
+      "saveEmail": "Save email",
+      "emailSaved": "Login email saved.",
+      "resetPassword": "Reset password",
+      "resetConfirmTitle": "Reset the password?",
+      "resetConfirm": "A new start password is generated. All of the barber’s sessions end, and the password has to be changed at the next sign-in.",
+      "passwordReset": "New start password generated.",
+      "startPassword": "Start password",
+      "copy": "Copy",
+      "copied": "Copied",
+      "shownOnce": "It won’t be shown again. Hand it to the barber in person – it has to be changed at the first sign-in.",
+      "hidePassword": "Hide",
+      "deleteTitle": "Delete barber",
+      "deleteHint": "Only possible while the barber has no bookings. Otherwise set them to inactive.",
+      "delete": "Delete",
+      "deleteConfirmTitle": "Delete {name} for good?",
+      "deleteConfirm": "This deletes the barber, their services, working hours, time off and login. It can’t be undone.",
+      "hasBookings": "Has bookings – please set to inactive instead."
     },
     "timeOff": {
       "title": "Time off",
@@ -632,7 +663,10 @@
       },
       "attempts": "{count} attempts",
       "nextAttempt": "Next attempt {time}"
-    }
+    },
+    "mustChangeTitle": "Please choose your own password",
+    "mustChange": "You signed in with a start password. Choose your own password first – then you’ll see your appointments.",
+    "toProfile": "Change password now"
   },
   "errorPages": {
     "retry": "Try again",

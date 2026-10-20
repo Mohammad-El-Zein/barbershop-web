@@ -25,6 +25,7 @@ export type CustomerRow = S["CustomerRow"];
 export type Stats = S["StatsView"];
 export type Policy = S["PolicyDto"];
 export type StaffAdmin = S["StaffAdminView"];
+export type BarberLogin = S["BarberLoginView"];
 export type ServiceAdmin = S["ServiceAdminView"];
 export type WorkingHoursEntry = S["WorkingHoursEntry"];
 export type TimeOff = S["TimeOffView"];

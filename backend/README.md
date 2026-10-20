@@ -379,7 +379,10 @@ then, then remove the version overrides and the `.trivyignore` entries.
 | `POST /api/admin/bookings/{id}/accept\|decline\|complete\|no-show\|cancel\|refund` | Transitions; `cancel` takes `{refund?}`, `refund` is the override |
 | `GET /api/admin/customers?q=` | Accounts and guests with completed visits and loyalty |
 | `GET`, `PUT /api/admin/settings` | Booking policy (see below) |
-| `POST /api/admin/staff/{id}/account` | Barber login (invite email) |
+| `POST /api/admin/staff/{id}/account` | Barber login: invite email, or a start password (`password`, or `generatePassword` → returned once) |
+| `GET`, `PUT /api/admin/staff/{id}/account` | Login state (NONE / INVITED / ACTIVE) and email; change the email — never a password |
+| `POST /api/admin/staff/{id}/account/reset-password` | New generated start password (returned once), ends the barber's sessions |
+| `DELETE /api/admin/staff/{id}/permanently` | Delete a barber without any bookings (else 409 `staff.has_bookings`); `DELETE /api/admin/staff/{id}` only deactivates |
 | `/api/admin/services`, `/api/admin/staff` (+ `/services`, `/working-hours`), `/api/admin/time-off`, `/api/admin/stats` | As in phase 2 |
 
 Errors are RFC 9457 problem details with a stable `code` and a localized `detail`. Validation errors also have

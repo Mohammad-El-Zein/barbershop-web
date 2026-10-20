@@ -287,8 +287,12 @@ In GitHub, add **required reviewers** to the `prod` environment. That makes the 
   `/de/admin`):
   1. **Barbers:** create every barber and their working hours. The opening hours on the website and in the search
      data are derived from them, and active barbers appear in the booking automatically. "Set up login" with an
-     email only sends the barber an invite link; with an initial password the login works at once. Unticking
-     "Active" removes the barber from the booking and blocks their login. Booking requests go to the barber's
+     email only sends the barber an invite link; with a start password (typed or generated) the login works at
+     once. A start password is shown exactly once and only its hash is stored; the barber has to replace it at the
+     first sign-in. "Reset password" generates a new one and ends all of the barber's sessions. The admin sees the
+     login's email and state (no login / invite pending / active) and can correct the email, but never a
+     password. Unticking "Active" removes the barber from the booking and blocks their login. "Delete" removes a
+     barber for good only while they have no bookings at all. Booking requests go to the barber's
      login email, with a copy to the configured admin (`APP_ADMIN_EMAIL`); for a barber without a login, all
      admins get them.
   2. **Services:** name DE/EN, description, duration, exact price. The "ab"/"from" flag is for the landing-page

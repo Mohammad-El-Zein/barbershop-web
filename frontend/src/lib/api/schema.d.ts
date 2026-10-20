@@ -292,11 +292,47 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
-        put?: never;
-        /** Create the barber's own login for this staff profile; an invite email lets them set their password */
+        /** The barber's login: state (NONE / INVITED / ACTIVE) and email — never a password */
+        get: operations["barberLogin"];
+        /** Change the barber's login email; an open invite is sent again to the new address */
+        put: operations["changeBarberEmail"];
+        /** Create the barber's own login for this staff profile: with `password` the admin sets the start password, with `generatePassword` the server generates one (returned ONCE as `startPassword`), with neither an invite email lets the barber set one. A start password has to be changed at the first login. Deactivating the staff profile blocks the login. */
         post: operations["createBarberAccount"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/staff/{id}/account/reset-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** New generated start password, returned ONCE in this response (only its hash is stored); ends all of the barber's sessions, who has to change it at the next login */
+        post: operations["resetBarberPassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/staff/{id}/permanently": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Deletes a staff member for good, with services, working hours, time off and login — only without any booking (also past or cancelled ones); otherwise 409 staff.has_bookings: deactivate instead. */
+        delete: operations["deletePermanently"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1183,6 +1219,7 @@ export interface components {
         BarberAccountRequest: {
             /** Format: email */
             email: string;
+            generatePassword?: boolean;
             lang?: string;
             password?: string;
         };
@@ -1192,6 +1229,7 @@ export interface components {
             name?: string;
             /** Format: uuid */
             staffId?: string;
+            startPassword?: string;
             /** Format: uuid */
             userId?: string;
         };
@@ -1201,6 +1239,20 @@ export interface components {
             slots?: components["schemas"]["SlotView"][];
             /** Format: uuid */
             staffId?: string;
+        };
+        BarberEmailRequest: {
+            /** Format: email */
+            email: string;
+        };
+        BarberLoginView: {
+            email?: string;
+            /** Format: date-time */
+            lastLoginAt?: string;
+            mustChangePassword?: boolean;
+            /** Format: uuid */
+            staffId?: string;
+            /** @enum {string} */
+            state?: "NONE" | "INVITED" | "ACTIVE";
         };
         BookingAdminView: {
             /** Format: date-time */
@@ -1757,6 +1809,9 @@ export interface components {
             photoUrl?: string;
             serviceIds?: string[];
         };
+        StartPasswordView: {
+            startPassword?: string;
+        };
         StatsView: {
             /** Format: date */
             from?: string;
@@ -1826,6 +1881,7 @@ export interface components {
             /** Format: uuid */
             id?: string;
             lang?: string;
+            mustChangePassword?: boolean;
             name?: string;
             phone?: string;
             /** @enum {string} */
@@ -2452,6 +2508,54 @@ export interface operations {
             };
         };
     };
+    barberLogin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BarberLoginView"];
+                };
+            };
+        };
+    };
+    changeBarberEmail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BarberEmailRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BarberLoginView"];
+                };
+            };
+        };
+    };
     createBarberAccount: {
         parameters: {
             query?: never;
@@ -2475,6 +2579,48 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["BarberAccountView"];
                 };
+            };
+        };
+    };
+    resetBarberPassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StartPasswordView"];
+                };
+            };
+        };
+    };
+    deletePermanently: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

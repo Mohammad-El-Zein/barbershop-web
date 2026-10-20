@@ -36,6 +36,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -235,39 +236,111 @@ public class AccountService {
     // ── barber accounts (admin) ──────────────────────────────────────────────
 
     /**
-     * Creates the login for a staff profile. Without an initial password the barber gets a
-     * "set your password" link; with one (set by the admin) the account is ready at once.
+     * Creates the login for a staff profile. Without a start password the barber gets a "set your
+     * password" link; with one (typed by the admin, or generated here) the account is ready at
+     * once and the barber has to choose an own password at the first login. Only the hash is
+     * stored; a generated password is returned in this one response and never again.
      */
     @Transactional
     public AccountDtos.BarberAccountView createBarberAccount(UUID tenantId, UUID staffId, String email, String lang,
-                                                             String initialPassword) {
+                                                             String initialPassword, boolean generatePassword) {
         Staff s = staff.require(tenantId, staffId);
         if (!users.findByStaffId(staffId).isEmpty()) throw ApiException.conflict("account.staff_has_account");
         if (users.findByTenantAndEmail(tenantId, email.trim()).isPresent()) {
             throw ApiException.conflict("account.email_taken");
         }
-        boolean withPassword = initialPassword != null && !initialPassword.isBlank();
-        if (withPassword) requireStrongPassword(initialPassword, email);
+        String generated = generatePassword ? StartPasswords.generate() : null;
+        String startPassword = generated != null ? generated
+                : initialPassword != null && !initialPassword.isBlank() ? initialPassword : null;
+        if (startPassword != null && generated == null) requireStrongPassword(startPassword, email);
         Instant now = Instant.now(clock);
         Lang l = lang != null ? Lang.parse(lang) : Lang.DEFAULT;
-        // without an initial password: unusable random one until the barber sets theirs via the invite link
+        // without a start password: unusable random one until the barber sets theirs via the invite link
         AppUser user = new AppUser(tenantId, Role.BARBER, email.trim(),
-                passwordEncoder.encode(withPassword ? initialPassword : UUID.randomUUID() + "" + UUID.randomUUID()),
-                s.getName(), null, l, now);
+                passwordEncoder.encode(UUID.randomUUID() + "" + UUID.randomUUID()), s.getName(), null, l, now);
         user.linkStaff(staffId);
-        if (withPassword) {
+        if (startPassword != null) {
+            user.setStartPassword(passwordEncoder.encode(startPassword));
             user.verifyEmail(now); // the admin vouches for the address
             users.save(user);
-            return new AccountDtos.BarberAccountView(user.getId(), staffId, user.getEmail(), user.getName(), false);
+            log.info("Barber account {} created with a start password ({})", user.getId(),
+                    generated != null ? "generated" : "set by the admin");
+            return new AccountDtos.BarberAccountView(user.getId(), staffId, user.getEmail(), user.getName(), false,
+                    generated);
         }
         users.save(user);
-        String raw = tokens.issue(tenantId, TokenPurpose.PASSWORD_RESET, null, user.getId(), null,
-                now.plus(config.barberInviteTtl())).raw();
-        events.publishEvent(new PasswordResetRequested(user.getId(), raw, true));
-        return new AccountDtos.BarberAccountView(user.getId(), staffId, user.getEmail(), user.getName(), true);
+        sendBarberInvite(user, now);
+        return new AccountDtos.BarberAccountView(user.getId(), staffId, user.getEmail(), user.getName(), true, null);
+    }
+
+    /** The barber's login for the admin: state and email, never a password. */
+    @Transactional(readOnly = true)
+    public AccountDtos.BarberLoginView barberLogin(UUID tenantId, UUID staffId) {
+        staff.require(tenantId, staffId);
+        return barberAccount(staffId).map(u -> loginView(staffId, u))
+                .orElseGet(() -> new AccountDtos.BarberLoginView(staffId, AccountDtos.BarberLoginState.NONE, null,
+                        false, null));
+    }
+
+    /** The admin corrects the login email. An open invite goes again, to the new address. */
+    @Transactional
+    public AccountDtos.BarberLoginView changeBarberEmail(UUID tenantId, UUID staffId, String email) {
+        staff.require(tenantId, staffId);
+        AppUser user = requireBarberAccount(staffId);
+        String newEmail = email.trim();
+        boolean changed = !newEmail.equalsIgnoreCase(user.getEmail());
+        if (changed && users.findByTenantAndEmail(tenantId, newEmail).isPresent()) {
+            throw ApiException.conflict("account.email_taken");
+        }
+        user.changeEmail(newEmail);
+        if (changed && !user.isEmailVerified()) {
+            tokens.invalidateForUser(user.getId(), TokenPurpose.PASSWORD_RESET);
+            sendBarberInvite(user, Instant.now(clock));
+        }
+        log.info("Login email of barber account {} changed by the admin", user.getId());
+        return loginView(staffId, user);
+    }
+
+    /**
+     * New generated start password (shown to the admin once, in the response): ends all of the
+     * barber's sessions and an open invite; the barber has to change it at the next login.
+     */
+    @Transactional
+    public AccountDtos.StartPasswordView resetBarberPassword(UUID tenantId, UUID staffId) {
+        staff.require(tenantId, staffId);
+        AppUser user = requireBarberAccount(staffId);
+        String password = StartPasswords.generate();
+        user.setStartPassword(passwordEncoder.encode(password));
+        user.verifyEmail(Instant.now(clock)); // the admin vouches for the address
+        tokens.invalidateForUser(user.getId(), TokenPurpose.PASSWORD_RESET);
+        auth.revokeAllSessions(user.getId());
+        log.info("Start password of barber account {} reset by the admin; sessions ended", user.getId());
+        return new AccountDtos.StartPasswordView(password);
     }
 
     // ── helpers ──────────────────────────────────────────────────────────────
+
+    private Optional<AppUser> barberAccount(UUID staffId) {
+        return users.findByStaffId(staffId).stream().filter(u -> u.getRole() == Role.BARBER).findFirst();
+    }
+
+    private AppUser requireBarberAccount(UUID staffId) {
+        return barberAccount(staffId).orElseThrow(() -> ApiException.notFound("account.no_barber_login"));
+    }
+
+    private static AccountDtos.BarberLoginView loginView(UUID staffId, AppUser u) {
+        // an invited barber verifies the address by choosing a password (reset link)
+        AccountDtos.BarberLoginState state = u.isEmailVerified()
+                ? AccountDtos.BarberLoginState.ACTIVE : AccountDtos.BarberLoginState.INVITED;
+        return new AccountDtos.BarberLoginView(staffId, state, u.getEmail(), u.isMustChangePassword(),
+                u.getLastLoginAt());
+    }
+
+    private void sendBarberInvite(AppUser user, Instant now) {
+        String raw = tokens.issue(user.getTenantId(), TokenPurpose.PASSWORD_RESET, null, user.getId(), null,
+                now.plus(config.barberInviteTtl())).raw();
+        events.publishEvent(new PasswordResetRequested(user.getId(), raw, true));
+    }
 
     private void sendVerification(AppUser user, Instant now) {
         String raw = tokens.issue(user.getTenantId(), TokenPurpose.EMAIL_VERIFY, null, user.getId(), null,

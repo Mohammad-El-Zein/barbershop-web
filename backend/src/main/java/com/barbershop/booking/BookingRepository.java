@@ -94,6 +94,10 @@ public interface BookingRepository extends JpaRepository<Booking, UUID>, JpaSpec
 
     long countByUserIdAndStatus(UUID userId, BookingStatus status);
 
+    /** Any booking at all (also past, cancelled or declined) for this staff member. */
+    @Query("select count(b) > 0 from Booking b where b.staff.id = :staffId")
+    boolean existsForStaff(@Param("staffId") UUID staffId);
+
     // ── scheduled jobs (ids only; each booking is then processed under a row lock) ──
 
     @Query("""

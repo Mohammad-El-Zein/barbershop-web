@@ -23,7 +23,9 @@
     "token_invalid": "Dieser Link ist ungültig.",
     "validation_failed": "Bitte prüf deine Eingaben.",
     "service_no_staff": "Für diese Kombination von Leistungen ist gerade kein Barber verfügbar.",
-    "captcha_failed": "Bitte bestätige kurz, dass du kein Roboter bist, und versuch es noch einmal."
+    "captcha_failed": "Bitte bestätige kurz, dass du kein Roboter bist, und versuch es noch einmal.",
+    "staff_has_bookings": "Hat Buchungen – bitte stattdessen auf inaktiv setzen.",
+    "account_no_barber_login": "Dieser Barber hat noch keinen Login."
   },
   "status": {
     "PENDING_BARBER": "Wartet auf Barber",
@@ -527,13 +529,42 @@
       "addRange": "Zeitraum hinzufügen",
       "saveHours": "Arbeitszeiten speichern",
       "invited": "Einladung verschickt.",
-      "accountCreated": "Login angelegt. Der Barber kann sich jetzt mit dem Startpasswort anmelden.",
+      "accountCreated": "Login angelegt. Der Barber meldet sich mit dem Startpasswort an und muss es dann ändern.",
       "loginEmail": "E-Mail für den Barber-Login",
-      "loginHint": "Ohne Startpasswort bekommt der Barber einen Link zum Festlegen des Passworts.",
       "initialPassword": "Startpasswort (optional)",
       "initialPasswordHint": "Mindestens 10 Zeichen. Gib es dem Barber persönlich weiter.",
       "invite": "Login einrichten",
-      "activeHint": "Inaktive Barber erscheinen nicht in der Buchung und können sich nicht mehr anmelden."
+      "activeHint": "Inaktive Barber erscheinen nicht in der Buchung und können sich nicht mehr anmelden.",
+      "login": "Login",
+      "loginState": {
+        "NONE": "Kein Login",
+        "INVITED": "Einladung offen",
+        "ACTIVE": "Login aktiv"
+      },
+      "mustChange": "muss Startpasswort noch ändern",
+      "passwordMode": "Wie bekommt der Barber sein Passwort?",
+      "mode": {
+        "invite": "Einladung per E-Mail",
+        "generate": "Startpasswort erzeugen",
+        "own": "Startpasswort selbst festlegen"
+      },
+      "saveEmail": "E-Mail speichern",
+      "emailSaved": "Login-E-Mail gespeichert.",
+      "resetPassword": "Passwort zurücksetzen",
+      "resetConfirmTitle": "Passwort zurücksetzen?",
+      "resetConfirm": "Es wird ein neues Startpasswort erzeugt. Alle Sitzungen des Barbers werden beendet, und er muss das Passwort bei der nächsten Anmeldung ändern.",
+      "passwordReset": "Neues Startpasswort erzeugt.",
+      "startPassword": "Startpasswort",
+      "copy": "Kopieren",
+      "copied": "Kopiert",
+      "shownOnce": "Wird nicht erneut angezeigt. Gib es dem Barber persönlich weiter – er muss es bei der ersten Anmeldung ändern.",
+      "hidePassword": "Ausblenden",
+      "deleteTitle": "Barber löschen",
+      "deleteHint": "Nur möglich, solange der Barber keine Buchungen hat. Sonst auf inaktiv setzen.",
+      "delete": "Löschen",
+      "deleteConfirmTitle": "{name} endgültig löschen?",
+      "deleteConfirm": "Gelöscht werden der Barber, seine Leistungen, Arbeitszeiten, Abwesenheiten und sein Login. Das lässt sich nicht rückgängig machen.",
+      "hasBookings": "Hat Buchungen – bitte stattdessen auf inaktiv setzen."
     },
     "timeOff": {
       "title": "Abwesenheiten",
@@ -632,7 +663,10 @@
       },
       "attempts": "{count} Versuche",
       "nextAttempt": "Nächster Versuch {time}"
-    }
+    },
+    "mustChangeTitle": "Bitte eigenes Passwort festlegen",
+    "mustChange": "Du hast dich mit einem Startpasswort angemeldet. Leg zuerst ein eigenes Passwort fest – danach siehst du deine Termine.",
+    "toProfile": "Passwort jetzt ändern"
   },
   "errorPages": {
     "retry": "Nochmal versuchen",

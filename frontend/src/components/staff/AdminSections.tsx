@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { api, ApiError, call } from "@/lib/api/client";
 import type {
+  BarberLogin,
   CampaignStats,
   CustomerRow,
   OutboxProblem,
@@ -17,6 +18,7 @@ import type {
 } from "@/lib/api/types";
 import { useErrorText } from "@/lib/api/useErrorText";
 import { addDays, dateTime, dayParts, money, shopDay } from "@/lib/format";
+import { ConfirmDialog } from "../ui/Dialog";
 import { Alert, Skeleton } from "../ui/Feedback";
 import { Checkbox, Field, Select, TextArea } from "../ui/Field";
 import { toShopIso } from "./AdminBookings";
@@ -199,7 +201,17 @@ export function AdminStaff() {
                   {open === s.id ? t("close") : t("manage")}
                 </button>
               </div>
-              {open === s.id && <StaffEditor staff={s} services={services.data ?? []} onSaved={list.load} />}
+              {open === s.id && (
+                <StaffEditor
+                  staff={s}
+                  services={services.data ?? []}
+                  onSaved={list.load}
+                  onDeleted={() => {
+                    setOpen(null);
+                    list.load();
+                  }}
+                />
+              )}
             </li>
           ))}
         </ul>
@@ -210,15 +222,16 @@ export function AdminStaff() {
 
 const WEEKDAYS = [1, 2, 3, 4, 5, 6, 7];
 
-function StaffEditor({ staff, services, onSaved }: { staff: StaffAdmin; services: ServiceAdmin[]; onSaved: () => void }) {
+function StaffEditor({ staff, services, onSaved, onDeleted }: { staff: StaffAdmin; services: ServiceAdmin[]; onSaved: () => void; onDeleted: () => void }) {
   const t = useTranslations("staff.barbers");
   const locale = useLocale();
   const errorText = useErrorText();
   const [profile, setProfile] = useState({ name: staff.name ?? "", photoUrl: staff.photoUrl ?? "", bioDe: staff.bioDe ?? "", bioEn: staff.bioEn ?? "", active: !!staff.active });
   const [assigned, setAssigned] = useState<string[]>(staff.serviceIds ?? []);
   const [hours, setHours] = useState<WorkingHoursEntry[] | null>(null);
-  const [invite, setInvite] = useState("");
-  const [initialPassword, setInitialPassword] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const weekdayName = (d: number) => dayParts(addDays("2026-01-05", d - 1), locale).weekday; // 2026-01-05 = Monday
 
@@ -327,34 +340,221 @@ function StaffEditor({ staff, services, onSaved }: { staff: StaffAdmin; services
         )}
       </fieldset>
 
-      <form
-        className="flex flex-wrap items-end gap-3"
-        onSubmit={(e) => {
-          e.preventDefault();
-          const password = initialPassword || undefined;
-          run(
-            () => call(() => api.POST("/api/admin/staff/{id}/account", { params: { path: { id } }, body: { email: invite, lang: locale, password } })),
-            t(password ? "accountCreated" : "invited"),
-          ).then(() => setInitialPassword(""));
-        }}
-      >
-        <Field className="min-w-60 flex-1" label={t("loginEmail")} type="email" value={invite} onChange={(e) => setInvite(e.target.value)} hint={t("loginHint")} required />
-        <Field
-          className="min-w-60 flex-1"
-          label={t("initialPassword")}
-          type="password"
-          autoComplete="new-password"
-          minLength={10}
-          value={initialPassword}
-          onChange={(e) => setInitialPassword(e.target.value)}
-          hint={t("initialPasswordHint")}
-        />
-        <button type="submit" className="btn btn-outline-gold">
-          {t("invite")}
-        </button>
-      </form>
       {msg && <Alert tone={msg.ok ? "success" : "error"}>{msg.text}</Alert>}
+
+      <BarberLoginPanel staffId={id} />
+
+      <section aria-labelledby={`del-${id}`} className="border-t border-line pt-4">
+        <h3 id={`del-${id}`} className="label">
+          {t("deleteTitle")}
+        </h3>
+        <p className="mb-3 text-xs text-muted">{t("deleteHint")}</p>
+        <button type="button" className="btn btn-ghost btn-sm text-red-700" onClick={() => {
+            setDeleteError(null);
+            setConfirmDelete(true);
+          }}>
+          {t("delete")}
+        </button>
+        {deleteError && (
+          <div className="mt-3">
+            <Alert tone="error">{deleteError}</Alert>
+          </div>
+        )}
+      </section>
+      <ConfirmDialog
+        open={confirmDelete}
+        title={t("deleteConfirmTitle", { name: staff.name ?? "" })}
+        confirmLabel={t("delete")}
+        danger
+        busy={deleting}
+        onConfirm={async () => {
+          setDeleting(true);
+          try {
+            await call(() => api.DELETE("/api/admin/staff/{id}/permanently", { params: { path: { id } } }));
+            setConfirmDelete(false);
+            onDeleted();
+          } catch (e) {
+            setConfirmDelete(false);
+            setDeleteError(e instanceof ApiError && e.code === "staff.has_bookings" ? t("hasBookings") : message(e, errorText));
+          } finally {
+            setDeleting(false);
+          }
+        }}
+        onClose={() => setConfirmDelete(false)}
+      >
+        <p>{t("deleteConfirm")}</p>
+      </ConfirmDialog>
     </div>
+  );
+}
+
+/**
+ * The barber's login: state and email (the admin may correct it), creating it (invite, own or
+ * generated start password) and resetting the password. A start password is shown exactly once,
+ * right after it was set; passwords are never loaded from the server.
+ */
+function BarberLoginPanel({ staffId }: { staffId: string }) {
+  const t = useTranslations("staff.barbers");
+  const locale = useLocale();
+  const errorText = useErrorText();
+  const [login, setLogin] = useState<BarberLogin | null>(null);
+  const [email, setEmail] = useState("");
+  const [mode, setMode] = useState<"invite" | "generate" | "own">("invite");
+  const [ownPassword, setOwnPassword] = useState("");
+  const [shown, setShown] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  const load = useCallback(() => {
+    call(() => api.GET("/api/admin/staff/{id}/account", { params: { path: { id: staffId } } })).then(
+      (l) => {
+        setLogin(l as BarberLogin);
+        setEmail(l?.email ?? "");
+      },
+      (e) => setMsg({ ok: false, text: message(e, errorText) }),
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [staffId]);
+  useEffect(load, [load]);
+
+  const act = async (fn: () => Promise<unknown>, ok?: string) => {
+    setMsg(null);
+    setBusy(true);
+    try {
+      await fn();
+      if (ok) setMsg({ ok: true, text: ok });
+      load();
+    } catch (e) {
+      setMsg({ ok: false, text: message(e, errorText) });
+    } finally {
+      setBusy(false);
+    }
+  };
+  const show = (password: string | undefined) => {
+    setCopied(false);
+    setShown(password ?? null);
+  };
+
+  if (!login) return <Skeleton className="h-24" />;
+  const state = login.state ?? "NONE";
+
+  return (
+    <section aria-labelledby={`login-${staffId}`} className="space-y-3 border-t border-line pt-4">
+      <h3 id={`login-${staffId}`} className="label">
+        {t("login")}
+      </h3>
+      <p className="text-sm" data-testid="login-state">
+        <span className="font-semibold">{t(`loginState.${state}`)}</span>
+        {login.email && <> · {login.email}</>}
+        {state === "ACTIVE" && login.mustChangePassword && <span className="text-muted"> · {t("mustChange")}</span>}
+      </p>
+
+      {state === "NONE" ? (
+        <form
+          className="space-y-3"
+          onSubmit={(e) => {
+            e.preventDefault();
+            act(async () => {
+              const created = await call(() =>
+                api.POST("/api/admin/staff/{id}/account", {
+                  params: { path: { id: staffId } },
+                  body: { email, lang: locale, password: mode === "own" ? ownPassword : undefined, generatePassword: mode === "generate" || undefined },
+                }),
+              );
+              setOwnPassword("");
+              if (mode === "generate") show(created?.startPassword);
+              if (mode === "own") show(ownPassword);
+            }, mode === "invite" ? t("invited") : t("accountCreated"));
+          }}
+        >
+          <Field label={t("loginEmail")} type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          <fieldset className="flex flex-wrap gap-x-5 gap-y-2 text-sm">
+            <legend className="sr-only">{t("passwordMode")}</legend>
+            {(["invite", "generate", "own"] as const).map((m) => (
+              <label key={m} className="flex items-center gap-2">
+                <input type="radio" name={`mode-${staffId}`} className="accent-[var(--gold)]" checked={mode === m} onChange={() => setMode(m)} />
+                {t(`mode.${m}`)}
+              </label>
+            ))}
+          </fieldset>
+          {mode === "own" && (
+            <Field
+              label={t("initialPassword")}
+              type="password"
+              autoComplete="new-password"
+              minLength={10}
+              value={ownPassword}
+              onChange={(e) => setOwnPassword(e.target.value)}
+              hint={t("initialPasswordHint")}
+              required
+            />
+          )}
+          <button type="submit" className="btn btn-outline-gold btn-sm" disabled={busy}>
+            {t("invite")}
+          </button>
+        </form>
+      ) : (
+        <div className="flex flex-wrap items-end gap-3">
+          <form
+            className="flex flex-1 flex-wrap items-end gap-3"
+            onSubmit={(e) => {
+              e.preventDefault();
+              act(() => call(() => api.PUT("/api/admin/staff/{id}/account", { params: { path: { id: staffId } }, body: { email } })), t("emailSaved"));
+            }}
+          >
+            <Field className="min-w-60 flex-1" label={t("loginEmail")} type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            <button type="submit" className="btn btn-ghost btn-sm" disabled={busy || email === login.email}>
+              {t("saveEmail")}
+            </button>
+          </form>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={() => setConfirmReset(true)} disabled={busy}>
+            {t("resetPassword")}
+          </button>
+        </div>
+      )}
+
+      {shown && (
+        <div className="card space-y-2 border-gold/60 p-4" role="status">
+          <p className="text-sm font-semibold">{t("startPassword")}</p>
+          <div className="flex flex-wrap items-center gap-3">
+            <code className="rounded bg-ink/5 px-3 py-2 font-mono text-base tracking-wider" data-testid="start-password">
+              {shown}
+            </code>
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={() => navigator.clipboard?.writeText(shown).then(() => setCopied(true), () => setCopied(false))}
+            >
+              {copied ? t("copied") : t("copy")}
+            </button>
+          </div>
+          <p className="text-xs text-muted">{t("shownOnce")}</p>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={() => show(undefined)}>
+            {t("hidePassword")}
+          </button>
+        </div>
+      )}
+      {msg && <Alert tone={msg.ok ? "success" : "error"}>{msg.text}</Alert>}
+
+      <ConfirmDialog
+        open={confirmReset}
+        title={t("resetConfirmTitle")}
+        confirmLabel={t("resetPassword")}
+        busy={busy}
+        onConfirm={() =>
+          act(async () => {
+            const r = await call(() => api.POST("/api/admin/staff/{id}/account/reset-password", { params: { path: { id: staffId } } }));
+            setConfirmReset(false);
+            show(r?.startPassword);
+          }, t("passwordReset"))
+        }
+        onClose={() => setConfirmReset(false)}
+      >
+        <p>{t("resetConfirm")}</p>
+      </ConfirmDialog>
+    </section>
   );
 }
 

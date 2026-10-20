@@ -64,14 +64,38 @@ public final class AccountDtos {
     public record PaymentExport(UUID bookingId, String status, int amountCents, String currency, Instant paidAt,
                                 Instant refundedAt, Instant forfeitedAt) {}
 
-    /** Without {@code password} the barber gets an invite link; with it the admin sets the initial password. */
+    /**
+     * Without {@code password} and {@code generatePassword} the barber gets an invite link; with
+     * {@code password} the admin sets the start password, with {@code generatePassword} the server
+     * generates one. Either way the barber has to change it at the first login.
+     */
     public record BarberAccountRequest(
             @NotBlank(message = "{validation.required}") @Email(message = "{validation.email}")
             @Size(max = 254, message = "{validation.size.max}") String email,
             @Pattern(regexp = "de|en", message = "{validation.lang}") String lang,
-            @Size(max = 128, message = "{validation.size.max}") String password) {}
+            @Size(max = 128, message = "{validation.size.max}") String password,
+            Boolean generatePassword) {}
 
-    public record BarberAccountView(UUID userId, UUID staffId, String email, String name, boolean inviteSent) {}
+    /**
+     * startPassword: only a GENERATED start password, in this one response (never stored in plain
+     * text, never shown again); null otherwise.
+     */
+    public record BarberAccountView(UUID userId, UUID staffId, String email, String name, boolean inviteSent,
+                                    String startPassword) {}
+
+    /** NONE = no login; INVITED = invite sent, no password chosen yet; ACTIVE = can sign in. */
+    public enum BarberLoginState { NONE, INVITED, ACTIVE }
+
+    /** The barber's login as the admin sees it: never a password or hash. */
+    public record BarberLoginView(UUID staffId, BarberLoginState state, String email, boolean mustChangePassword,
+                                  Instant lastLoginAt) {}
+
+    public record BarberEmailRequest(
+            @NotBlank(message = "{validation.required}") @Email(message = "{validation.email}")
+            @Size(max = 254, message = "{validation.size.max}") String email) {}
+
+    /** A new generated start password: shown to the admin exactly once, in this response. */
+    public record StartPasswordView(String startPassword) {}
 
     /** registered=false: guest bookings grouped by email address. */
     public record CustomerRow(UUID userId, boolean registered, String name, String email, String phone,

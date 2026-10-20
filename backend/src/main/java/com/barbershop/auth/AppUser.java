@@ -68,6 +68,10 @@ public class AppUser {
     @Column(name = "last_login_at")
     private Instant lastLoginAt;
 
+    /** A start password from the shop admin: the owner has to choose an own one first. */
+    @Column(name = "must_change_password", nullable = false)
+    private boolean mustChangePassword;
+
     protected AppUser() {}
 
     public AppUser(UUID tenantId, Role role, String email, String passwordHash, String name, String phone, Lang lang,
@@ -119,10 +123,22 @@ public class AppUser {
         this.consentVersion = version;
     }
 
+    /** The owner's own new password (ends a pending start password). */
     public void changePassword(String newHash) {
         this.passwordHash = newHash;
         this.failedLoginCount = 0;
         this.lockedUntil = null;
+        this.mustChangePassword = false;
+    }
+
+    /** A start password set by the shop admin: valid for login, but has to be changed. */
+    public void setStartPassword(String newHash) {
+        changePassword(newHash);
+        this.mustChangePassword = true;
+    }
+
+    public void changeEmail(String email) {
+        this.email = email;
     }
 
     public void linkStaff(UUID staffId) {
@@ -151,4 +167,5 @@ public class AppUser {
     public String getConsentVersion() { return consentVersion; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getLastLoginAt() { return lastLoginAt; }
+    public boolean isMustChangePassword() { return mustChangePassword; }
 }

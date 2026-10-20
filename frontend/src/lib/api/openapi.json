@@ -251,6 +251,133 @@
         ]
       }
     },
+    "/api/admin/staff/{id}/account": {
+      "get": {
+        "tags": [
+          "Admin: accounts"
+        ],
+        "summary": "The barber's login: state (NONE / INVITED / ACTIVE) and email — never a password",
+        "operationId": "barberLogin",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BarberLoginView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "Admin: accounts"
+        ],
+        "summary": "Change the barber's login email; an open invite is sent again to the new address",
+        "operationId": "changeBarberEmail",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BarberEmailRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BarberLoginView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Admin: accounts"
+        ],
+        "summary": "Create the barber's own login for this staff profile: with `password` the admin sets the start password, with `generatePassword` the server generates one (returned ONCE as `startPassword`), with neither an invite email lets the barber set one. A start password has to be changed at the first login. Deactivating the staff profile blocks the login.",
+        "operationId": "createBarberAccount",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BarberAccountRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BarberAccountView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/api/admin/settings": {
       "get": {
         "tags": [
@@ -1566,13 +1693,13 @@
         ]
       }
     },
-    "/api/admin/staff/{id}/account": {
+    "/api/admin/staff/{id}/account/reset-password": {
       "post": {
         "tags": [
           "Admin: accounts"
         ],
-        "summary": "Create the barber's own login for this staff profile; an invite email lets them set their password",
-        "operationId": "createBarberAccount",
+        "summary": "New generated start password, returned ONCE in this response (only its hash is stored); ends all of the barber's sessions, who has to change it at the next login",
+        "operationId": "resetBarberPassword",
         "parameters": [
           {
             "name": "id",
@@ -1584,23 +1711,13 @@
             }
           }
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/BarberAccountRequest"
-              }
-            }
-          },
-          "required": true
-        },
         "responses": {
-          "201": {
-            "description": "Created",
+          "200": {
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/BarberAccountView"
+                  "$ref": "#/components/schemas/StartPasswordView"
                 }
               }
             }
@@ -2989,6 +3106,36 @@
           }
         ]
       }
+    },
+    "/api/admin/staff/{id}/permanently": {
+      "delete": {
+        "tags": [
+          "Admin: staff"
+        ],
+        "summary": "Deletes a staff member for good, with services, working hours, time off and login — only without any booking (also past or cancelled ones); otherwise 409 staff.has_bookings: deactivate instead.",
+        "operationId": "deletePermanently",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -3114,6 +3261,47 @@
         "required": [
           "serviceIds"
         ]
+      },
+      "BarberEmailRequest": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 254,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "email"
+        ]
+      },
+      "BarberLoginView": {
+        "type": "object",
+        "properties": {
+          "staffId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "NONE",
+              "INVITED",
+              "ACTIVE"
+            ]
+          },
+          "email": {
+            "type": "string"
+          },
+          "mustChangePassword": {
+            "type": "boolean"
+          },
+          "lastLoginAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
       },
       "PolicyDto": {
         "type": "object",
@@ -4203,6 +4391,9 @@
           "emailVerified": {
             "type": "boolean"
           },
+          "mustChangePassword": {
+            "type": "boolean"
+          },
           "tenant": {
             "$ref": "#/components/schemas/TenantRef"
           }
@@ -4297,6 +4488,9 @@
             "type": "string",
             "maxLength": 128,
             "minLength": 0
+          },
+          "generatePassword": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -4322,6 +4516,17 @@
           },
           "inviteSent": {
             "type": "boolean"
+          },
+          "startPassword": {
+            "type": "string"
+          }
+        }
+      },
+      "StartPasswordView": {
+        "type": "object",
+        "properties": {
+          "startPassword": {
+            "type": "string"
           }
         }
       },
