@@ -192,6 +192,63 @@ run "prod_is_highly_available_with_domains_and_alerts" {
     condition     = output.ci_variables.NEXT_PUBLIC_SHOW_DEMO_BANNER == "false"
     error_message = "prod: frontend builds hide the DEMO strip."
   }
+  assert {
+    condition = alltrue([
+      for c in [azurerm_container_app.backend.template[0].container[0], azurerm_container_app_job.migrate.template[0].container[0]] :
+      [for e in c.env : e.value if e.name == "PAYMENT_DEMO_ALLOW_IN_PROD"][0] == "false"
+    ])
+    error_message = "prod: demo payments stay forbidden → the backend refuses to start without a real payment provider."
+  }
+}
+
+# dev: the prod profile with the demo payment provider must be allowed explicitly, in the
+# backend AND in the migrate job (both run the backend's start-up checks)
+run "dev_may_run_demo_payments" {
+  command = apply
+
+  variables {
+    allow_missing_captcha      = true
+    payment_demo_allow_in_prod = true
+  }
+
+  assert {
+    condition = alltrue([
+      for c in [azurerm_container_app.backend.template[0].container[0], azurerm_container_app_job.migrate.template[0].container[0]] :
+      [for e in c.env : e.value if e.name == "PAYMENT_PROVIDER"][0] == "demo" && [for e in c.env : e.value if e.name == "PAYMENT_DEMO_ALLOW_IN_PROD"][0] == "true"
+    ])
+    error_message = "dev: backend and migrate job allow the demo payment provider."
+  }
+  assert {
+    condition     = [for e in azurerm_container_app.backend.template[0].container[0].env : e.value if e.name == "SPRING_PROFILES_ACTIVE"][0] == "prod"
+    error_message = "Allowing demo payments does not switch on the demo seed."
+  }
+}
+
+run "prod_refuses_demo_payments" {
+  command = plan
+
+  variables {
+    environment                = "prod"
+    captcha_secret             = "turnstile-secret"
+    payment_demo_allow_in_prod = true
+  }
+
+  expect_failures = [var.payment_demo_allow_in_prod]
+}
+
+run "mail_dead_alert_can_be_switched_off" {
+  command = apply
+
+  variables {
+    allow_missing_captcha   = true
+    alert_email             = "ops@example.test"
+    mail_dead_alert_enabled = false
+  }
+
+  assert {
+    condition     = length(azurerm_monitor_scheduled_query_rules_alert_v2.mail_dead) == 0 && length(azurerm_monitor_metric_alert.api_down) == 1 && length(azurerm_monitor_action_group.ops) == 1
+    error_message = "mail_dead_alert_enabled = false removes only the mail alert; the availability alert stays."
+  }
 }
 
 run "public_demo_runs_the_demo_seed_and_allows_demo_payments" {

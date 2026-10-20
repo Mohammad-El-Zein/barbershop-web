@@ -73,6 +73,16 @@ variable "public_demo" {
   default     = false
 }
 
+variable "payment_demo_allow_in_prod" {
+  description = "Let the backend (prod profile) start with the demo payment provider (PAYMENT_DEMO_ALLOW_IN_PROD): simulated payments only. For dev; never in the prod environment."
+  type        = bool
+  default     = false
+  validation {
+    condition     = !(var.payment_demo_allow_in_prod && var.environment == "prod")
+    error_message = "payment_demo_allow_in_prod must not be true in the prod environment: a real shop needs a real payment provider."
+  }
+}
+
 # ── container apps ───────────────────────────────────────────────────────────
 
 variable "backend_image" {
@@ -312,4 +322,10 @@ variable "alert_email" {
   description = "Receives availability and mail-delivery alerts. Empty = no alerts."
   type        = string
   default     = ""
+}
+
+variable "mail_dead_alert_enabled" {
+  description = "Create the log alert for undeliverable emails (needs alert_email). false when creating it fails with \"insufficient access\" (docs/DEPLOYMENT.md → Monitoring)."
+  type        = bool
+  default     = true
 }

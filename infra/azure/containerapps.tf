@@ -60,7 +60,7 @@ locals {
     APP_CAPTCHA_ALLOW_NONE_IN_PROD = local.captcha_on ? "false" : tostring(var.allow_missing_captcha)
     APP_RATE_LIMIT_STORE           = local.redis_on ? "redis" : "memory"
     PAYMENT_PROVIDER               = "demo"
-    PAYMENT_DEMO_ALLOW_IN_PROD     = tostring(var.public_demo)
+    PAYMENT_DEMO_ALLOW_IN_PROD     = tostring(var.public_demo || var.payment_demo_allow_in_prod) # backend + migrate job
     LOG_FORMAT                     = "ecs"
   }
   # env var → Container Apps secret

@@ -441,6 +441,14 @@ hope, not a backup.
 | Campaigns | Staff area → Stats → Campaigns (UTM / gclid / fbclid, only with marketing consent) |
 | Costs | Azure Cost Management: set a budget with an email alert on the resource group |
 
+**Mail alert switched off in dev (`mail_dead_alert_enabled = false`):** The mail alert is a log query
+alert (`azurerm_monitor_scheduled_query_rules_alert_v2`). When Azure creates it, it checks the query
+against the Log Analytics workspace. In the dev subscription this failed with "insufficient access".
+Likely causes: the table `ContainerAppConsoleLogs_CL` does not exist until the first logs arrive, or
+the deploying account may not query the workspace. The variable switches off only this alert. The
+availability alert stays, and prod keeps both. To turn it back on later, set `true` and run apply
+again once the backend has written logs.
+
 Useful queries (Log Analytics):
 
 ```kusto
@@ -487,7 +495,10 @@ Open, in order of importance:
    dynamic. Third-party hosts are pinned per configured integration.
 3. **Rate limits are per instance** unless Redis is configured. Terraform refuses `backend_max_replicas > 1`
    without it.
-4. **Payments are demo only** (see the checklist).
+4. **Payments are demo only** (see the checklist). With the `prod` profile the backend refuses to start with the
+   demo provider unless `PAYMENT_DEMO_ALLOW_IN_PROD=true`. Azure dev sets it with `payment_demo_allow_in_prod = true`
+   in `env/dev.tfvars`. Terraform refuses that variable in the prod environment, so a prod deployment only starts
+   once a real payment provider exists (or as an explicit `public_demo`).
 5. **Legal texts are templates** (see the checklist).
 
 ## 11. Public demo deployment

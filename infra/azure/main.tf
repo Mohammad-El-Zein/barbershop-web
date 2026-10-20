@@ -157,7 +157,7 @@ resource "azurerm_monitor_metric_alert" "api_down" {
 
 # Mail delivery: an email went DEAD after all retries (MailOutboxWorker logs "needs attention").
 resource "azurerm_monitor_scheduled_query_rules_alert_v2" "mail_dead" {
-  count                = var.alert_email == "" ? 0 : 1
+  count                = var.alert_email != "" && var.mail_dead_alert_enabled ? 1 : 0
   name                 = "alert-${local.name}-mail-dead"
   resource_group_name  = azurerm_resource_group.this.name
   location             = azurerm_resource_group.this.location

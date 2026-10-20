@@ -37,8 +37,8 @@ cd infra/azure
 terraform fmt -recursive -check
 terraform init -backend=false
 terraform validate
-terraform test                                    # 6 scenario runs (dev, prod, public demo, guard rails)
-terraform test -filter=tests/tfvars.tftest.hcl -var-file=env/prod.tfvars \
+terraform test                                    # 10 scenario runs (dev, prod, public demo, guard rails)
+terraform test -test-directory=tests-tfvars -var-file=env/prod.tfvars \
   -var subscription_id=00000000-0000-4000-8000-000000000004 -var captcha_secret=x
 ```
 
@@ -49,7 +49,9 @@ The tests "apply" the whole configuration against mocked providers and check, am
 - prod has zone-redundant HA with 35-day PITR plus geo backups, and purge protection.
 - CORS is exactly the site origin.
 - A public demo runs `prod,demo` with demo payments allowed explicitly.
-- These are refused: more than one backend replica without Redis, prod without CAPTCHA, a backend that scales to zero.
+- dev allows demo payments (`payment_demo_allow_in_prod`) in the backend and the migrate job; prod keeps them forbidden.
+- These are refused: more than one backend replica without Redis, prod without CAPTCHA, demo payments in prod,
+  a backend that scales to zero.
 
 The same commands run in CI (`terraform` job in both pipelines). A real `terraform plan` needs an Azure login.
 

@@ -33,5 +33,10 @@ mail_from  = "The Barber News (dev) <dev@example-barber.de>"
 admin_email           = "owner@example-barber.de"
 allow_missing_captcha = true
 
+# dev runs the prod profile with the DEMO payment provider: simulated payments only, no real money
+payment_demo_allow_in_prod = true
+
 log_retention_days = 30
 alert_email        = ""
+# creating the mail log alert fails here with "insufficient access" (docs/DEPLOYMENT.md → Monitoring)
+mail_dead_alert_enabled = false
