@@ -314,6 +314,11 @@ The backend never connects with an admin or owner login. Three logins, three job
   passwords and ownership. It is run by:
   - Docker compose: `infra/postgres/10-init-roles.sh`, automatically when the volume is created;
   - Azure: the `db-init` job.
+
+  It is plain psql (15+), with no `DO $$` block and no `$` at all. Container Apps rewrites `$$` and `$(…)`
+  in job commands and env values, and the job gets the script as an env value. The passwords come
+  from the environment (`MIGRATOR_PASSWORD`, `APP_PASSWORD`), not from the command line, and are never
+  printed. `tests/plan.tftest.hcl` and `DatabaseRolesIT` check both.
 - **Grants:** after every migration, the Flyway callback `db/migration/afterMigrate.sql` gives the app
   role its DML rights on all tables, including tables added by new migrations.
 - **Start-up check:** with the `prod` profile, the backend refuses to start if `DB_USERNAME` can do

@@ -5,8 +5,10 @@
 set -eu
 : "${DB_MIGRATION_PASSWORD:?DB_MIGRATION_PASSWORD is required}"
 : "${DB_APP_PASSWORD:?DB_APP_PASSWORD is required}"
-psql -v ON_ERROR_STOP=1 \
+# passwords via the environment, not the command line (process list)
+MIGRATOR_PASSWORD="$DB_MIGRATION_PASSWORD" APP_PASSWORD="$DB_APP_PASSWORD" \
+psql -X -q -v ON_ERROR_STOP=1 \
   --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" \
-  -v migrator="${DB_MIGRATION_USERNAME:-barbershop_migrator}" -v migrator_password="$DB_MIGRATION_PASSWORD" \
-  -v app="${DB_APP_USERNAME:-barbershop_app}" -v app_password="$DB_APP_PASSWORD" \
+  -v migrator="${DB_MIGRATION_USERNAME:-barbershop_migrator}" \
+  -v app="${DB_APP_USERNAME:-barbershop_app}" \
   -f /opt/barbershop/init-roles.sql

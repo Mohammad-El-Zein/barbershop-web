@@ -86,7 +86,7 @@ public abstract class AbstractIntegrationTest {
     static {
         POSTGRES.start();
         // production-like logins: Flyway = owner role, application = DML-only role
-        DbRoles.create(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword());
+        DbRoles.create(POSTGRES);
         MAIL.start();
     }
 

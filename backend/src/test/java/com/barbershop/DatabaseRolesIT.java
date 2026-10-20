@@ -109,8 +109,11 @@ class DatabaseRolesIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void theRoleScriptIsIdempotent() {
-        DbRoles.create(POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword());
+    void theRoleScriptIsIdempotentAndNeverPrintsAPassword() {
+        String output = DbRoles.create(POSTGRES);
+        // the job log of the Azure db-init job is exactly this output
+        assertThat(output).doesNotContain(DbRoles.MIGRATOR_PASSWORD, DbRoles.APP_PASSWORD)
+                .contains("roles ready: " + DbRoles.MIGRATOR);
         assertThat(DatabaseRoleCheck.check(jdbc)).isEmpty();
         assertThat(DatabaseRoleCheck.check(as(DbRoles.APP, DbRoles.APP_PASSWORD))).isEmpty();
     }

@@ -1,15 +1,14 @@
 package com.barbershop.support;
 
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.Statement;
+import org.testcontainers.containers.Container.ExecResult;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.utility.MountableFile;
 
 /**
  * Creates the production database roles in the test container with the REAL script
- * (infra/postgres/init-roles.sql, run as the container's superuser), so the tests run like
- * production: Flyway as the migration role, the application as the DML-only role.
+ * (infra/postgres/init-roles.sql, run with psql as the container's superuser), so the tests run
+ * like production: Flyway as the migration role, the application as the DML-only role.
  */
 public final class DbRoles {
 
@@ -22,29 +21,22 @@ public final class DbRoles {
 
     private DbRoles() {}
 
-    public static void create(String jdbcUrl, String adminUser, String adminPassword) {
-        try (Connection c = DriverManager.getConnection(jdbcUrl, adminUser, adminPassword);
-             Statement st = c.createStatement()) {
-            st.execute(psqlToJdbc(Files.readString(SCRIPT)));
+    /** Runs the script like the db-init job does; returns everything psql printed (stdout + stderr). */
+    public static String create(PostgreSQLContainer<?> pg) {
+        try {
+            pg.copyFileToContainer(MountableFile.forHostPath(SCRIPT), "/tmp/init-roles.sql");
+            ExecResult r = pg.execInContainer("env",
+                    "MIGRATOR_PASSWORD=" + MIGRATOR_PASSWORD, "APP_PASSWORD=" + APP_PASSWORD,
+                    "psql", "-X", "-q", "-v", "ON_ERROR_STOP=1",
+                    "-U", pg.getUsername(), "-d", pg.getDatabaseName(),
+                    "-v", "migrator=" + MIGRATOR, "-v", "app=" + APP, "-f", "/tmp/init-roles.sql");
+            String output = r.getStdout() + r.getStderr();
+            if (r.getExitCode() != 0) {
+                throw new IllegalStateException("psql exit " + r.getExitCode() + ": " + output);
+            }
+            return output;
         } catch (Exception e) {
             throw new IllegalStateException("could not create the database roles from " + SCRIPT.toAbsolutePath(), e);
         }
-    }
-
-    /** The script uses psql variables (:'name') and meta-commands (\set); JDBC gets plain SQL. */
-    static String psqlToJdbc(String script) {
-        StringBuilder sql = new StringBuilder();
-        for (String line : script.split("\\R")) {
-            if (!line.startsWith("\\")) sql.append(line).append('\n');
-        }
-        return sql.toString()
-                .replace(":'migrator_password'", quote(MIGRATOR_PASSWORD))
-                .replace(":'migrator'", quote(MIGRATOR))
-                .replace(":'app_password'", quote(APP_PASSWORD))
-                .replace(":'app'", quote(APP));
-    }
-
-    private static String quote(String s) {
-        return "'" + s.replace("'", "''") + "'";
     }
 }

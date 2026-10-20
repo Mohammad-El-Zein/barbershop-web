@@ -8,6 +8,10 @@
 #
 #   az containerapp job start -g <rg> -n <job>        (docs/DEPLOYMENT.md → Database roles)
 
+locals {
+  init_roles_sql = file("${path.module}/../postgres/init-roles.sql")
+}
+
 resource "azurerm_container_app_job" "db_init" {
   name                         = "job-${local.name}-db-init"
   location                     = azurerm_resource_group.this.location
@@ -43,15 +47,18 @@ resource "azurerm_container_app_job" "db_init" {
       image  = "docker.io/library/postgres:${var.postgres_version}-alpine"
       cpu    = 0.25
       memory = "0.5Gi"
+      # Container Apps rewrites "$$" and "$(…)" in command and env values (like Kubernetes):
+      # neither may appear here or in the script (tests/plan.tftest.hcl). Passwords reach psql
+      # only through the environment (libpq PGPASSWORD, \getenv in the script): not on the
+      # command line, never printed (-q, no result rows, terse errors).
       command = ["sh", "-c", join(" ", [
         "printf '%s' \"$INIT_SQL\" > /tmp/init-roles.sql &&",
-        "psql -v migrator=\"$MIGRATOR\" -v migrator_password=\"$MIGRATOR_PASSWORD\"",
-        "-v app=\"$APP\" -v app_password=\"$APP_PASSWORD\" -f /tmp/init-roles.sql",
+        "psql -X -q -v ON_ERROR_STOP=1 -v migrator=\"$MIGRATOR\" -v app=\"$APP\" -f /tmp/init-roles.sql",
       ])]
 
       env {
         name  = "INIT_SQL"
-        value = file("${path.module}/../postgres/init-roles.sql")
+        value = local.init_roles_sql
       }
       env {
         name  = "PGHOST"
@@ -89,6 +96,13 @@ resource "azurerm_container_app_job" "db_init" {
         name        = "APP_PASSWORD"
         secret_name = "db-app-password"
       }
+    }
+  }
+
+  lifecycle {
+    precondition {
+      condition     = !strcontains(local.init_roles_sql, "$")
+      error_message = "infra/postgres/init-roles.sql must not contain \"$\": Container Apps rewrites it in env values."
     }
   }
 

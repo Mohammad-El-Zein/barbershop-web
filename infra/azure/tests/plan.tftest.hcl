@@ -74,7 +74,7 @@ run "dev_defaults_are_private_and_safe" {
     error_message = "Migrations run in the separate job with the owner role."
   }
   assert {
-    condition     = strcontains([for e in azurerm_container_app_job.db_init.template[0].container[0].env : e.value if e.name == "INIT_SQL"][0], "NOSUPERUSER NOCREATEDB NOCREATEROLE")
+    condition     = strcontains([for e in azurerm_container_app_job.db_init.template[0].container[0].env : e.value if e.name == "INIT_SQL"][0], "rolsuper OR rolreplication OR rolbypassrls OR rolcreatedb OR rolcreaterole")
     error_message = "The db-init job runs the shared role script."
   }
   assert {
@@ -84,6 +84,55 @@ run "dev_defaults_are_private_and_safe" {
   assert {
     condition     = length(azurerm_container_app_custom_domain.frontend) == 0 && length(azurerm_monitor_metric_alert.api_down) == 0
     error_message = "No custom domains / alerts unless configured."
+  }
+}
+
+# Container Apps rewrites "$$" → "$" and "$(NAME)" in commands, args and env values (like
+# Kubernetes) — that broke the DO $$ block of db-init once. And job logs must never show a secret.
+run "jobs_survive_dollar_rewriting_and_print_no_secrets" {
+  command = apply
+
+  variables {
+    allow_missing_captcha = true
+    smtp_password         = "smtp-secret"
+  }
+
+  assert {
+    condition = alltrue([
+      for c in [
+        azurerm_container_app_job.db_init.template[0].container[0],
+        azurerm_container_app_job.migrate.template[0].container[0],
+        azurerm_container_app.backend.template[0].container[0],
+        azurerm_container_app.frontend.template[0].container[0],
+        ] : alltrue([
+          for s in concat(c.command == null ? [] : c.command, c.args == null ? [] : c.args, [for e in c.env : e.value if e.value != null]) :
+          !strcontains(s, "$$") && !strcontains(s, "$(")
+      ])
+    ])
+    error_message = "No \"$$\" or \"$(\" in any command, args or env value: Container Apps rewrites them."
+  }
+  assert {
+    condition     = !strcontains([for e in azurerm_container_app_job.db_init.template[0].container[0].env : e.value if e.name == "INIT_SQL"][0], "$")
+    error_message = "The role script (INIT_SQL) must not contain \"$\" at all (no dollar quoting, no DO block)."
+  }
+  assert {
+    condition = length(regexall("(?i)(set_config|current_setting|\\\\echo[^\\n]*password|\\\\qecho|\\\\set echo (all|queries)|raise notice[^\\n]*password)",
+    [for e in azurerm_container_app_job.db_init.template[0].container[0].env : e.value if e.name == "INIT_SQL"][0])) == 0
+    error_message = "The role script must not print passwords (no set_config/current_setting rows, no echo of them)."
+  }
+  assert {
+    condition = alltrue([
+      for s in azurerm_container_app_job.db_init.template[0].container[0].command :
+      !strcontains(s, "set -x") && length(regexall("(?i)password=|echo ", s)) == 0
+    ]) && strcontains(join(" ", azurerm_container_app_job.db_init.template[0].container[0].command), "psql -X -q -v ON_ERROR_STOP=1")
+    error_message = "db-init: quiet psql that stops on errors; no passwords on the command line, no set -x / echo."
+  }
+  assert {
+    condition = length([
+      for e in azurerm_container_app_job.db_init.template[0].container[0].env : e
+      if length(regexall("PASSWORD", e.name)) > 0 && (e.value != null || e.secret_name == null)
+    ]) == 0
+    error_message = "db-init: every password env var comes from a Key Vault secret reference."
   }
 }
 
