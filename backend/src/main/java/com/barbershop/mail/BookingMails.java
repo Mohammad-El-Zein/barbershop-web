@@ -24,7 +24,9 @@ import org.springframework.stereotype.Component;
  * Builds every booking email (DE/EN by the recipient's language): to the customer
  * request received / accepted (pay now) / declined / confirmed (+ .ics) /
  * cancelled (+ refund info) / refunded / expired / reminder; to the barber new
- * request (accept/decline buttons) / payment received / cancelled.
+ * request (accept/decline buttons) / payment received / confirmed without deposit /
+ * cancelled; to the shop's admins short information on request (with the decision
+ * buttons), acceptance, payment or confirmation, decline, expiry and cancellation.
  * Payment-related emails carry a "demo mode" note while the demo provider is active.
  */
 @Component
@@ -202,7 +204,91 @@ public class BookingMails {
         return m;
     }
 
+    /** Confirmed without a deposit (0 €): the appointment is booked. */
+    public MailContent barberConfirmed(Booking b, Tenant t, AppUser barber) {
+        Lang l = barber.lang();
+        return barber(b, t, barber)
+                .subject(msg(l, "mail.barber.confirmed.subject", b.getCustomerName(), when(b, t, l)))
+                .paragraph(msg(l, "mail.barber.confirmed.intro", b.getCustomerName()))
+                .strongRow(msg(l, "mail.label.customer"), b.getCustomerName())
+                .row(msg(l, "mail.label.services"), b.serviceNames(l))
+                .strongRow(msg(l, "mail.label.time"), when(b, t, l))
+                .row(msg(l, "mail.label.due_at_shop"), money(b.getAmountDueAtShopCents(), b, l));
+    }
+
+    // ── to the shop's admins (information: name, barber, service, time — nothing more) ──
+
+    /** New request; carries the same Accept / Decline buttons as the barber's (whoever decides first). */
+    public MailContent adminRequested(Booking b, Tenant t, AppUser admin, String decisionToken) {
+        Lang l = admin.lang();
+        ZonedDateTime start = b.getStartTime().atZone(t.zone());
+        return admin(b, t, admin, "mail.admin.requested.subject")
+                .paragraph(msg(l, "mail.admin.requested.intro", b.getCustomerName(), b.getStaff().getName(),
+                        b.serviceNames(l), DateTimeFormatter.ofPattern(msg(l, "mail.date.pattern"), l.locale()).format(start),
+                        DateTimeFormatter.ofPattern(msg(l, "mail.time.pattern"), l.locale()).format(start)))
+                .note(msg(l, "mail.admin.requested.deadline", instant(b.getBarberDeadlineAt(), t, l)))
+                .button(msg(l, "mail.button.accept"), links.barberDecision(l, decisionToken, "accept"), true)
+                .button(msg(l, "mail.button.decline"), links.barberDecision(l, decisionToken, "decline"), false)
+                .afterButtons(msg(l, "mail.admin.requested.buttons_hint"));
+    }
+
+    public MailContent adminAccepted(Booking b, Tenant t, AppUser admin, Instant deadline) {
+        Lang l = admin.lang();
+        return info(admin(b, t, admin, "mail.admin.accepted.subject")
+                .paragraph(msg(l, "mail.admin.accepted.intro", b.getCustomerName(), b.getStaff().getName(),
+                        when(b, t, l), instant(deadline, t, l))), b, t, l);
+    }
+
+    /** Confirmed online: by the paid deposit, or at once when none was due. */
+    public MailContent adminConfirmed(Booking b, Tenant t, AppUser admin, boolean depositPaid) {
+        Lang l = admin.lang();
+        String key = depositPaid ? "mail.admin.paid" : "mail.admin.confirmed";
+        return info(admin(b, t, admin, key + ".subject")
+                .paragraph(msg(l, key + ".intro", b.getCustomerName(), b.getStaff().getName(), when(b, t, l))), b, t, l);
+    }
+
+    public MailContent adminDeclined(Booking b, Tenant t, AppUser admin) {
+        Lang l = admin.lang();
+        return info(admin(b, t, admin, "mail.admin.declined.subject")
+                .paragraph(msg(l, "mail.admin.declined.intro", b.getCustomerName(), b.getStaff().getName(),
+                        when(b, t, l))), b, t, l);
+    }
+
+    public MailContent adminExpired(Booking b, Tenant t, AppUser admin, BookingStatus from) {
+        Lang l = admin.lang();
+        String intro = from == BookingStatus.PENDING_BARBER ? "mail.admin.expired.intro.barber"
+                : "mail.admin.expired.intro.payment";
+        return info(admin(b, t, admin, "mail.admin.expired.subject")
+                .paragraph(msg(l, intro, b.getCustomerName(), b.getStaff().getName(), when(b, t, l))), b, t, l);
+    }
+
+    public MailContent adminCancelled(Booking b, Tenant t, AppUser admin, Actor by) {
+        Lang l = admin.lang();
+        String intro = by == Actor.CUSTOMER ? "mail.admin.cancelled.intro.customer" : "mail.admin.cancelled.intro.shop";
+        return info(admin(b, t, admin, "mail.admin.cancelled.subject")
+                .paragraph(msg(l, intro, b.getCustomerName(), b.getStaff().getName(), when(b, t, l))), b, t, l);
+    }
+
     // ── building blocks ──────────────────────────────────────────────────────
+
+    /** Admin mail: subject "<customer> … <barber>, <time>", from the booking system. */
+    private MailContent admin(Booking b, Tenant t, AppUser admin, String subjectKey) {
+        Lang l = admin.lang();
+        return new MailContent(admin.getEmail(), l, t.getName())
+                .subject(msg(l, subjectKey, b.getCustomerName(), b.getStaff().getName(), when(b, t, l)))
+                .greeting(msg(l, "mail.greeting", admin.getName()))
+                .signature(msg(l, "mail.signature.system", t.getName()))
+                .footer(msg(l, "mail.footer"));
+    }
+
+    /** The facts of an admin information mail and the way to the staff area. */
+    private MailContent info(MailContent m, Booking b, Tenant t, Lang l) {
+        return m.row(msg(l, "mail.label.customer"), b.getCustomerName())
+                .row(msg(l, "mail.label.barber"), b.getStaff().getName())
+                .row(msg(l, "mail.label.services"), b.serviceNames(l))
+                .strongRow(msg(l, "mail.label.when"), when(b, t, l))
+                .button(msg(l, "mail.button.staff_area"), links.staff(l), false);
+    }
 
     private MailContent customer(Booking b, Tenant t) {
         Lang l = b.lang();

@@ -64,7 +64,8 @@ public record AppProperties(
             @NotBlank String barberDecision,
             @NotBlank String verifyEmail,
             @NotBlank String resetPassword,
-            @NotBlank String account) {}
+            @NotBlank String account,
+            @NotBlank String staff) {}
 
     /**
      * Bootstrap admin from APP_ADMIN_EMAIL / APP_ADMIN_PASSWORD (optional) for the shop

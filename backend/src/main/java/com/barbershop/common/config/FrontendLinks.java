@@ -51,6 +51,11 @@ public class FrontendLinks {
         return build(links.account(), lang, null);
     }
 
+    /** The staff area (calendar with open requests). */
+    public String staff(Lang lang) {
+        return build(links.staff(), lang, null);
+    }
+
     private String build(String template, Lang lang, String token) {
         String path = template.replace("{lang}", lang.code());
         if (token != null) path = path.replace("{token}", URLEncoder.encode(token, StandardCharsets.UTF_8));

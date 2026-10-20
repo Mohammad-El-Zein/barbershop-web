@@ -312,12 +312,13 @@ class AccountIT extends AbstractIntegrationTest {
         post("/api/public/auth/reset-password", Map.of("token", invite, "newPassword", "lucas-own-password"));
         String luca = login(barberEmail, "lucas-own-password");
 
-        // a request for Luca now goes to Luca himself, with a copy to the configured admin (once)
+        // a request for Luca now goes to Luca himself; the admin gets its own short notice (once)
         String customer = uniqueEmail();
         String id = (String) book(booking(HAIRCUT, LUCA, at(next(DayOfWeek.FRIDAY), "15:00"), customer, "en"))
                 .getBody().get("id");
         mailTo(barberEmail, "Neue Terminanfrage: " + nameFor(customer));
-        assertThat(countMails(ADMIN_EMAIL, "Neue Terminanfrage: " + nameFor(customer))).isEqualTo(1);
+        assertThat(countMails(ADMIN_EMAIL, "Neue Anfrage bei Luca: " + nameFor(customer))).isEqualTo(1);
+        assertThat(countMails(ADMIN_EMAIL, "Neue Terminanfrage: " + nameFor(customer))).isZero();
         String moBooking = (String) book(booking(HAIRCUT, MO, at(next(DayOfWeek.FRIDAY), "15:00"), uniqueEmail(), "en"))
                 .getBody().get("id");
 

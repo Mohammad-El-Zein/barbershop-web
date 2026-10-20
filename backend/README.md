@@ -148,6 +148,22 @@ Barber emails go to the barber's own login. While a barber has no login yet, the
 All emails share one layout (`templates/mail/layout.html`), built from `MailContent` in `mail/BookingMails` /
 `mail/AccountMails`.
 
+**Recipients** (`mail/BookingMailListener`, checked by `BookingMailRecipientsIT`):
+
+| Event | Customer | Barber | Admins |
+|---|---|---|---|
+| Request | request received | new request (Accept/Decline) | new request (Accept/Decline) |
+| Accepted, deposit due | pay now | – | accepted, deposit due by … |
+| Confirmed: deposit paid / none due (0 €) | confirmation + `.ics` | deposit received / confirmed | paid / confirmed |
+| Manual booking (staff) | confirmation + `.ics` | – | – |
+| Declined, expired | ✓ | – | ✓ |
+| Cancelled | ✓ | ✓ | ✓ |
+| Refunded, reminder | ✓ | – | – |
+
+"Barber" is the barber's own login; without one, the shop's admins get the barber mail instead. "Admins" are all
+admin accounts of the shop plus the `APP_ADMIN_EMAIL` account; an address gets at most one mail per event (an admin
+who already got the barber mail gets no second notice). Admin notices name only customer, barber, service and time.
+
 **Delivery: transactional outbox** (`mail_outbox`, `mail/MailOutbox*`):
 
 1. The mail listeners run `BEFORE_COMMIT` and write the rendered mail into `mail_outbox` **in the business

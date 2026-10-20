@@ -292,9 +292,11 @@ In GitHub, add **required reviewers** to the `prod` environment. That makes the 
      first sign-in. "Reset password" generates a new one and ends all of the barber's sessions. The admin sees the
      login's email and state (no login / invite pending / active) and can correct the email, but never a
      password. Unticking "Active" removes the barber from the booking and blocks their login. "Delete" removes a
-     barber for good only while they have no bookings at all. Booking requests go to the barber's
-     login email, with a copy to the configured admin (`APP_ADMIN_EMAIL`); for a barber without a login, all
-     admins get them.
+     barber for good only while they have no bookings at all. Booking emails go to the barber's login email;
+     for a barber without a login, all admins get them instead. Every admin account of the shop (plus the
+     `APP_ADMIN_EMAIL` account) also gets a short notice on request (with Accept/Decline), acceptance, payment or
+     confirmation, decline, expiry and cancellation: customer name, barber, service and time only, each address
+     once per event. Manual bookings by the staff only mail the customer.
   2. **Services:** name DE/EN, description, duration, exact price. The "ab"/"from" flag is for the landing-page
      cards only.
   3. **Stats → Booking rules:** deposit, response and payment deadlines, cancellation cut-offs, lead time, loyalty.

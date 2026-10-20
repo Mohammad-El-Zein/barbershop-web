@@ -133,6 +133,7 @@ app:
     verify-email: /{lang}/account/verify/{token}
     reset-password: /{lang}/account/reset-password/{token}
     account: /{lang}/account
+    staff: /{lang}/admin
   admin:
     # bootstrap admin, created on startup if missing (never hardcoded in the repo)
     email: ${APP_ADMIN_EMAIL:}
