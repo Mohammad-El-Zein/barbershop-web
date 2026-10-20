@@ -58,6 +58,62 @@ test("axe: admin area", async ({ page }, info) => {
   }
 });
 
+/**
+ * axe does not see the list of a closed <select>. Chrome/Edge on Windows and Firefox draw it
+ * with the colours of the <option>s, and a transparent option background falls back to white
+ * (light text on white in the dark theme, once). Checked: every option (computed colours, a
+ * transparent background counts as white) has ≥ 4.5:1, and date/time inputs and selects use
+ * the theme's color-scheme (dark pickers and icons in the dark theme).
+ */
+async function nativeControls(page: Page, theme: "dark" | "light", label: string) {
+  const problems = await page.evaluate((theme) => {
+    const rgba = (c: string) => {
+      const m = c.match(/rgba?\(([\d.]+),? ([\d.]+),? ([\d.]+)(?:,? \/? ?([\d.]+))?\)/);
+      if (!m) throw new Error(`unparsed colour ${c}`);
+      return [Number(m[1]), Number(m[2]), Number(m[3]), m[4] === undefined ? 1 : Number(m[4])];
+    };
+    const luminance = ([r, g, b]: number[]) => {
+      const ch = (v: number) => ((v /= 255) <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4);
+      return 0.2126 * ch(r) + 0.7152 * ch(g) + 0.0722 * ch(b);
+    };
+    const out: string[] = [];
+    for (const el of document.querySelectorAll<HTMLElement>("select, input[type=date], input[type=time]")) {
+      const scheme = getComputedStyle(el).colorScheme;
+      if (!scheme.includes(theme)) out.push(`${el.tagName.toLowerCase()}[${el.id || el.getAttribute("type")}]: color-scheme "${scheme}"`);
+    }
+    for (const option of document.querySelectorAll<HTMLOptionElement>("select option:not(:disabled)")) {
+      const style = getComputedStyle(option);
+      const bg = rgba(style.backgroundColor);
+      const back = bg[3] === 1 ? bg : [255, 255, 255, 1]; // transparent → the UA's white list
+      const fg = rgba(style.color);
+      const text = fg.slice(0, 3).map((v, i) => v * fg[3] + back[i] * (1 - fg[3]));
+      const [hi, lo] = [luminance(text), luminance(back)].sort((a, b) => b - a);
+      const ratio = (hi + 0.05) / (lo + 0.05);
+      if (ratio < 4.5) out.push(`option "${option.textContent?.trim()}": ${ratio.toFixed(2)}:1 (${style.color} on ${style.backgroundColor})`);
+    }
+    return out;
+  }, theme);
+  expect(problems, `${label}: native controls in the ${theme} theme`).toEqual([]);
+}
+
+test("native selects and date/time inputs are readable in both themes", async ({ page }, info) => {
+  const { lang, theme } = variant(info);
+  const t = T[lang];
+  await page.goto(`/${lang}/admin`);
+  await page.getByLabel(t.email, { exact: true }).fill(state().adminEmail);
+  await page.getByLabel(t.password, { exact: true }).fill(state().adminPassword);
+  await page.getByRole("main").getByRole("button", { name: t.login, exact: true }).click();
+  await expect(page.getByRole("navigation", { name: lang === "de" ? "Bereiche" : "Sections" })).toBeVisible();
+  await expect(page.locator(".skeleton")).toHaveCount(0, { timeout: 15_000 });
+  await expect(page.locator("main select").first()).toBeVisible(); // calendar: barber filter + date
+  await nativeControls(page, theme, "admin calendar");
+
+  await page.goto(`/${lang}/admin/bookings`); // status filter, from/to dates
+  await expect(page.locator(".skeleton")).toHaveCount(0, { timeout: 15_000 });
+  await expect(page.locator("main select").first()).toBeVisible();
+  await nativeControls(page, theme, "admin bookings");
+});
+
 test("keyboard only: booking dialog (focus trap, step headings, Escape returns focus)", async ({ page }, info) => {
   test.skip(info.project.name.startsWith("mobile"), "keyboard flow on desktop layouts");
   const { lang } = variant(info);

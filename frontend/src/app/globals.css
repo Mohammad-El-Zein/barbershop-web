@@ -50,6 +50,24 @@ body {
   overflow-x: hidden;
 }
 
+/*
+ * Native form controls in the dark theme. color-scheme: dark (theme-css.ts) already gives
+ * dark date/time pickers, picker icons, scrollbars and the native menus of macOS / iOS /
+ * Android. Chrome/Edge on Windows/Linux and Firefox instead draw the open <select> list with
+ * the colours of its <option>s: they inherit the light text, but the select's background is
+ * almost transparent (.input), so the list fell back to white → light text on white. An
+ * opaque background on option/optgroup fixes every select at once; light theme unchanged.
+ */
+html:not(.light) :is(option, optgroup),
+.scene-dark :is(option, optgroup) {
+  background-color: var(--surface);
+  color: var(--text);
+}
+html:not(.light) option:disabled,
+.scene-dark option:disabled {
+  color: var(--muted);
+}
+
 /* Demo mode (components/DemoModeBar.tsx): the fixed strip's height, reserved for the page
    and pushed onto the fixed nav / scroll progress bar. Set server-side → no layout shift. */
 :root {
