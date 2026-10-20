@@ -56,7 +56,7 @@ public class RetentionJob {
     @Transactional
     public Report runAll() {
         Instant now = Instant.now(clock);
-        String placeholder = messages.get(Locale.GERMAN, "retention.anonymised_customer");
+        String placeholder = messages.get(Locale.GERMAN, BookingAnonymisation.PLACEHOLDER_KEY);
         int closed = anonymise("'DECLINED', 'EXPIRED', 'CANCELLED'", monthsAgo(now, config.cancelledBookingsMonths()),
                 placeholder);
         int completed = config.completedBookingsMonths() > 0
@@ -80,15 +80,11 @@ public class RetentionJob {
     private int anonymise(String statuses, Instant cutoff, String placeholder) {
         return jdbc.sql("""
                         update booking
-                        set customer_name = :placeholder, customer_email = null, customer_phone = null,
-                            customer_note = null, status_reason = null,
-                            attr_source = null, attr_medium = null, attr_campaign = null, attr_term = null,
-                            attr_content = null, attr_gclid = null, attr_fbclid = null, attr_landing_path = null,
-                            attr_captured_at = null
+                        set %s
                         where status in (%s) and end_time < :cutoff
                           and (customer_email is not null or customer_phone is not null or customer_note is not null
                                or customer_name <> :placeholder or attr_captured_at is not null
-                               or attr_landing_path is not null)""".formatted(statuses))
+                               or attr_landing_path is not null)""".formatted(BookingAnonymisation.SET_CLAUSE, statuses))
                 .param("placeholder", placeholder)
                 .param("cutoff", Timestamp.from(cutoff))
                 .update();

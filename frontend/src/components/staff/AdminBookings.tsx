@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { api, ApiError, call } from "@/lib/api/client";
 import { TENANT } from "@/lib/api/config";
@@ -9,11 +9,12 @@ import { useErrorText } from "@/lib/api/useErrorText";
 import { addDays, shopDay } from "@/lib/format";
 import { Alert, Skeleton } from "../ui/Feedback";
 import { Field, Select, TextArea } from "../ui/Field";
+import { AdminBookingDetail } from "./AdminBookingDetail";
 import { StaffBookingCard } from "./BookingActions";
 
 const STATUSES = ["", "PENDING_BARBER", "AWAITING_PAYMENT", "CONFIRMED", "COMPLETED", "DECLINED", "EXPIRED", "CANCELLED", "NO_SHOW"];
 
-/** Admin: all bookings with filters + manual bookings (walk-in / phone, no deposit). */
+/** Admin: all bookings with filters, details (click a card) + manual bookings (walk-in / phone, no deposit). */
 export function AdminBookings() {
   const t = useTranslations("staff.bookings");
   const ts = useTranslations("status");
@@ -23,8 +24,13 @@ export function AdminBookings() {
   const [items, setItems] = useState<AdminBooking[] | null>(null);
   const [total, setTotal] = useState(0);
   const [error, setError] = useState<unknown>(null);
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
+  // only the newest request may fill the list (an older, slower answer must not overwrite a filtered one)
+  const latest = useRef(0);
   const load = useCallback(() => {
+    const request = ++latest.current;
     call(() =>
       api.GET("/api/admin/bookings", {
         params: {
@@ -39,10 +45,11 @@ export function AdminBookings() {
       }),
     ).then(
       (r) => {
+        if (request !== latest.current) return;
         setItems(r?.items ?? []);
         setTotal(r?.totalItems ?? 0);
       },
-      setError,
+      (e) => request === latest.current && setError(e),
     );
   }, [filter]);
   useEffect(load, [load]);
@@ -64,6 +71,7 @@ export function AdminBookings() {
           <Field label={t("search")} value={filter.q} onChange={(e) => setFilter({ ...filter, q: e.target.value })} />
         </div>
         {error ? <Alert tone="error">{errorText(error)}</Alert> : null}
+        <div role="status">{notice && <Alert tone="success" className="mb-3">{notice}</Alert>}</div>
         {!items ? (
           <Skeleton className="h-64" />
         ) : (
@@ -71,13 +79,31 @@ export function AdminBookings() {
             <p className="mb-3 text-sm text-muted">{t("count", { count: total })}</p>
             <div className="space-y-3">
               {items.map((b) => (
-                <StaffBookingCard key={b.id} booking={b} onChanged={load} withDate />
+                <StaffBookingCard
+                  key={b.id}
+                  booking={b}
+                  onChanged={load}
+                  withDate
+                  onOpen={() => {
+                    setNotice(null);
+                    setOpenId(b.id!);
+                  }}
+                />
               ))}
             </div>
           </>
         )}
       </section>
       <ManualBooking onCreated={load} />
+      <AdminBookingDetail
+        id={openId}
+        onClose={() => setOpenId(null)}
+        onDeleted={(r) => {
+          setOpenId(null);
+          setNotice(r.anonymised ? t("anonymised") : t("deleted"));
+          load();
+        }}
+      />
     </div>
   );
 }

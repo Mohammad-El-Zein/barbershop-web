@@ -9,6 +9,7 @@ import com.barbershop.booking.BookingDtos.PaymentInfo;
 import com.barbershop.booking.BookingDtos.PriceView;
 import com.barbershop.booking.BookingDtos.ServiceLine;
 import com.barbershop.booking.BookingDtos.StaffRef;
+import com.barbershop.booking.BookingDtos.TimelineEntry;
 import com.barbershop.common.i18n.Lang;
 import com.barbershop.payment.Payment;
 import com.barbershop.payment.PaymentProvider;
@@ -20,6 +21,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -79,7 +81,31 @@ public class BookingViews {
                 at(b.getBarberDeadlineAt(), zone), at(b.getAcceptedAt(), zone), at(b.getConfirmedAt(), zone),
                 at(b.getCompletedAt(), zone), at(b.getCancelledAt(), zone), b.getCancelledBy(), b.getStatusReason(),
                 BookingStateMachine.targets(b.getStatus(), viewer), at(b.getCreatedAt(), zone),
-                attribution(b.getAttribution()));
+                attribution(b.getAttribution()), timeline(b, payment, zone));
+    }
+
+    /** The status changes and payment steps that happened, from the stored timestamps. */
+    private static List<TimelineEntry> timeline(Booking b, Payment p, ZoneId zone) {
+        Map<String, Instant> events = new LinkedHashMap<>();
+        events.put("CREATED", b.getCreatedAt());
+        events.put("ACCEPTED", b.getAcceptedAt());
+        if (p != null) events.put("PAID", p.getPaidAt());
+        events.put("CONFIRMED", b.getConfirmedAt());
+        events.put("DECLINED", b.getDeclinedAt());
+        events.put("EXPIRED", b.getExpiredAt());
+        events.put("CANCELLED", b.getCancelledAt());
+        if (p != null) {
+            events.put("REFUNDED", p.getRefundedAt());
+            events.put("FORFEITED", p.getForfeitedAt());
+        }
+        events.put("REMINDER_SENT", b.getReminderSentAt());
+        events.put("COMPLETED", b.getCompletedAt());
+        events.put("NO_SHOW", b.getNoShowAt());
+        return events.entrySet().stream()
+                .filter(e -> e.getValue() != null)
+                .sorted(Map.Entry.comparingByValue()) // stable: same instant keeps the order above
+                .map(e -> new TimelineEntry(e.getKey(), at(e.getValue(), zone)))
+                .toList();
     }
 
     private static AttributionView attribution(BookingAttribution a) {

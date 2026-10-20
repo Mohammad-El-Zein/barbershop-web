@@ -465,7 +465,46 @@
       "status": "Status",
       "all": "All",
       "search": "Search (name, email, phone)",
-      "count": "{count, plural, one {# booking} other {# bookings}}"
+      "count": "{count, plural, one {# booking} other {# bookings}}",
+      "details": "Details",
+      "detailTitle": "Booking details",
+      "customer": "Customer",
+      "email": "Email",
+      "phone": "Phone",
+      "barber": "Barber",
+      "services": "Services",
+      "appointment": "Appointment",
+      "source": "Source",
+      "total": "Total",
+      "loyaltyDiscount": "Loyalty discount",
+      "deposit": "Deposit",
+      "dueAtShop": "To pay in the shop",
+      "payment": "Payment",
+      "note": "Note",
+      "reason": "Reason",
+      "timeline": "History",
+      "noPayment": "no deposit",
+      "delete": "Delete booking",
+      "deleteConfirmTitle": "Delete this booking for good?",
+      "deletePaid": "A deposit was involved: name, email, phone and note are removed. The payment records stay for the bookkeeping, without personal data.",
+      "deleteFull": "The booking is deleted completely with all its data.",
+      "activeHint": "Active bookings (requested, payment open or confirmed) can’t be deleted. Please cancel first.",
+      "deleted": "Booking deleted.",
+      "anonymised": "Booking deleted – the payment records stay without personal data.",
+      "event": {
+        "CREATED": "Booked",
+        "ACCEPTED": "Accepted",
+        "PAID": "Deposit paid",
+        "CONFIRMED": "Confirmed",
+        "DECLINED": "Declined",
+        "EXPIRED": "Expired",
+        "CANCELLED": "Cancelled",
+        "REFUNDED": "Deposit refunded",
+        "FORFEITED": "Deposit kept",
+        "REMINDER_SENT": "Reminder sent",
+        "COMPLETED": "Completed",
+        "NO_SHOW": "No-show"
+      }
     },
     "manual": {
       "title": "Manual booking",
@@ -503,7 +542,10 @@
       "inactive": "inactive",
       "fromShort": "from",
       "edit": "Edit",
-      "deactivate": "Deactivate"
+      "deactivate": "Deactivate",
+      "delete": "Delete",
+      "deleteConfirmTitle": "Delete “{name}” for good?",
+      "deleteConfirm": "The service is deleted and removed from every barber."
     },
     "barbers": {
       "title": "Barbers",
@@ -560,11 +602,10 @@
       "shownOnce": "It won’t be shown again. Hand it to the barber in person – it has to be changed at the first sign-in.",
       "hidePassword": "Hide",
       "deleteTitle": "Delete barber",
-      "deleteHint": "Only possible while the barber has no bookings. Otherwise set them to inactive.",
+      "deleteHint": "Possible when all of the barber’s bookings are cancelled, declined or expired – they are deleted with them. With active bookings or completed appointments: set to inactive.",
       "delete": "Delete",
       "deleteConfirmTitle": "Delete {name} for good?",
-      "deleteConfirm": "This deletes the barber, their services, working hours, time off and login. It can’t be undone.",
-      "hasBookings": "Has bookings – please set to inactive instead."
+      "deleteConfirm": "This deletes the barber, their services, working hours, time off and login. It can’t be undone."
     },
     "timeOff": {
       "title": "Time off",
@@ -590,7 +631,11 @@
       "last": "Last booking",
       "account": "Account",
       "guest": "Guest",
-      "legend": "Loyalty = visits in the current cycle, ★ = next booking gets the discount."
+      "legend": "Loyalty = visits in the current cycle, ★ = next booking gets the discount.",
+      "actions": "Actions",
+      "deleteHistory": "Delete history",
+      "deleteHistoryTitle": "Delete the history of {name}?",
+      "deleteHistoryConfirm": "All closed bookings are deleted (cancelled, declined, expired, completed, no-show). Active bookings and the customer account stay."
     },
     "stats": {
       "title": "Stats",
@@ -666,7 +711,21 @@
     },
     "mustChangeTitle": "Please choose your own password",
     "mustChange": "You signed in with a start password. Choose your own password first – then you’ll see your appointments.",
-    "toProfile": "Change password now"
+    "toProfile": "Change password now",
+    "erasure": {
+      "checking": "Checking …",
+      "willDelete": "{count, plural, one {# booking is} other {# bookings are}} deleted completely.",
+      "willAnonymise": "{count, plural, one {# booking with a deposit is} other {# bookings with a deposit are}} anonymised: name, email, phone and note are removed, the payment records stay for the bookkeeping.",
+      "noBookings": "No bookings are affected.",
+      "blockedActive": "{count, plural, one {# active booking} other {# active bookings}} (requested, payment open or confirmed) – please cancel first.",
+      "blockedHistory": "{count, plural, one {# past appointment} other {# past appointments}} in the history (completed or no-show) – this history is kept.",
+      "useInactive": "So it can’t be deleted. Please set it to inactive instead.",
+      "keptActive": "{count, plural, one {# active booking stays} other {# active bookings stay}}.",
+      "nothingToDelete": "There are no closed bookings that could be deleted.",
+      "irreversible": "This can’t be undone.",
+      "done": "Deleted: {deleted}, anonymised: {anonymised}.",
+      "delete": "Delete for good"
+    }
   },
   "errorPages": {
     "retry": "Try again",

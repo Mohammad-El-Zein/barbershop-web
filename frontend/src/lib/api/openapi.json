@@ -1821,6 +1821,78 @@
         ]
       }
     },
+    "/api/admin/customers/history/preview": {
+      "post": {
+        "tags": [
+          "Admin: deletion"
+        ],
+        "summary": "What deleting this customer's history would do (POST: the guest email stays out of URLs)",
+        "operationId": "previewCustomer",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CustomerRef"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeletionPreview"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/admin/customers/history/delete": {
+      "post": {
+        "tags": [
+          "Admin: deletion"
+        ],
+        "summary": "Deletes / anonymises every booking of the customer that is not active; active bookings and the account stay (keptActive)",
+        "operationId": "deleteCustomerHistory",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CustomerRef"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeletionResult"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/api/admin/bookings": {
       "get": {
         "tags": [
@@ -2957,6 +3029,80 @@
         ]
       }
     },
+    "/api/admin/staff/{id}/deletion": {
+      "get": {
+        "tags": [
+          "Admin: deletion"
+        ],
+        "summary": "What deleting this barber would do (bookings deleted / anonymised, or what blocks it)",
+        "operationId": "previewStaff",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeletionPreview"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/admin/services/{id}/deletion": {
+      "get": {
+        "tags": [
+          "Admin: deletion"
+        ],
+        "summary": "What deleting this service would do (bookings deleted / anonymised, or what blocks it)",
+        "operationId": "previewService",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeletionPreview"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
     "/api/admin/outbox": {
       "get": {
         "tags": [
@@ -3076,6 +3222,41 @@
             "bearerAuth": []
           }
         ]
+      },
+      "delete": {
+        "tags": [
+          "Admin: deletion"
+        ],
+        "summary": "Deletes a booking that is not active (cancelled, declined, expired, completed, no-show). Without money movement it is removed completely; with a paid / refunded / kept deposit its personal data is removed and the payment records stay. Active: 409 booking.erase_active (cancel first).",
+        "operationId": "deleteBooking",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeletionResult"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
       }
     },
     "/api/admin/time-off/{id}": {
@@ -3110,10 +3291,10 @@
     "/api/admin/staff/{id}/permanently": {
       "delete": {
         "tags": [
-          "Admin: staff"
+          "Admin: deletion"
         ],
-        "summary": "Deletes a staff member for good, with services, working hours, time off and login — only without any booking (also past or cancelled ones); otherwise 409 staff.has_bookings: deactivate instead.",
-        "operationId": "deletePermanently",
+        "summary": "Deletes a barber for good with services, working hours, time off and login. Allowed when every booking is cancelled, declined or expired (they are deleted / anonymised with it); otherwise 409 staff.has_active_bookings / staff.has_booking_history: deactivate instead.",
+        "operationId": "deleteStaff",
         "parameters": [
           {
             "name": "id",
@@ -3126,8 +3307,52 @@
           }
         ],
         "responses": {
-          "204": {
-            "description": "No Content"
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeletionResult"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/api/admin/services/{id}/permanently": {
+      "delete": {
+        "tags": [
+          "Admin: deletion"
+        ],
+        "summary": "Deletes a service for good (DELETE /{id} only deactivates it). Allowed when it is in no booking or only in cancelled, declined or expired ones (deleted / anonymised with it); otherwise 409 service.has_active_bookings / service.has_booking_history: deactivate instead.",
+        "operationId": "deleteService",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeletionResult"
+                }
+              }
+            }
           }
         },
         "security": [
@@ -4298,6 +4523,24 @@
           },
           "attribution": {
             "$ref": "#/components/schemas/AttributionView"
+          },
+          "timeline": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TimelineEntry"
+            }
+          }
+        }
+      },
+      "TimelineEntry": {
+        "type": "object",
+        "properties": {
+          "event": {
+            "type": "string"
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       },
@@ -4527,6 +4770,63 @@
         "properties": {
           "startPassword": {
             "type": "string"
+          }
+        }
+      },
+      "CustomerRef": {
+        "type": "object",
+        "description": "A customer: userId for an account, email for a guest (in the body, never in a URL)",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "maxLength": 254,
+            "minLength": 0
+          }
+        }
+      },
+      "DeletionPreview": {
+        "type": "object",
+        "properties": {
+          "allowed": {
+            "type": "boolean"
+          },
+          "deleted": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "anonymised": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "active": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "history": {
+            "type": "integer",
+            "format": "int32"
+          }
+        }
+      },
+      "DeletionResult": {
+        "type": "object",
+        "properties": {
+          "deleted": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "anonymised": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "keptActive": {
+            "type": "integer",
+            "format": "int32"
           }
         }
       },

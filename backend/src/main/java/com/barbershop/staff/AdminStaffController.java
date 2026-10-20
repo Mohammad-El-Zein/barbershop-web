@@ -7,7 +7,6 @@ import com.barbershop.staff.StaffDtos.StaffRequest;
 import com.barbershop.staff.StaffDtos.StaffServicesRequest;
 import com.barbershop.staff.StaffDtos.WorkingHoursEntry;
 import com.barbershop.staff.StaffDtos.WorkingHoursRequest;
-import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -31,11 +30,9 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminStaffController {
 
     private final StaffDirectory directory;
-    private final StaffRemoval removal;
 
-    public AdminStaffController(StaffDirectory directory, StaffRemoval removal) {
+    public AdminStaffController(StaffDirectory directory) {
         this.directory = directory;
-        this.removal = removal;
     }
 
     @GetMapping
@@ -65,14 +62,6 @@ public class AdminStaffController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(CurrentUser admin, @PathVariable("id") UUID id) {
         directory.deactivate(admin.tenantId(), id);
-    }
-
-    @DeleteMapping("/{id}/permanently")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    @Operation(summary = "Deletes a staff member for good, with services, working hours, time off and login — only "
-            + "without any booking (also past or cancelled ones); otherwise 409 staff.has_bookings: deactivate instead.")
-    public void deletePermanently(CurrentUser admin, @PathVariable("id") UUID id) {
-        removal.delete(admin.tenantId(), id);
     }
 
     /** Replaces the services this staff member offers. */

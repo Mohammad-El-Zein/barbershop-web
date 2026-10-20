@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.hibernate.annotations.SQLRestriction;
 import org.springframework.data.domain.Persistable;
 
 /**
@@ -34,9 +35,14 @@ import org.springframework.data.domain.Persistable;
  * that a barber never has two overlapping slot-blocking bookings
  * (constraint booking_no_overlap). Status changes only via {@link #transitionTo},
  * which delegates the rules to {@link BookingStateMachine}.
+ *
+ * <p>A booking erased by an admin but kept for its payment ledger (anonymised, deleted_at set,
+ * see com.barbershop.erasure.ErasureService) is invisible to every JPA query and association;
+ * only the statistics (plain SQL) still count it.
  */
 @Entity
 @Table(name = "booking")
+@SQLRestriction("deleted_at is null")
 public class Booking implements Persistable<UUID> {
 
     @Id

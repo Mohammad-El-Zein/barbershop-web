@@ -142,7 +142,14 @@ public final class BookingDtos {
                                    PaymentInfo payment, OffsetDateTime barberDeadline, OffsetDateTime acceptedAt,
                                    OffsetDateTime confirmedAt, OffsetDateTime completedAt, OffsetDateTime cancelledAt,
                                    Actor cancelledBy, String statusReason, Set<BookingStatus> allowedTransitions,
-                                   OffsetDateTime createdAt, AttributionView attribution) {}
+                                   OffsetDateTime createdAt, AttributionView attribution,
+                                   List<TimelineEntry> timeline) {}
+
+    /**
+     * One step in the history of a booking (admin detail), oldest first: CREATED, ACCEPTED, PAID,
+     * CONFIRMED, DECLINED, EXPIRED, CANCELLED, REFUNDED, FORFEITED, REMINDER_SENT, COMPLETED, NO_SHOW.
+     */
+    public record TimelineEntry(String event, OffsetDateTime at) {}
 
     public record LoyaltyInfo(int visitsInCurrentCycle, int threshold, int discountPercent,
                               boolean nextDiscountAvailable, boolean appliesToThisBooking) {}

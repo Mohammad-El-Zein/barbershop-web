@@ -1,12 +1,10 @@
 package com.barbershop.staff;
 
-import jakarta.persistence.LockModeType;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -24,10 +22,13 @@ public interface StaffRepository extends JpaRepository<Staff, UUID> {
 
     Optional<Staff> findByIdAndTenantId(UUID id, UUID tenantId);
 
-    /** Row lock: a booking for this staff member (FK check) waits until the removal is decided. */
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("select s from Staff s where s.id = :id and s.tenantId = :tenantId")
-    Optional<Staff> findByIdAndTenantIdForUpdate(@Param("id") UUID id, @Param("tenantId") UUID tenantId);
+    /**
+     * Row lock before deleting the staff member. Plain FOR UPDATE on purpose: JPA's PESSIMISTIC_WRITE
+     * is FOR NO KEY UPDATE on PostgreSQL, which does not conflict with the FOR KEY SHARE lock of a
+     * booking being inserted (foreign key) — so the deletion would not wait for it.
+     */
+    @Query(value = "select id from staff where id = :id and tenant_id = :tenantId for update", nativeQuery = true)
+    Optional<UUID> lockForDeletion(@Param("id") UUID id, @Param("tenantId") UUID tenantId);
 
     @Query(value = "select service_id from staff_service where staff_id = :staffId", nativeQuery = true)
     List<UUID> findServiceIds(@Param("staffId") UUID staffId);

@@ -51,7 +51,7 @@ class BarberAdminIT extends AbstractIntegrationTest {
         assertThat(count("select count(*) from refresh_token where user_id = ?::uuid", userId)).isPositive();
 
         assertThat(call(HttpMethod.DELETE, "/api/admin/staff/" + id + "/permanently", null, "en", admin)
-                .getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+                .getStatusCode()).isEqualTo(HttpStatus.OK);
 
         assertThat(get("/api/admin/staff/" + id, "en", admin).getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         for (String table : List.of("staff_service", "working_hours", "time_off")) {
@@ -64,22 +64,25 @@ class BarberAdminIT extends AbstractIntegrationTest {
     }
 
     @Test
-    void aBarberWithBookingsIsNotDeleted_evenWhenTheBookingIsDeclined() {
+    void aBarberWithAnOpenRequestIsNotDeleted_onceDeclinedItIs() {
         String admin = adminToken();
         String id = newBarber(admin, "Has Bookings");
         String booking = (String) book(booking(HAIRCUT, UUID.fromString(id), at(next(DayOfWeek.FRIDAY), "10:00"),
                 uniqueEmail(), "de")).getBody().get("id");
-        call(HttpMethod.POST, "/api/admin/bookings/" + booking + "/decline", Map.of(), "en", admin);
-        assertThat(jdbc.queryForObject("select status from booking where id = ?::uuid", String.class, booking))
-                .isEqualTo("DECLINED");
 
         ResponseEntity<Map<String, Object>> r = call(HttpMethod.DELETE, "/api/admin/staff/" + id + "/permanently",
                 null, "de", admin);
         assertThat(r.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
-        assertThat(r.getBody()).containsEntry("code", "staff.has_bookings");
+        assertThat(r.getBody()).containsEntry("code", "staff.has_active_bookings");
         assertThat((String) r.getBody().get("detail")).contains("inaktiv");
         assertThat(get("/api/admin/staff/" + id, "en", admin).getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(count("select count(*) from working_hours where staff_id = ?::uuid", id)).isPositive();
+
+        // declined = a dead end: deleted with the barber (more rules: ErasureIT)
+        call(HttpMethod.POST, "/api/admin/bookings/" + booking + "/decline", Map.of(), "en", admin);
+        assertThat(call(HttpMethod.DELETE, "/api/admin/staff/" + id + "/permanently", null, "de", admin).getBody())
+                .containsEntry("deleted", 1);
+        assertThat(count("select count(*) from booking where id = ?::uuid", booking)).isZero();
     }
 
     @Test

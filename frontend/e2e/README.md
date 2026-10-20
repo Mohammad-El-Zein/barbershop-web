@@ -49,7 +49,8 @@ shop and one calendar, and the tests compete for the same free slots.
 | --- | --- |
 | `flow.spec.ts` | Book button → services → date/barber → details (guest) → summary → status page; barber accepts via the Mailpit link; Pay → demo payment page → simulate; both confirmation emails in the right language; register + verify → My bookings; barber calendar; cancel with refund info |
 | `special.spec.ts` | 11th visit gets the loyalty discount (seeded account); expired and already-used links; double booking of one slot by two browsers |
-| `barbers.spec.ts` | Admin → Barbers: generated start password shown once (copy, hidden after reload), reset ends the old one, delete refused with bookings and done without |
+| `barbers.spec.ts` | Admin → Barbers: generated start password shown once (copy, hidden after reload), reset ends the old one, delete refused with an active booking (the dialog says why) and done without |
+| `admin-delete.spec.ts` | Admin deletion: a booking card opens its details (contact, money, history), a declined booking is deleted, an active one can’t be; a service in no booking is deleted; a customer’s history is erased while the active booking stays |
 | `pages.spec.ts` | Screenshots of every other page: landing, booking page, login, register, forgot/reset password, privacy, invalid link, guest manage/cancel, profile, staff login and every admin tab |
 
 ## Screenshots

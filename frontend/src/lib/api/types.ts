@@ -33,6 +33,8 @@ export type ShopProfile = S["ProfileDto"];
 export type OpeningRange = S["OpeningRange"];
 export type CampaignStats = S["CampaignStatsView"];
 export type OutboxProblem = S["OutboxProblem"];
+export type DeletionPreview = S["DeletionPreview"];
+export type DeletionResult = S["DeletionResult"];
 
 /** Booking lifecycle statuses (backend BookingStatus). */
 export type BookingStatus =

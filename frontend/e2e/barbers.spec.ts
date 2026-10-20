@@ -2,7 +2,7 @@ import { expect, type Page, test } from "@playwright/test";
 import { api, guestBooking, HAIRCUT, login, state, uniqueEmail, variant } from "./support";
 import { T } from "./texts";
 
-/** Admin → Barbers → Manage: login state, a start password shown once, reset, delete (only without bookings). */
+/** Admin → Barbers → Manage: login state, a start password shown once, reset, delete (refused with an active booking). */
 
 const L = {
   de: {
@@ -17,7 +17,10 @@ const L = {
     hide: "Ausblenden",
     reset: "Passwort zurücksetzen",
     del: "Löschen",
-    hasBookings: "Hat Buchungen – bitte stattdessen auf inaktiv setzen.",
+    delForGood: "Endgültig löschen",
+    blocked: "1 aktive Buchung",
+    useInactive: "Löschen ist deshalb nicht möglich. Bitte stattdessen auf inaktiv setzen.",
+    back: "Zurück",
     sections: "Bereiche",
   },
   en: {
@@ -32,7 +35,10 @@ const L = {
     hide: "Hide",
     reset: "Reset password",
     del: "Delete",
-    hasBookings: "Has bookings – please set to inactive instead.",
+    delForGood: "Delete for good",
+    blocked: "1 active booking",
+    useInactive: "So it can’t be deleted. Please set it to inactive instead.",
+    back: "Back",
     sections: "Sections",
   },
 };
@@ -60,7 +66,7 @@ function card(page: Page, name: string) {
   return page.getByRole("listitem").filter({ hasText: name });
 }
 
-test("barber login: generated start password shown once, reset ends the old one; delete only without bookings", async ({ page }, info) => {
+test("barber login: generated start password shown once, reset ends the old one; delete refused with an active booking", async ({ page }, info) => {
   const { lang } = variant(info);
   const t = L[lang];
   const admin = await login(state().adminEmail, state().adminPassword);
@@ -112,16 +118,20 @@ test("barber login: generated start password shown once, reset ends the old one;
   expect((await api("POST", "/api/auth/the-barber-news/login", { email, password: startPassword })).status).toBe(401);
   expect((await api("POST", "/api/auth/the-barber-news/login", { email, password: newPassword })).status).toBe(200);
 
-  // ── delete: refused with bookings, done without ──
+  // ── delete: refused with an active booking (the dialog says why), done without ──
   await card(page, busy).getByRole("button", { name: t.manage }).click();
   await card(page, busy).getByRole("button", { name: t.del, exact: true }).click();
-  await page.getByRole("dialog").getByRole("button", { name: t.del, exact: true }).click();
-  await expect(card(page, busy).getByText(t.hasBookings)).toBeVisible();
+  const refused = page.getByRole("dialog");
+  await expect(refused.getByText(t.blocked)).toBeVisible();
+  await expect(refused.getByText(t.useInactive)).toBeVisible();
+  await expect(refused.getByRole("button", { name: t.delForGood })).toBeDisabled();
+  await refused.getByRole("button", { name: t.back }).click();
+  await expect(card(page, busy)).toHaveCount(1);
 
   // one barber is open at a time
   await card(page, free).getByRole("button", { name: t.manage }).click();
   await card(page, free).getByRole("button", { name: t.del, exact: true }).click();
-  await page.getByRole("dialog").getByRole("button", { name: t.del, exact: true }).click();
+  await page.getByRole("dialog").getByRole("button", { name: t.delForGood }).click();
   await expect(card(page, free)).toHaveCount(0);
   expect((await api("POST", "/api/auth/the-barber-news/login", { email, password: newPassword })).status).toBe(401);
 });

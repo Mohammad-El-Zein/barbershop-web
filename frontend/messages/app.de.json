@@ -465,7 +465,46 @@
       "status": "Status",
       "all": "Alle",
       "search": "Suche (Name, E-Mail, Telefon)",
-      "count": "{count, plural, one {# Buchung} other {# Buchungen}}"
+      "count": "{count, plural, one {# Buchung} other {# Buchungen}}",
+      "details": "Details",
+      "detailTitle": "Buchungsdetails",
+      "customer": "Kunde",
+      "email": "E-Mail",
+      "phone": "Telefon",
+      "barber": "Barber",
+      "services": "Leistungen",
+      "appointment": "Termin",
+      "source": "Quelle",
+      "total": "Gesamtpreis",
+      "loyaltyDiscount": "Treuerabatt",
+      "deposit": "Anzahlung",
+      "dueAtShop": "Im Laden zu zahlen",
+      "payment": "Zahlung",
+      "note": "Notiz",
+      "reason": "Grund",
+      "timeline": "Verlauf",
+      "noPayment": "keine Anzahlung",
+      "delete": "Termin löschen",
+      "deleteConfirmTitle": "Termin endgültig löschen?",
+      "deletePaid": "Es gab eine Anzahlung: Name, E-Mail, Telefon und Notiz werden entfernt. Die Zahlungsbuchungen bleiben ohne Personenbezug für die Buchhaltung erhalten.",
+      "deleteFull": "Der Termin wird mit allen Daten vollständig gelöscht.",
+      "activeHint": "Aktive Termine (angefragt, Zahlung offen oder bestätigt) können nicht gelöscht werden. Bitte zuerst stornieren.",
+      "deleted": "Termin gelöscht.",
+      "anonymised": "Termin gelöscht – die Zahlungsbuchungen bleiben ohne Personenbezug erhalten.",
+      "event": {
+        "CREATED": "Gebucht",
+        "ACCEPTED": "Angenommen",
+        "PAID": "Anzahlung bezahlt",
+        "CONFIRMED": "Bestätigt",
+        "DECLINED": "Abgelehnt",
+        "EXPIRED": "Abgelaufen",
+        "CANCELLED": "Storniert",
+        "REFUNDED": "Anzahlung erstattet",
+        "FORFEITED": "Anzahlung einbehalten",
+        "REMINDER_SENT": "Erinnerung verschickt",
+        "COMPLETED": "Erledigt",
+        "NO_SHOW": "Nicht erschienen"
+      }
     },
     "manual": {
       "title": "Manuelle Buchung",
@@ -503,7 +542,10 @@
       "inactive": "inaktiv",
       "fromShort": "ab",
       "edit": "Bearbeiten",
-      "deactivate": "Deaktivieren"
+      "deactivate": "Deaktivieren",
+      "delete": "Löschen",
+      "deleteConfirmTitle": "„{name}“ endgültig löschen?",
+      "deleteConfirm": "Die Leistung wird gelöscht und bei allen Barbern entfernt."
     },
     "barbers": {
       "title": "Barber",
@@ -560,11 +602,10 @@
       "shownOnce": "Wird nicht erneut angezeigt. Gib es dem Barber persönlich weiter – er muss es bei der ersten Anmeldung ändern.",
       "hidePassword": "Ausblenden",
       "deleteTitle": "Barber löschen",
-      "deleteHint": "Nur möglich, solange der Barber keine Buchungen hat. Sonst auf inaktiv setzen.",
+      "deleteHint": "Möglich, wenn alle Buchungen des Barbers storniert, abgelehnt oder abgelaufen sind – sie werden mit gelöscht. Bei aktiven Buchungen oder erledigten Terminen: auf inaktiv setzen.",
       "delete": "Löschen",
       "deleteConfirmTitle": "{name} endgültig löschen?",
-      "deleteConfirm": "Gelöscht werden der Barber, seine Leistungen, Arbeitszeiten, Abwesenheiten und sein Login. Das lässt sich nicht rückgängig machen.",
-      "hasBookings": "Hat Buchungen – bitte stattdessen auf inaktiv setzen."
+      "deleteConfirm": "Gelöscht werden der Barber, seine Leistungen, Arbeitszeiten, Abwesenheiten und sein Login. Das lässt sich nicht rückgängig machen."
     },
     "timeOff": {
       "title": "Abwesenheiten",
@@ -590,7 +631,11 @@
       "last": "Letzte Buchung",
       "account": "Konto",
       "guest": "Gast",
-      "legend": "Treue = Besuche im aktuellen Zyklus, ★ = nächste Buchung mit Rabatt."
+      "legend": "Treue = Besuche im aktuellen Zyklus, ★ = nächste Buchung mit Rabatt.",
+      "actions": "Aktionen",
+      "deleteHistory": "Verlauf löschen",
+      "deleteHistoryTitle": "Verlauf von {name} löschen?",
+      "deleteHistoryConfirm": "Gelöscht werden alle abgeschlossenen Buchungen (storniert, abgelehnt, abgelaufen, erledigt, nicht erschienen). Aktive Buchungen und das Kundenkonto bleiben bestehen."
     },
     "stats": {
       "title": "Statistik",
@@ -666,7 +711,21 @@
     },
     "mustChangeTitle": "Bitte eigenes Passwort festlegen",
     "mustChange": "Du hast dich mit einem Startpasswort angemeldet. Leg zuerst ein eigenes Passwort fest – danach siehst du deine Termine.",
-    "toProfile": "Passwort jetzt ändern"
+    "toProfile": "Passwort jetzt ändern",
+    "erasure": {
+      "checking": "Wird geprüft …",
+      "willDelete": "{count, plural, one {# Buchung wird} other {# Buchungen werden}} vollständig gelöscht.",
+      "willAnonymise": "{count, plural, one {# Buchung mit Anzahlung wird} other {# Buchungen mit Anzahlung werden}} anonymisiert: Name, E-Mail, Telefon und Notiz werden entfernt, die Zahlungsbuchungen bleiben für die Buchhaltung erhalten.",
+      "noBookings": "Es sind keine Buchungen betroffen.",
+      "blockedActive": "{count, plural, one {# aktive Buchung} other {# aktive Buchungen}} (angefragt, Zahlung offen oder bestätigt) – bitte zuerst stornieren.",
+      "blockedHistory": "{count, plural, one {# erledigter Termin} other {# erledigte Termine}} im Verlauf (erledigt oder nicht erschienen) – dieser Verlauf bleibt erhalten.",
+      "useInactive": "Löschen ist deshalb nicht möglich. Bitte stattdessen auf inaktiv setzen.",
+      "keptActive": "{count, plural, one {# aktive Buchung bleibt} other {# aktive Buchungen bleiben}} bestehen.",
+      "nothingToDelete": "Es gibt keine abgeschlossenen Buchungen, die gelöscht werden können.",
+      "irreversible": "Das lässt sich nicht rückgängig machen.",
+      "done": "Gelöscht: {deleted}, anonymisiert: {anonymised}.",
+      "delete": "Endgültig löschen"
+    }
   },
   "errorPages": {
     "retry": "Nochmal versuchen",

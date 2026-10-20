@@ -22,6 +22,7 @@ import { ConfirmDialog } from "../ui/Dialog";
 import { Alert, Skeleton } from "../ui/Feedback";
 import { Checkbox, Field, Select, TextArea } from "../ui/Field";
 import { toShopIso } from "./AdminBookings";
+import { DeletionDialog } from "./DeletionDialog";
 
 function useList<T>(fn: () => Promise<T>) {
   const [data, setData] = useState<T | null>(null);
@@ -46,8 +47,11 @@ export function AdminServices() {
   const t = useTranslations("staff.services");
   const errorText = useErrorText();
   const list = useList(async () => (await call(() => api.GET("/api/admin/services"))) as ServiceAdmin[]);
+  const te = useTranslations("staff.erasure");
   const [edit, setEdit] = useState<(typeof emptyService & { id?: string }) | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<ServiceAdmin | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const save = async () => {
     if (!edit) return;
@@ -72,6 +76,7 @@ export function AdminServices() {
         </button>
       </div>
       {list.error ? <Alert tone="error">{errorText(list.error)}</Alert> : null}
+      <div role="status">{notice && <Alert tone="success">{notice}</Alert>}</div>
       {edit && (
         <div className="card grid gap-4 p-5 sm:grid-cols-2">
           <Field label={t("nameDe")} value={edit.nameDe} onChange={(e) => setEdit({ ...edit, nameDe: e.target.value })} />
@@ -144,11 +149,35 @@ export function AdminServices() {
                     {t("deactivate")}
                   </button>
                 )}
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm btn-danger-text"
+                  onClick={() => {
+                    setNotice(null);
+                    setDeleting(s);
+                  }}
+                >
+                  {t("delete")}
+                </button>
               </div>
             </li>
           ))}
         </ul>
       )}
+      <DeletionDialog
+        open={deleting !== null}
+        title={t("deleteConfirmTitle", { name: deleting?.nameDe ?? "" })}
+        intro={t("deleteConfirm")}
+        mode="blocking"
+        loadPreview={() => call(() => api.GET("/api/admin/services/{id}/deletion", { params: { path: { id: deleting!.id! } } }))}
+        runDelete={() => call(() => api.DELETE("/api/admin/services/{id}/permanently", { params: { path: { id: deleting!.id! } } }))}
+        onClose={() => setDeleting(null)}
+        onDone={(res) => {
+          setDeleting(null);
+          setNotice(te("done", { deleted: res.deleted ?? 0, anonymised: res.anonymised ?? 0 }));
+          list.load();
+        }}
+      />
     </div>
   );
 }
@@ -230,8 +259,6 @@ function StaffEditor({ staff, services, onSaved, onDeleted }: { staff: StaffAdmi
   const [assigned, setAssigned] = useState<string[]>(staff.serviceIds ?? []);
   const [hours, setHours] = useState<WorkingHoursEntry[] | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const weekdayName = (d: number) => dayParts(addDays("2026-01-05", d - 1), locale).weekday; // 2026-01-05 = Monday
 
@@ -349,41 +376,23 @@ function StaffEditor({ staff, services, onSaved, onDeleted }: { staff: StaffAdmi
           {t("deleteTitle")}
         </h3>
         <p className="mb-3 text-xs text-muted">{t("deleteHint")}</p>
-        <button type="button" className="btn btn-ghost btn-sm text-red-700" onClick={() => {
-            setDeleteError(null);
-            setConfirmDelete(true);
-          }}>
+        <button type="button" className="btn btn-ghost btn-sm btn-danger-text" onClick={() => setConfirmDelete(true)}>
           {t("delete")}
         </button>
-        {deleteError && (
-          <div className="mt-3">
-            <Alert tone="error">{deleteError}</Alert>
-          </div>
-        )}
       </section>
-      <ConfirmDialog
+      <DeletionDialog
         open={confirmDelete}
         title={t("deleteConfirmTitle", { name: staff.name ?? "" })}
-        confirmLabel={t("delete")}
-        danger
-        busy={deleting}
-        onConfirm={async () => {
-          setDeleting(true);
-          try {
-            await call(() => api.DELETE("/api/admin/staff/{id}/permanently", { params: { path: { id } } }));
-            setConfirmDelete(false);
-            onDeleted();
-          } catch (e) {
-            setConfirmDelete(false);
-            setDeleteError(e instanceof ApiError && e.code === "staff.has_bookings" ? t("hasBookings") : message(e, errorText));
-          } finally {
-            setDeleting(false);
-          }
-        }}
+        intro={t("deleteConfirm")}
+        mode="blocking"
+        loadPreview={() => call(() => api.GET("/api/admin/staff/{id}/deletion", { params: { path: { id } } }))}
+        runDelete={() => call(() => api.DELETE("/api/admin/staff/{id}/permanently", { params: { path: { id } } }))}
         onClose={() => setConfirmDelete(false)}
-      >
-        <p>{t("deleteConfirm")}</p>
-      </ConfirmDialog>
+        onDone={() => {
+          setConfirmDelete(false);
+          onDeleted();
+        }}
+      />
     </div>
   );
 }
@@ -654,8 +663,14 @@ export function AdminCustomers() {
   const locale = useLocale();
   const errorText = useErrorText();
   const [q, setQ] = useState("");
+  const te = useTranslations("staff.erasure");
   const [rows, setRows] = useState<CustomerRow[] | null>(null);
   const [error, setError] = useState<unknown>(null);
+  const [erase, setErase] = useState<CustomerRow | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [reload, setReload] = useState(0);
+  // a customer is named by the account, a guest by the email (in the request body, never in a URL)
+  const ref = (c: CustomerRow) => (c.registered ? { userId: c.userId } : { email: c.email });
 
   useEffect(() => {
     const id = setTimeout(() => {
@@ -665,13 +680,14 @@ export function AdminCustomers() {
       );
     }, 250);
     return () => clearTimeout(id);
-  }, [q]);
+  }, [q, reload]);
 
   return (
     <div className="space-y-6">
       <h1 className="display text-3xl sm:text-4xl">{t("title")}</h1>
       <Field label={t("search")} value={q} onChange={(e) => setQ(e.target.value)} className="max-w-sm" />
       {error ? <Alert tone="error">{errorText(error)}</Alert> : null}
+      <div role="status">{notice && <Alert tone="success">{notice}</Alert>}</div>
       {!rows ? (
         <Skeleton className="h-64" />
       ) : (
@@ -685,7 +701,10 @@ export function AdminCustomers() {
                 <th className="py-2 pr-3">{t("type")}</th>
                 <th className="py-2 pr-3 text-right">{t("visits")}</th>
                 <th className="py-2 pr-3 text-right">{t("cycle")}</th>
-                <th className="py-2">{t("last")}</th>
+                <th className="py-2 pr-3">{t("last")}</th>
+                <th className="py-2">
+                  <span className="sr-only">{t("actions")}</span>
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -701,7 +720,19 @@ export function AdminCustomers() {
                   <td className="py-2.5 pr-3 text-right tabular-nums">
                     {r.registered ? `${r.visitsInCurrentCycle}${r.nextDiscountAvailable ? " ★" : ""}` : "–"}
                   </td>
-                  <td className="py-2.5 text-muted">{r.lastBookingAt ? dateTime(r.lastBookingAt, locale) : "–"}</td>
+                  <td className="py-2.5 pr-3 text-muted">{r.lastBookingAt ? dateTime(r.lastBookingAt, locale) : "–"}</td>
+                  <td className="py-2.5 text-right">
+                    <button
+                      type="button"
+                      className="btn btn-ghost btn-sm whitespace-nowrap btn-danger-text"
+                      onClick={() => {
+                        setNotice(null);
+                        setErase(r);
+                      }}
+                    >
+                      {t("deleteHistory")}
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -709,6 +740,20 @@ export function AdminCustomers() {
           <p className="mt-3 text-xs text-muted">{t("legend")}</p>
         </div>
       )}
+      <DeletionDialog
+        open={erase !== null}
+        title={t("deleteHistoryTitle", { name: erase?.name ?? "" })}
+        intro={t("deleteHistoryConfirm")}
+        mode="history"
+        loadPreview={() => call(() => api.POST("/api/admin/customers/history/preview", { body: ref(erase!) }))}
+        runDelete={() => call(() => api.POST("/api/admin/customers/history/delete", { body: ref(erase!) }))}
+        onClose={() => setErase(null)}
+        onDone={(res) => {
+          setErase(null);
+          setNotice(te("done", { deleted: res.deleted ?? 0, anonymised: res.anonymised ?? 0 }));
+          setReload((n) => n + 1);
+        }}
+      />
     </div>
   );
 }

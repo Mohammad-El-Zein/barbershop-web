@@ -118,6 +118,7 @@ export function ConfirmDialog({
   confirmLabel,
   danger = false,
   busy = false,
+  confirmDisabled = false,
   onConfirm,
   onClose,
 }: {
@@ -127,6 +128,8 @@ export function ConfirmDialog({
   confirmLabel: string;
   danger?: boolean;
   busy?: boolean;
+  /** Only the confirm button off (e.g. the action is not possible); "back" stays usable. */
+  confirmDisabled?: boolean;
   onConfirm: () => void;
   onClose: () => void;
 }) {
@@ -142,7 +145,7 @@ export function ConfirmDialog({
           type="button"
           className={`btn ${danger ? "btn-danger" : "btn-primary"}`}
           onClick={onConfirm}
-          disabled={busy}
+          disabled={busy || confirmDisabled}
           aria-busy={busy}
         >
           {confirmLabel}

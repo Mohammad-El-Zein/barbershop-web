@@ -25,19 +25,23 @@ const BY_TARGET: Record<string, Action> = {
 /**
  * A booking card for the staff area with the actions the backend allows
  * (allowedTransitions). Barbers use /api/barber/…, admins /api/admin/….
- * Destructive actions ask for confirmation first.
+ * Destructive actions ask for confirmation first. With {@code onOpen} (admin list) a click on the
+ * card — anywhere but its buttons and links — or its "Details" button opens the booking details.
  */
 export function StaffBookingCard({
   booking: b,
   onChanged,
   withDate = false,
+  onOpen,
 }: {
   booking: AdminBooking;
   onChanged: () => void;
   /** In lists spanning several days (requests, all bookings) the card shows the date too. */
   withDate?: boolean;
+  onOpen?: () => void;
 }) {
   const t = useTranslations("staff.booking");
+  const tl = useTranslations("staff.bookings");
   const locale = useLocale();
   const { user } = useAuth();
   const errorText = useErrorText();
@@ -85,7 +89,19 @@ export function StaffBookingCard({
   const confirmNeeded = (a: Action) => a !== "accept" && a !== "complete";
 
   return (
-    <article className="card p-4" data-booking-id={b.id}>
+    <article
+      className={`card p-4${onOpen ? " cursor-pointer transition-colors hover:border-gold-text" : ""}`}
+      data-booking-id={b.id}
+      // mouse shortcut only; keyboard and screen reader users have the "Details" button below
+      onClick={
+        onOpen
+          ? (e) => {
+              if ((e.target as HTMLElement).closest("button, a, input, select, textarea, label, dialog")) return;
+              onOpen();
+            }
+          : undefined
+      }
+    >
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="font-semibold tabular-nums">
@@ -121,8 +137,13 @@ export function StaffBookingCard({
       </div>
       {b.note && <p className="mt-2 rounded-lg bg-ink/5 px-3 py-2 text-sm">“{b.note}”</p>}
       {error ? <Alert tone="error" className="mt-3">{errorText(error)}</Alert> : null}
-      {actions.length > 0 && (
+      {(actions.length > 0 || onOpen) && (
         <div className="mt-3 flex flex-wrap gap-2">
+          {onOpen && (
+            <button type="button" className="btn btn-ghost btn-sm" onClick={onOpen} aria-haspopup="dialog">
+              {tl("details")}
+            </button>
+          )}
           {actions.map((a) => (
             <button
               key={a}

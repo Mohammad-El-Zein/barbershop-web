@@ -31,7 +31,8 @@ export interface paths {
         get: operations["get_6"];
         put?: never;
         post?: never;
-        delete?: never;
+        /** Deletes a booking that is not active (cancelled, declined, expired, completed, no-show). Without money movement it is removed completely; with a paid / refunded / kept deposit its personal data is removed and the payment records stay. Active: 409 booking.erase_active (cancel first). */
+        delete: operations["deleteBooking"];
         options?: never;
         head?: never;
         patch?: never;
@@ -152,6 +153,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/customers/history/delete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Deletes / anonymises every booking of the customer that is not active; active bookings and the account stay (keptActive) */
+        post: operations["deleteCustomerHistory"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/customers/history/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** What deleting this customer's history would do (POST: the guest email stays out of URLs) */
+        post: operations["previewCustomer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/outbox": {
         parameters: {
             query?: never;
@@ -213,6 +248,40 @@ export interface paths {
         put: operations["update_2"];
         post?: never;
         delete: operations["delete_1"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/services/{id}/deletion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What deleting this service would do (bookings deleted / anonymised, or what blocks it) */
+        get: operations["previewService"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/services/{id}/permanently": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Deletes a service for good (DELETE /{id} only deactivates it). Allowed when it is in no booking or only in cancelled, declined or expired ones (deleted / anonymised with it); otherwise 409 service.has_active_bookings / service.has_booking_history: deactivate instead. */
+        delete: operations["deleteService"];
         options?: never;
         head?: never;
         patch?: never;
@@ -321,6 +390,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/staff/{id}/deletion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What deleting this barber would do (bookings deleted / anonymised, or what blocks it) */
+        get: operations["previewStaff"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/staff/{id}/permanently": {
         parameters: {
             query?: never;
@@ -331,8 +417,8 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        /** Deletes a staff member for good, with services, working hours, time off and login — only without any booking (also past or cancelled ones); otherwise 409 staff.has_bookings: deactivate instead. */
-        delete: operations["deletePermanently"];
+        /** Deletes a barber for good with services, working hours, time off and login. Allowed when every booking is cancelled, declined or expired (they are deleted / anonymised with it); otherwise 409 staff.has_active_bookings / staff.has_booking_history: deactivate instead. */
+        delete: operations["deleteStaff"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1295,6 +1381,7 @@ export interface components {
             /** @enum {string} */
             status?: "PENDING_BARBER" | "AWAITING_PAYMENT" | "CONFIRMED" | "COMPLETED" | "DECLINED" | "EXPIRED" | "CANCELLED" | "NO_SHOW";
             statusReason?: string;
+            timeline?: components["schemas"]["TimelineEntry"][];
             /** Format: uuid */
             userId?: string;
         };
@@ -1403,6 +1490,13 @@ export interface components {
             /** Format: date-time */
             start: string;
         };
+        /** @description A customer: userId for an account, email for a guest (in the body, never in a URL) */
+        CustomerRef: {
+            /** Format: email */
+            email?: string;
+            /** Format: uuid */
+            userId?: string;
+        };
         CustomerRow: {
             /** Format: int64 */
             completedVisits?: number;
@@ -1460,6 +1554,25 @@ export interface components {
             start?: string;
             /** @enum {string} */
             status?: "PENDING_BARBER" | "AWAITING_PAYMENT" | "CONFIRMED" | "COMPLETED" | "DECLINED" | "EXPIRED" | "CANCELLED" | "NO_SHOW";
+        };
+        DeletionPreview: {
+            /** Format: int32 */
+            active?: number;
+            allowed?: boolean;
+            /** Format: int32 */
+            anonymised?: number;
+            /** Format: int32 */
+            deleted?: number;
+            /** Format: int32 */
+            history?: number;
+        };
+        DeletionResult: {
+            /** Format: int32 */
+            anonymised?: number;
+            /** Format: int32 */
+            deleted?: number;
+            /** Format: int32 */
+            keptActive?: number;
         };
         EmailRequest: {
             /** Format: email */
@@ -1846,6 +1959,11 @@ export interface components {
             };
             timezone?: string;
         };
+        TimelineEntry: {
+            /** Format: date-time */
+            at?: string;
+            event?: string;
+        };
         TimeOffRequest: {
             /** Format: date-time */
             end: string;
@@ -1984,6 +2102,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BookingAdminView"];
+                };
+            };
+        };
+    };
+    deleteBooking: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeletionResult"];
                 };
             };
         };
@@ -2156,6 +2296,54 @@ export interface operations {
             };
         };
     };
+    deleteCustomerHistory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CustomerRef"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeletionResult"];
+                };
+            };
+        };
+    };
+    previewCustomer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CustomerRef"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeletionPreview"];
+                };
+            };
+        };
+    };
     problems: {
         parameters: {
             query?: never;
@@ -2305,6 +2493,50 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    previewService: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeletionPreview"];
+                };
+            };
+        };
+    };
+    deleteService: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeletionResult"];
+                };
             };
         };
     };
@@ -2604,7 +2836,7 @@ export interface operations {
             };
         };
     };
-    deletePermanently: {
+    previewStaff: {
         parameters: {
             query?: never;
             header?: never;
@@ -2615,12 +2847,36 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description No Content */
-            204: {
+            /** @description OK */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["DeletionPreview"];
+                };
+            };
+        };
+    };
+    deleteStaff: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeletionResult"];
+                };
             };
         };
     };
