@@ -55,16 +55,34 @@ variable "tenant_timezone" {
   default     = "Europe/Berlin"
 }
 
-variable "site_domain" {
-  description = "Custom domain of the website, e.g. www.example-barber.de. Empty = the Container Apps default domain (README.md → Custom domains)."
+variable "web_domain" {
+  description = "Custom domain of the website, e.g. www.example-barber.de (host name only). Bound to the frontend app with a free managed certificate. Empty = the Container Apps default domain (docs/DOMAIN.md)."
   type        = string
   default     = ""
+  validation {
+    condition     = var.web_domain == "" || can(regex("^([a-z0-9]([a-z0-9-]*[a-z0-9])?\\.)+[a-z]{2,}$", var.web_domain))
+    error_message = "web_domain is a lower-case host name without https:// or a path, e.g. www.example-barber.de."
+  }
 }
 
 variable "api_domain" {
-  description = "Custom domain of the API, e.g. api.example-barber.de. Empty = the Container Apps default domain."
+  description = "Custom domain of the API, e.g. api.example-barber.de (host name only). Bound to the backend app with a free managed certificate. Empty = the Container Apps default domain."
   type        = string
   default     = ""
+  validation {
+    condition     = var.api_domain == "" || can(regex("^([a-z0-9]([a-z0-9-]*[a-z0-9])?\\.)+[a-z]{2,}$", var.api_domain))
+    error_message = "api_domain is a lower-case host name without https:// or a path, e.g. api.example-barber.de."
+  }
+}
+
+variable "cors_allow_default_web_url" {
+  description = "Also allow the website's Container Apps default URL (https://ca-…azurecontainerapps.io) as CORS origin — a transition after switching to web_domain. Not in prod."
+  type        = bool
+  default     = false
+  validation {
+    condition     = !(var.cors_allow_default_web_url && var.environment == "prod")
+    error_message = "cors_allow_default_web_url must not be true in the prod environment: CORS allows exactly the website origin there."
+  }
 }
 
 variable "public_demo" {

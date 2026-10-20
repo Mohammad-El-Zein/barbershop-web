@@ -60,11 +60,14 @@ Bei dir sieht das für dev so aus. Prüfe die Werte trotzdem immer mit dem Befeh
 | `BACKEND_APP_NAME` | `ca-barbershop-dev-api` |
 | `FRONTEND_APP_NAME` | `ca-barbershop-dev-web` |
 | `MIGRATE_JOB_NAME` | `job-barbershop-dev-migrate` |
-| `API_URL` | `https://ca-barbershop-dev-api.proudflower-d87b9ca7.swedencentral.azurecontainerapps.io` |
+| `API_URL` | `https://barbershop-api.elzein.dev` |
 | `NEXT_PUBLIC_API_URL` | gleicher Wert wie `API_URL` |
-| `NEXT_PUBLIC_SITE_URL` | `https://ca-barbershop-dev-web.proudflower-d87b9ca7.swedencentral.azurecontainerapps.io` |
+| `NEXT_PUBLIC_SITE_URL` | `https://barbershop.elzein.dev` |
 | `NEXT_PUBLIC_TENANT` | `the-barber-news` |
 | `NEXT_PUBLIC_SHOW_DEMO_BANNER` | `true` |
+
+Die URLs sind die eigenen Domains (`web_domain` / `api_domain`, siehe [DOMAIN.md](DOMAIN.md)). Ändern sich die
+Domains, trägst du die neuen Werte hier in GitHub ein. Der nächste Deploy baut das Frontend dann damit neu.
 
 ---
 

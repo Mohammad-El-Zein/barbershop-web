@@ -89,6 +89,22 @@ run "dev_defaults_are_private_and_safe" {
     condition     = length(azurerm_container_app_custom_domain.frontend) == 0 && length(azurerm_monitor_metric_alert.api_down) == 0
     error_message = "No custom domains / alerts unless configured."
   }
+  assert {
+    condition     = length(azurerm_container_app_custom_domain.backend) == 0 && length(azurerm_container_app_environment_managed_certificate.frontend) == 0 && length(azurerm_container_app_environment_managed_certificate.backend) == 0
+    error_message = "Without web_domain / api_domain: no host names and no certificates."
+  }
+  assert {
+    condition     = output.site_url == "https://ca-barbershop-dev-web.nicefield-0000.germanywestcentral.azurecontainerapps.io" && output.api_url == "https://ca-barbershop-dev-api.nicefield-0000.germanywestcentral.azurecontainerapps.io"
+    error_message = "Without custom domains the public URLs are the Container Apps default URLs."
+  }
+  assert {
+    condition     = [for e in azurerm_container_app.backend.template[0].container[0].env : e.value if e.name == "APP_CORS_ALLOWED_ORIGINS"][0] == output.site_url && [for e in azurerm_container_app.backend.template[0].container[0].env : e.value if e.name == "APP_FRONTEND_BASE_URL"][0] == output.site_url
+    error_message = "Default: CORS is exactly the website origin, email links point to the website."
+  }
+  assert {
+    condition     = output.ci_variables.API_URL == output.api_url && output.ci_variables.NEXT_PUBLIC_API_URL == output.api_url && output.ci_variables.NEXT_PUBLIC_SITE_URL == output.site_url
+    error_message = "ci_variables carry the default URLs."
+  }
 }
 
 # Container Apps rewrites "$$" → "$" and "$(NAME)" in commands, args and env values (like
@@ -145,7 +161,7 @@ run "prod_is_highly_available_with_domains_and_alerts" {
 
   variables {
     environment                    = "prod"
-    site_domain                    = "www.example-barber.de"
+    web_domain                     = "www.example-barber.de"
     api_domain                     = "api.example-barber.de"
     captcha_secret                 = "turnstile-secret"
     zone_redundant                 = true
@@ -183,6 +199,18 @@ run "prod_is_highly_available_with_domains_and_alerts" {
   assert {
     condition     = length(azurerm_container_app_custom_domain.frontend) == 1 && length(azurerm_container_app_custom_domain.backend) == 1
     error_message = "Both custom domains are attached."
+  }
+  assert {
+    condition     = azurerm_container_app_environment_managed_certificate.frontend[0].subject_name == "www.example-barber.de" && azurerm_container_app_environment_managed_certificate.backend[0].subject_name == "api.example-barber.de"
+    error_message = "Each custom domain gets a managed certificate."
+  }
+  assert {
+    condition     = [for e in azurerm_container_app.backend.template[0].container[0].env : e.value if e.name == "APP_FRONTEND_BASE_URL"][0] == "https://www.example-barber.de"
+    error_message = "Email links point to the custom website domain."
+  }
+  assert {
+    condition     = output.ci_variables.API_URL == "https://api.example-barber.de" && output.ci_variables.NEXT_PUBLIC_API_URL == "https://api.example-barber.de" && output.ci_variables.NEXT_PUBLIC_SITE_URL == "https://www.example-barber.de"
+    error_message = "ci_variables (frontend build, CD health check) use the custom domains."
   }
   assert {
     condition     = length(azurerm_monitor_metric_alert.api_down) == 1 && length(azurerm_monitor_scheduled_query_rules_alert_v2.mail_dead) == 1
@@ -303,4 +331,90 @@ run "backend_never_scales_to_zero" {
   }
 
   expect_failures = [var.backend_min_replicas]
+}
+
+# dev after switching to its own domains: the old default website URL may still call the API
+run "dev_with_domains_keeps_the_default_origin_during_the_transition" {
+  command = apply
+
+  variables {
+    allow_missing_captcha      = true
+    web_domain                 = "barbershop.example.test"
+    api_domain                 = "barbershop-api.example.test"
+    cors_allow_default_web_url = true
+  }
+
+  assert {
+    condition     = [for e in azurerm_container_app.backend.template[0].container[0].env : e.value if e.name == "APP_CORS_ALLOWED_ORIGINS"][0] == "https://barbershop.example.test,https://ca-barbershop-dev-web.nicefield-0000.germanywestcentral.azurecontainerapps.io"
+    error_message = "CORS: the website domain first, then the old default URL (transition)."
+  }
+  assert {
+    condition     = [for e in azurerm_container_app.backend.template[0].container[0].env : e.value if e.name == "APP_FRONTEND_BASE_URL"][0] == "https://barbershop.example.test"
+    error_message = "Email links use the new website domain, never the old default URL."
+  }
+  assert {
+    condition     = output.site_url == "https://barbershop.example.test" && output.api_url == "https://barbershop-api.example.test"
+    error_message = "Public URLs follow web_domain / api_domain."
+  }
+  assert {
+    condition     = output.ci_variables.API_URL == "https://barbershop-api.example.test" && output.ci_variables.NEXT_PUBLIC_API_URL == "https://barbershop-api.example.test" && output.ci_variables.NEXT_PUBLIC_SITE_URL == "https://barbershop.example.test"
+    error_message = "ci_variables use the custom domains."
+  }
+  assert {
+    condition     = azurerm_container_app_custom_domain.frontend[0].name == "barbershop.example.test" && azurerm_container_app_custom_domain.backend[0].name == "barbershop-api.example.test"
+    error_message = "The host names are bound to the right apps."
+  }
+  assert {
+    condition     = azurerm_container_app_environment_managed_certificate.frontend[0].domain_control_validation == "CNAME" && azurerm_container_app_environment_managed_certificate.backend[0].subject_name == "barbershop-api.example.test"
+    error_message = "Managed certificates are validated via the CNAME record."
+  }
+  assert {
+    condition     = azurerm_application_insights_standard_web_test.api.request[0].url == "https://barbershop-api.example.test/actuator/health/readiness"
+    error_message = "The availability test checks the API domain."
+  }
+  assert {
+    condition     = [for e in azurerm_container_app.frontend.template[0].container[0].env : e.value if e.name == "API_URL_INTERNAL"][0] == "https://ca-barbershop-dev-api.nicefield-0000.germanywestcentral.azurecontainerapps.io"
+    error_message = "Server-side frontend requests stay inside the environment (default API URL)."
+  }
+}
+
+run "domain_without_transition_allows_only_the_new_origin" {
+  command = apply
+
+  variables {
+    allow_missing_captcha = true
+    web_domain            = "barbershop.example.test"
+  }
+
+  assert {
+    condition     = [for e in azurerm_container_app.backend.template[0].container[0].env : e.value if e.name == "APP_CORS_ALLOWED_ORIGINS"][0] == "https://barbershop.example.test"
+    error_message = "Without cors_allow_default_web_url only the website domain is allowed."
+  }
+  assert {
+    condition     = output.api_url == "https://ca-barbershop-dev-api.nicefield-0000.germanywestcentral.azurecontainerapps.io" && length(azurerm_container_app_custom_domain.backend) == 0
+    error_message = "api_domain empty: the API keeps its default URL."
+  }
+}
+
+run "transition_origin_is_rejected_in_prod" {
+  command = plan
+
+  variables {
+    environment                = "prod"
+    captcha_secret             = "turnstile-secret"
+    cors_allow_default_web_url = true
+  }
+
+  expect_failures = [var.cors_allow_default_web_url]
+}
+
+run "domain_with_scheme_is_rejected" {
+  command = plan
+
+  variables {
+    allow_missing_captcha = true
+    web_domain            = "https://barbershop.example.test"
+  }
+
+  expect_failures = [var.web_domain]
 }

@@ -195,8 +195,9 @@ Check it:
 curl -fsS "$(terraform output -raw api_url)/actuator/health/readiness"   # {"status":"UP"}
 ```
 
-**Step 6. Custom domains and certificates.** See `infra/azure/README.md` → Custom domains (DNS records, then
-`az containerapp hostname bind`). Then rebuild the frontend image for the final domain if it changed.
+**Step 6. Custom domains and certificates.** Set `web_domain` / `api_domain`; see [DOMAIN.md](DOMAIN.md) (DNS
+records, apply, one `az containerapp hostname bind`, importing domains bound by hand). Then rebuild the frontend
+image for the final domain.
 
 **Step 7. Remove the admin password** from the deployment once you have logged in:
 `unset TF_VAR_admin_password && terraform apply -var-file=env/prod.tfvars`. The account stays; change its password
@@ -370,6 +371,9 @@ The backend never connects with an admin or owner login. Three logins, three job
 | `TXT @` SPF | e.g. `v=spf1 include:<your mail provider> -all` | Sender domain |
 | DKIM | `CNAME`/`TXT` records from the mail provider (ACS shows them for custom domains) | Signed mails |
 | `TXT _dmarc` | `v=DMARC1; p=quarantine; rua=mailto:dmarc@example-barber.de` | Spoofing protection |
+
+Azure custom domains: Cloudflare and similar must serve the records as "DNS only" (no proxy), details in
+[DOMAIN.md](DOMAIN.md).
 
 Without SPF, DKIM and DMARC the booking emails land in spam. Test them with a mail-tester service before go-live.
 

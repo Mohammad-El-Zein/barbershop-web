@@ -18,6 +18,26 @@ run "tfvars_apply_against_mocks" {
     error_message = "Both public URLs are https."
   }
   assert {
+    condition     = output.site_url == (var.web_domain != "" ? "https://${var.web_domain}" : output.site_url) && output.api_url == (var.api_domain != "" ? "https://${var.api_domain}" : output.api_url)
+    error_message = "web_domain / api_domain drive the public URLs."
+  }
+  assert {
+    condition     = [for e in azurerm_container_app.backend.template[0].container[0].env : e.value if e.name == "APP_FRONTEND_BASE_URL"][0] == output.site_url && split(",", [for e in azurerm_container_app.backend.template[0].container[0].env : e.value if e.name == "APP_CORS_ALLOWED_ORIGINS"][0])[0] == output.site_url
+    error_message = "Email links and the first CORS origin are the website URL."
+  }
+  assert {
+    condition     = var.environment != "prod" || length(split(",", [for e in azurerm_container_app.backend.template[0].container[0].env : e.value if e.name == "APP_CORS_ALLOWED_ORIGINS"][0])) == 1
+    error_message = "prod: CORS allows exactly one origin."
+  }
+  assert {
+    condition     = output.ci_variables.API_URL == output.api_url && output.ci_variables.NEXT_PUBLIC_API_URL == output.api_url && output.ci_variables.NEXT_PUBLIC_SITE_URL == output.site_url
+    error_message = "ci_variables carry the public URLs (frontend build, CD health check)."
+  }
+  assert {
+    condition     = length(azurerm_container_app_environment_managed_certificate.frontend) == (var.web_domain != "" ? 1 : 0) && length(azurerm_container_app_environment_managed_certificate.backend) == (var.api_domain != "" ? 1 : 0)
+    error_message = "A managed certificate per custom domain."
+  }
+  assert {
     condition = alltrue([
       for c in [azurerm_container_app.backend.template[0].container[0], azurerm_container_app_job.migrate.template[0].container[0]] :
       [for e in c.env : e.value if e.name == "PAYMENT_DEMO_ALLOW_IN_PROD"][0] == tostring(var.environment != "prod")

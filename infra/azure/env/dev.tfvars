@@ -9,9 +9,11 @@ tenant_slug     = "the-barber-news"
 tenant_name     = "The Barber News"
 tenant_timezone = "Europe/Berlin"
 
-# empty = *.azurecontainerapps.io default domains
-site_domain = ""
-api_domain  = ""
+# own domains (DNS at Cloudflare, "DNS only"; docs/DOMAIN.md). Empty = *.azurecontainerapps.io
+web_domain = "barbershop.elzein.dev"
+api_domain = "barbershop-api.elzein.dev"
+# transition: the old https://ca-barbershop-dev-web.…azurecontainerapps.io may still call the API
+cors_allow_default_web_url = true
 
 # initial images (README.md → First deployment); CI rolls out later tags
 backend_image  = "acrbarbershopdevxxxx.azurecr.io/barbershop-backend:sha-0000000"

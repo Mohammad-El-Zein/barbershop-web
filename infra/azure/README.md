@@ -95,18 +95,22 @@ new link-token secret invalidates the email links that are still open.
 
 ## Custom domains
 
+Step by step (German, Windows cmd, incl. importing domains that were bound by hand): [docs/DOMAIN.md](../../docs/DOMAIN.md).
+
 1. `terraform output custom_domain_verification_id` and `terraform output frontend_default_fqdn` / `backend_default_fqdn`.
-2. At the DNS provider:
+2. At the DNS provider (Cloudflare: "DNS only", no proxy — Azure must see the CNAME to issue and renew the
+   certificate):
    - `CNAME www → <frontend_default_fqdn>` and `TXT asuid.www → <verification id>`;
    - the same for `api` with the backend FQDN.
-3. Set `site_domain` / `api_domain` and run `terraform apply`. This attaches the host names and switches CORS and
-   the email link base URL.
-4. Free managed certificate (not supported by azurerm yet):
+3. Set `web_domain` / `api_domain` and run `terraform apply`. This attaches the host names, creates a free managed
+   certificate per domain (`azurerm_container_app_environment_managed_certificate`) and switches CORS, the email
+   link base URL, `ci_variables` and the availability test. `cors_allow_default_web_url = true` (not in prod)
+   keeps the old default website URL as an extra CORS origin during a transition.
+4. Bind each certificate to its host name once (azurerm cannot: Azure issues the certificate only after the host
+   name is on the app, and the certificate fields of the custom domain force a new resource):
    ```bash
-   az containerapp hostname bind -g <rg> -n <frontend app> --hostname www.example-barber.de \
-     --environment <container_app_environment> --validation-method CNAME
-   az containerapp hostname bind -g <rg> -n <backend app> --hostname api.example-barber.de \
-     --environment <container_app_environment> --validation-method CNAME
+   az containerapp hostname bind -g <rg> -n <app> --hostname <domain>      --environment <container_app_environment> --certificate <managed certificate id>
    ```
-   Azure renews the certificates automatically.
-5. Rebuild the frontend image with the new `NEXT_PUBLIC_SITE_URL` / `NEXT_PUBLIC_API_URL` and deploy it.
+   Azure renews the certificates automatically; `ignore_changes` keeps Terraform away from the binding.
+5. Rebuild the frontend image with the new `NEXT_PUBLIC_SITE_URL` / `NEXT_PUBLIC_API_URL` and deploy it (update
+   these GitHub environment variables and `API_URL` first).

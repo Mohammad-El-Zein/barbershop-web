@@ -10,8 +10,8 @@ tenant_slug     = "the-barber-news"
 tenant_name     = "The Barber News"
 tenant_timezone = "Europe/Berlin"
 
-site_domain = "www.example-barber.de"
-api_domain  = "api.example-barber.de"
+web_domain = "www.example-barber.de"
+api_domain = "api.example-barber.de"
 
 backend_image  = "acrbarbershopprodxxxx.azurecr.io/barbershop-backend:1.0.0"
 frontend_image = "acrbarbershopprodxxxx.azurecr.io/barbershop-frontend:1.0.0"

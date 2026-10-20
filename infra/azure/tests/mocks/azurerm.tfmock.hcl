@@ -128,3 +128,9 @@ mock_resource "azurerm_container_app_job" {
     id = "/subscriptions/00000000-0000-4000-8000-000000000004/resourceGroups/rg-barbershop-dev/providers/Microsoft.App/jobs/job-barbershop-dev-migrate"
   }
 }
+
+mock_resource "azurerm_container_app_environment_managed_certificate" {
+  defaults = {
+    id = "/subscriptions/00000000-0000-4000-8000-000000000004/resourceGroups/rg-barbershop-dev/providers/Microsoft.App/managedEnvironments/cae-barbershop-dev/managedCertificates/mc-mock"
+  }
+}

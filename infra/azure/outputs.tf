@@ -34,7 +34,7 @@ output "backend_default_fqdn" {
 }
 
 output "frontend_default_fqdn" {
-  description = "CNAME target for site_domain."
+  description = "CNAME target for web_domain."
   value       = azurerm_container_app.frontend.ingress[0].fqdn
 }
 

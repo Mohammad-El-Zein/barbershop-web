@@ -21,9 +21,13 @@ resource "azurerm_container_app_environment" "this" {
 }
 
 locals {
-  default_domain = azurerm_container_app_environment.this.default_domain
-  site_url       = var.site_domain != "" ? "https://${var.site_domain}" : "https://${local.frontend_name}.${local.default_domain}"
-  api_url        = var.api_domain != "" ? "https://${var.api_domain}" : "https://${local.backend_name}.${local.default_domain}"
+  default_domain   = azurerm_container_app_environment.this.default_domain
+  default_site_url = "https://${local.frontend_name}.${local.default_domain}"
+  default_api_url  = "https://${local.backend_name}.${local.default_domain}"
+  site_url         = var.web_domain != "" ? "https://${var.web_domain}" : local.default_site_url
+  api_url          = var.api_domain != "" ? "https://${var.api_domain}" : local.default_api_url
+  # the website origin; optionally (dev, transition) also the old default URL
+  cors_origins = distinct(concat([local.site_url], var.cors_allow_default_web_url ? [local.default_site_url] : []))
 
   captcha_on = local.optional_secret_set["captcha-secret"]
   redis_on   = local.optional_secret_set["redis-url"]
@@ -44,7 +48,7 @@ locals {
     DB_USERNAME                    = local.db_app_role # DML-only role, never the admin / owner
     APP_DB_MIGRATE                 = "false"           # the migrate job runs Flyway (dbjobs.tf)
     APP_FRONTEND_BASE_URL          = local.site_url
-    APP_CORS_ALLOWED_ORIGINS       = local.site_url
+    APP_CORS_ALLOWED_ORIGINS       = join(",", local.cors_origins)
     APP_COOKIE_SECURE              = "true"
     APP_ADMIN_EMAIL                = var.admin_email
     APP_ADMIN_TENANT               = var.tenant_slug
@@ -244,7 +248,7 @@ resource "azurerm_container_app" "frontend" {
       # redirected to https, allow_insecure_connections = false)
       env {
         name  = "API_URL_INTERNAL"
-        value = "https://${local.backend_name}.${local.default_domain}"
+        value = local.default_api_url
       }
 
       startup_probe {
@@ -288,14 +292,20 @@ resource "azurerm_container_app" "frontend" {
   depends_on = [azurerm_role_assignment.apps_acr_pull]
 }
 
-# ── custom domains (README.md → Custom domains: DNS first, then the managed certificate) ──
+# ── custom domains (docs/DOMAIN.md: DNS first, then apply, then one hostname bind) ───────
+# Per domain: the host name on the app and a free managed certificate in the environment
+# (Azure renews it). The last step — binding that certificate to the host name (SNI) — is not
+# possible in azurerm: Azure issues the certificate only after the host name is on the app, and
+# the certificate fields of azurerm_container_app_custom_domain force a new resource. It is one
+# `az containerapp hostname bind --certificate …`; ignore_changes keeps the binding afterwards.
+# The apps need no ignore_changes for their domains: ingress.custom_domain is read-only in
+# azurerm 4.x, and an update of the app sends the bound domains back unchanged.
 
 resource "azurerm_container_app_custom_domain" "frontend" {
-  count            = var.site_domain == "" ? 0 : 1
-  name             = var.site_domain
+  count            = var.web_domain == "" ? 0 : 1
+  name             = var.web_domain
   container_app_id = azurerm_container_app.frontend.id
 
-  # the free managed certificate is bound with `az containerapp hostname bind` (not in azurerm)
   lifecycle {
     ignore_changes = [certificate_binding_type, container_app_environment_certificate_id]
   }
@@ -309,4 +319,34 @@ resource "azurerm_container_app_custom_domain" "backend" {
   lifecycle {
     ignore_changes = [certificate_binding_type, container_app_environment_certificate_id]
   }
+}
+
+resource "azurerm_container_app_environment_managed_certificate" "frontend" {
+  count                        = var.web_domain == "" ? 0 : 1
+  name                         = "mc-${substr(replace(var.web_domain, ".", "-"), 0, 56)}"
+  container_app_environment_id = azurerm_container_app_environment.this.id
+  subject_name                 = var.web_domain
+  domain_control_validation    = "CNAME"
+
+  # certificates created by `az containerapp hostname bind` have generated names; after an
+  # import they are kept as they are instead of being replaced (docs/DOMAIN.md)
+  lifecycle {
+    ignore_changes = [name, domain_control_validation]
+  }
+
+  depends_on = [azurerm_container_app_custom_domain.frontend]
+}
+
+resource "azurerm_container_app_environment_managed_certificate" "backend" {
+  count                        = var.api_domain == "" ? 0 : 1
+  name                         = "mc-${substr(replace(var.api_domain, ".", "-"), 0, 56)}"
+  container_app_environment_id = azurerm_container_app_environment.this.id
+  subject_name                 = var.api_domain
+  domain_control_validation    = "CNAME"
+
+  lifecycle {
+    ignore_changes = [name, domain_control_validation]
+  }
+
+  depends_on = [azurerm_container_app_custom_domain.backend]
 }
