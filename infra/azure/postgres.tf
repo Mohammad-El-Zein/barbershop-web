@@ -95,6 +95,14 @@ resource "azurerm_postgresql_flexible_server_configuration" "tls" {
   value     = "TLSv1.2"
 }
 
+# Azure only allows CREATE EXTENSION for allow-listed extensions: V1__init.sql needs btree_gist
+# (no-double-booking exclusion constraint), created by the migrate job
+resource "azurerm_postgresql_flexible_server_configuration" "extensions" {
+  name      = "azure.extensions"
+  server_id = azurerm_postgresql_flexible_server.this.id
+  value     = "BTREE_GIST"
+}
+
 resource "azurerm_postgresql_flexible_server_firewall_rule" "allowed" {
   for_each         = var.postgres_public_access ? var.postgres_firewall_ips : {}
   name             = each.key

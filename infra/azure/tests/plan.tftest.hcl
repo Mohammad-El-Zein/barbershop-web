@@ -78,6 +78,10 @@ run "dev_defaults_are_private_and_safe" {
     error_message = "The db-init job runs the shared role script."
   }
   assert {
+    condition     = contains(split(",", upper(azurerm_postgresql_flexible_server_configuration.extensions.value)), "BTREE_GIST")
+    error_message = "The migrations create btree_gist: it must be allow-listed (azure.extensions)."
+  }
+  assert {
     condition     = contains(keys(azurerm_key_vault_secret.optional), "smtp-password") && !contains(keys(azurerm_key_vault_secret.optional), "captcha-secret")
     error_message = "Optional secrets are created only when set."
   }
