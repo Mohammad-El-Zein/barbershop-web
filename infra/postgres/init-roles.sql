@@ -96,6 +96,14 @@ SELECT :'is_superuser'::boolean OR pg_has_role(current_user, :'migrator', 'SET')
 
 -- the migrator owns the database → it owns schema public (pg_database_owner, PG 15+)
 ALTER DATABASE :"db" OWNER TO :"migrator";
+-- Who may grant on schema public? Locally its owner is pg_database_owner, i.e. now the migrator.
+-- Azure: it belongs to azure_pg_admin and the admin is a member of it (INHERIT) → the admin
+-- grants, recorded as by azure_pg_admin. A grant by anyone else only gives a WARNING and does
+-- nothing (Flyway then gets "permission denied for schema public").
+SELECT pg_has_role(:'migrator', nspowner, 'USAGE') AS migrator_owns_public,
+       :'is_superuser'::boolean OR pg_has_role(current_user, nspowner, 'USAGE') AS admin_owns_public
+FROM pg_namespace WHERE nspname = 'public'
+\gset
 -- existing objects (a database migrated before the roles existed)
 SELECT format('ALTER %s public.%I OWNER TO %I',
               CASE c.relkind WHEN 'S' THEN 'SEQUENCE' WHEN 'v' THEN 'VIEW'
@@ -106,11 +114,41 @@ WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p', 'S', 'v', 'm')
   AND NOT EXISTS (SELECT 1 FROM pg_depend d WHERE d.objid = c.oid AND d.deptype IN ('a', 'i'))
 \gexec
 
--- nobody else creates objects in public; the app connects but owns nothing.
--- As the new owner: a non-superuser admin no longer may grant on what it gave away.
-SET ROLE :"migrator";
+-- in public only the migrator creates objects; the app may use it but owns nothing
+\if :migrator_owns_public
+  SET ROLE :"migrator";
+\elif :admin_owns_public
+\else
+  SELECT 'schema public: neither the admin nor the migrator has the privileges of its owner'::int;
+\endif
 REVOKE CREATE ON SCHEMA public FROM PUBLIC;
-GRANT CONNECT ON DATABASE :"db" TO :"app";
 GRANT USAGE ON SCHEMA public TO :"app";
+\if :migrator_owns_public
+\else
+  GRANT USAGE, CREATE ON SCHEMA public TO :"migrator";
+\endif
 RESET ROLE;
+
+-- As the new database owner: a non-superuser admin may no longer grant on what it gave away.
+SET ROLE :"migrator";
+GRANT CONNECT ON DATABASE :"db" TO :"app";
+-- DML on what the migrator creates from now on, already before the first afterMigrate
+-- (db/migration/afterMigrate.sql grants the same and takes back DML on the Flyway history)
+ALTER DEFAULT PRIVILEGES FOR ROLE :"migrator" IN SCHEMA public
+  GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO :"app";
+ALTER DEFAULT PRIVILEGES FOR ROLE :"migrator" IN SCHEMA public
+  GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO :"app";
+RESET ROLE;
+
+-- never report success that isn't true (a grant without effect is only a WARNING)
+SELECT has_schema_privilege(:'migrator', 'public', 'CREATE')
+       AND has_schema_privilege(:'migrator', 'public', 'USAGE')
+       AND has_schema_privilege(:'app', 'public', 'USAGE')
+       AND NOT has_schema_privilege(:'app', 'public', 'CREATE')
+       AND has_database_privilege(:'app', :'db', 'CONNECT') AS schema_ok
+\gset
+\if :schema_ok
+\else
+  SELECT 'schema public: the migrator needs CREATE, the app USAGE and CONNECT but no CREATE'::int;
+\endif
 \echo roles ready: :migrator (owner, migrations), :app (application, DML only)

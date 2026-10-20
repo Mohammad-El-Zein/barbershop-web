@@ -319,6 +319,13 @@ The backend never connects with an admin or owner login. Three logins, three job
   in job commands and env values, and the job gets the script as an env value. The passwords come
   from the environment (`MIGRATOR_PASSWORD`, `APP_PASSWORD`), not from the command line, and are never
   printed. `tests/plan.tftest.hcl` and `DatabaseRolesIT` check both.
+- **Schema `public` on Azure:** it belongs to `azure_pg_admin`, not to the database owner, and the
+  admin is only a member. So the script grants `USAGE, CREATE` on it to the migrator as the admin
+  (recorded as by `azure_pg_admin`). Locally the migrator itself grants, as the database owner.
+  At the end, the script checks that the migrator may create in `public` and the app may not.
+  Otherwise it stops with an error instead of "roles ready". `AzureDatabaseRolesIT` recreates this
+  setup and runs the real migrations as the migrator. `btree_gist` (used by `V1__init.sql`) is
+  allow-listed in `azure.extensions` (`postgres.tf`).
 - **Rotating the passwords (Azure):** `terraform apply -replace=random_password.db_migrator
   -replace=random_password.db_app` writes new Key Vault versions. Every run of the script sets both
   passwords to exactly the values it receives, also for existing roles (`DatabaseRolesIT` checks

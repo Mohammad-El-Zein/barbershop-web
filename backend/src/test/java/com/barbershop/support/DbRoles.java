@@ -28,12 +28,18 @@ public final class DbRoles {
 
     /** The same with other passwords (a rotation); passed as-is, without a shell in between. */
     public static String create(PostgreSQLContainer<?> pg, String migratorPassword, String appPassword) {
+        return create(pg, pg.getUsername(), pg.getDatabaseName(), migratorPassword, appPassword);
+    }
+
+    /** The same as another admin login (e.g. a non-superuser like Azure's) on another database. */
+    public static String create(PostgreSQLContainer<?> pg, String admin, String database,
+                                String migratorPassword, String appPassword) {
         try {
             pg.copyFileToContainer(MountableFile.forHostPath(SCRIPT), "/tmp/init-roles.sql");
             ExecResult r = pg.execInContainer("env",
                     "MIGRATOR_PASSWORD=" + migratorPassword, "APP_PASSWORD=" + appPassword,
                     "psql", "-X", "-q", "-v", "ON_ERROR_STOP=1",
-                    "-U", pg.getUsername(), "-d", pg.getDatabaseName(),
+                    "-U", admin, "-d", database,
                     "-v", "migrator=" + MIGRATOR, "-v", "app=" + APP, "-f", "/tmp/init-roles.sql");
             String output = r.getStdout() + r.getStderr();
             if (r.getExitCode() != 0) {
