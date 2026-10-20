@@ -275,21 +275,10 @@ e2e:
           --source "$CI_REGISTRY_IMAGE/$c:$IMAGE_TAG" --image "barbershop-$c:$IMAGE_TAG" \
           --username "$CI_REGISTRY_USER" --password "$CI_REGISTRY_PASSWORD"
       done
-    # 1) migrations with the owner role (separate job); stops the deploy on failure
-    - sh infra/azure/scripts/run-migrate-job.sh "$AZURE_RESOURCE_GROUP" "$MIGRATE_JOB_NAME"
-      "$ACR_NAME.azurecr.io/barbershop-backend:$IMAGE_TAG"
-    # 2) backend (application role, validates the schema), then the frontend
-    - az containerapp update -g "$AZURE_RESOURCE_GROUP" -n "$BACKEND_APP_NAME"
-      --image "$ACR_NAME.azurecr.io/barbershop-backend:$IMAGE_TAG" --output none
-    - az containerapp update -g "$AZURE_RESOURCE_GROUP" -n "$FRONTEND_APP_NAME"
-      --image "$ACR_NAME.azurecr.io/barbershop-frontend:$IMAGE_TAG" --output none
-    - |
-      for _ in $(seq 1 30); do
-        curl -fsS "$API_URL/actuator/health/readiness" && exit 0
-        sleep 10
-      done
-      echo "backend not ready after 5 min — roll back: docs/DEPLOYMENT.md → Rollback" >&2
-      exit 1
+    # migrate job (stops the deploy on failure) → backend → frontend → readiness check
+    - sh infra/azure/scripts/rollout.sh "$AZURE_RESOURCE_GROUP" "$MIGRATE_JOB_NAME" "$BACKEND_APP_NAME"
+      "$FRONTEND_APP_NAME" "$ACR_NAME.azurecr.io/barbershop-backend:$IMAGE_TAG"
+      "$ACR_NAME.azurecr.io/barbershop-frontend:$IMAGE_TAG" "$API_URL"
 
 deploy:dev:
   extends: .deploy

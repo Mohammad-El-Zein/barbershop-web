@@ -213,9 +213,12 @@ Both pipelines (`.github/workflows/ci.yml`, `.gitlab-ci.yml`) run:
 2. Trivy and `npm audit`;
 3. image build, scan and push;
 4. e2e against docker compose;
-5. a **manual** deploy.
+5. a deploy: GitHub deploys every green `main` run to `dev` automatically (`.github/workflows/cd.yml` →
+   `deploy-azure.yml`); otherwise manually.
 
-They contain no secrets: the deploy logs in to Azure with OIDC (federated credentials).
+They contain no secrets: the deploy logs in to Azure with OIDC (federated credentials). Step-by-step setup of the
+GitHub deploy (in German, Windows cmd, incl. a managed identity instead of an app registration):
+[CD-SETUP.md](CD-SETUP.md).
 
 **Azure side (once per environment):**
 
@@ -255,11 +258,13 @@ In GitHub, add **required reviewers** to the `prod` environment. That makes the 
 **Flow:**
 
 - A merge to `main` builds and pushes `sha-<short>` and `main`.
-- GitHub: *Run workflow → deploy: dev*. GitLab: play `deploy:dev`.
+- GitHub: when CI is green, `cd.yml` deploys the commit to `dev` (one deploy per environment at a time).
+  Manual (re)deploy: *Run workflow → deploy: dev*. GitLab: play `deploy:dev`.
 - A release tag `v1.2.3` additionally pushes `1.2.3` and `1.2`. Deploy it to prod (GitHub: run the workflow on the
-  tag with `prod`; GitLab: play `deploy:prod` in the tag pipeline).
-- The deploy:
-  1. copies the scanned images into ACR;
+  tag with `prod`, or set the repository variable `PROD_DEPLOY_ENABLED=true` so `cd.yml` does it after the
+  approval in the `prod` environment; GitLab: play `deploy:prod` in the tag pipeline).
+- The deploy (`infra/azure/scripts/rollout.sh`):
+  1. copies the scanned images into ACR (GitHub builds the frontend there with the environment's `NEXT_PUBLIC_*`);
   2. runs the **migrate job** with the release image (owner login, `infra/azure/scripts/run-migrate-job.sh`)
      and stops the deploy if a migration fails;
   3. updates the backend (application login, validates the schema), then the frontend;

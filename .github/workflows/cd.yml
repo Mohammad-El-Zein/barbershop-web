@@ -1,0 +1,51 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Continuous deployment: after a GREEN CI run of a push, deploy that commit.
+#   push to main      → GitHub environment "dev" (automatic)
+#   release tag v*    → GitHub environment "prod" — prepared, NOT active yet: runs only when the
+#                       repository variable PROD_DEPLOY_ENABLED is "true", and then still waits
+#                       for the required reviewers of the "prod" environment (manual approval).
+# Pull requests and forks never deploy. The steps are in deploy-azure.yml; setup in
+# docs/CD-SETUP.md. GitHub only runs this file from the default branch.
+# ─────────────────────────────────────────────────────────────────────────────
+name: CD
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+
+permissions:
+  contents: read
+
+jobs:
+  dev:
+    if: >-
+      github.event.workflow_run.conclusion == 'success'
+      && github.event.workflow_run.event == 'push'
+      && github.event.workflow_run.head_branch == 'main'
+      && github.event.workflow_run.head_repository.full_name == github.repository
+    permissions:
+      contents: read
+      packages: read
+      id-token: write
+    uses: ./.github/workflows/deploy-azure.yml
+    with:
+      environment: dev
+      sha: ${{ github.event.workflow_run.head_sha }}
+
+  prod:
+    # head_branch is the tag name for tag pushes (CI runs on tags v*.*.* only)
+    if: >-
+      vars.PROD_DEPLOY_ENABLED == 'true'
+      && github.event.workflow_run.conclusion == 'success'
+      && github.event.workflow_run.event == 'push'
+      && startsWith(github.event.workflow_run.head_branch, 'v')
+      && github.event.workflow_run.head_repository.full_name == github.repository
+    permissions:
+      contents: read
+      packages: read
+      id-token: write
+    uses: ./.github/workflows/deploy-azure.yml
+    with:
+      environment: prod
+      sha: ${{ github.event.workflow_run.head_sha }}

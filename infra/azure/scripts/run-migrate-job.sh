@@ -28,7 +28,7 @@ while [ "$i" -lt 90 ]; do # up to 15 minutes
       ;;
   esac
   i=$((i + 1))
-  sleep 10
+  sleep "${MIGRATE_POLL_SECONDS:-10}"
 done
 echo "migration job did not finish within 15 minutes" >&2
 exit 1

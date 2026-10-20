@@ -2,10 +2,13 @@
 # CI/CD (GitHub Actions) — same stages as .gitlab-ci.yml:
 #   lint+test (backend with Testcontainers, frontend lint/types/build)
 #   → dependency scan → docker build + image scan → push (main / tags)
-#   → e2e against the docker compose stack → deploy (manual only)
+#   → e2e against the docker compose stack
+# Deploy: cd.yml deploys main to "dev" after a green run; here only manually
+# (workflow_dispatch → deploy-azure.yml).
 #
 # No secrets in this file. Deploy uses GitHub OIDC → Azure (no stored password) and
-# repository / environment VARIABLES (see docs/DEPLOYMENT.md → CI/CD):
+# environment VARIABLES (see docs/CD-SETUP.md; the images job reads NEXT_PUBLIC_* from
+# repository variables, the deploy builds its own frontend with the environment's values):
 #   AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID, AZURE_RESOURCE_GROUP,
 #   ACR_NAME, BACKEND_APP_NAME, MIGRATE_JOB_NAME, FRONTEND_APP_NAME, API_URL (health check),
 #   NEXT_PUBLIC_SITE_URL, NEXT_PUBLIC_API_URL, NEXT_PUBLIC_TENANT, optional
@@ -101,6 +104,8 @@ jobs:
           tf test
           tf test -test-directory=tests-tfvars -var-file=env/dev.tfvars -var subscription_id=00000000-0000-4000-8000-000000000004
           tf test -test-directory=tests-tfvars -var-file=env/prod.tfvars -var subscription_id=00000000-0000-4000-8000-000000000004 -var captcha_secret=x
+      - name: Deploy scripts (fake az/curl, no Azure)
+        run: sh infra/azure/scripts/tests/rollout.test.sh
 
   dependency-scan:
     name: Dependencies · vulnerability scan
@@ -262,52 +267,16 @@ jobs:
             compose.log
           retention-days: 7
 
+  # manual (re)deploy of this ref, e.g. a rollback; main deploys to dev automatically (cd.yml)
   deploy:
     name: Deploy · ${{ inputs.deploy }}
     if: github.event_name == 'workflow_dispatch' && inputs.deploy != 'no'
     needs: [images, e2e]
-    runs-on: ubuntu-24.04
-    # GitHub environment "dev" / "prod": add required reviewers there = manual approval
-    environment: ${{ inputs.deploy }}
     permissions:
       contents: read
       packages: read
       id-token: write # OIDC login to Azure, no client secret
-    steps:
-      - uses: azure/login@7184910d9eb2b1c5e48f7073824a90609bb9b6d6 # v2
-        with:
-          client-id: ${{ vars.AZURE_CLIENT_ID }}
-          tenant-id: ${{ vars.AZURE_TENANT_ID }}
-          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Copy the images to ACR and roll out new revisions
-        env:
-          RG: ${{ vars.AZURE_RESOURCE_GROUP }}
-          ACR: ${{ vars.ACR_NAME }}
-          BACKEND_APP: ${{ vars.BACKEND_APP_NAME }}
-          MIGRATE_JOB: ${{ vars.MIGRATE_JOB_NAME }}
-          FRONTEND_APP: ${{ vars.FRONTEND_APP_NAME }}
-        run: |
-          TAG="sha-${GITHUB_SHA::7}"
-          SRC="ghcr.io/${GITHUB_REPOSITORY,,}"
-          az acr login --name "$ACR"
-          for c in backend frontend; do
-            docker buildx imagetools create --tag "$ACR.azurecr.io/barbershop-$c:$TAG" "$SRC/$c:$TAG"
-          done
-          # 1) migrations with the owner role (separate job); stops the deploy on failure
-          sh infra/azure/scripts/run-migrate-job.sh "$RG" "$MIGRATE_JOB" "$ACR.azurecr.io/barbershop-backend:$TAG"
-          # 2) backend (application role, validates the schema), then the frontend
-          az containerapp update -g "$RG" -n "$BACKEND_APP" --image "$ACR.azurecr.io/barbershop-backend:$TAG"
-          az containerapp update -g "$RG" -n "$FRONTEND_APP" --image "$ACR.azurecr.io/barbershop-frontend:$TAG"
-      - name: Smoke test
-        run: |
-          for _ in $(seq 1 30); do
-            curl -fsS "${{ vars.API_URL }}/actuator/health/readiness" && exit 0
-            sleep 10
-          done
-          echo "backend not ready after 5 min — roll back: docs/DEPLOYMENT.md → Rollback" >&2
-          exit 1
+    uses: ./.github/workflows/deploy-azure.yml
+    with:
+      environment: ${{ inputs.deploy }}
+      sha: ${{ github.sha }}
