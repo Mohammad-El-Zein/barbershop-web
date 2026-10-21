@@ -23,7 +23,7 @@ export type TurntableController = {
 
 /**
  * Per-frame easing toward the target frame (on top of ScrollTrigger's scrub smoothing).
- * Light variant (phones, touch): none, the chair follows the finger.
+ * Light variant (phones, touch): none here — the timeline's own short scrub trail is enough.
  */
 const LERP = 0.3;
 

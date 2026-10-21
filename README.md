@@ -64,10 +64,10 @@ Asset specs: `frontend/public/scene/README.md`.
   is in `components/scene/timeline.ts`.
 - Desktops: ScrollTrigger pin, scrub smoothing; Lenis drives smooth scrolling from `gsap.ticker`
   (`lenis.on('scroll', ScrollTrigger.update)`).
-- Phones and touch devices (`lib/sceneMode`): a light variant of the same scene — a short sticky
-  track (`scene.lite.scrollLengthSvh`) instead of a pin, scrub without lag, native scrolling (no
-  Lenis), no filters on moving layers, a small chair frame set kept as decoded bitmaps.
-- Static stacked sections (`StaticScene.tsx`, no GSAP / Lenis): `prefers-reduced-motion`, very weak
-  devices (2 cores and ≤ 2 GB, or the data saver), and automatically when the frame rate collapses
-  at the start or the scene keeps stuttering while scrolled (`lib/sceneWatchdog`, no reload).
-  `?scene=static` / `?scene=pinned` force a mode.
+- Phones and touch devices (`lib/sceneMode`): a light variant of the same scene — a sticky track of
+  `MOBILE_PIN_SCREENS` screens (4) instead of a pin, a short trail behind the finger
+  (`MOBILE_SCRUB_SECONDS`, 0.4 s), native scrolling (no Lenis), no filters on moving layers, a small
+  chair frame set kept as decoded bitmaps. The knobs: `site.config.ts`, docs/PERFORMANCE.md.
+- Static stacked sections (`StaticScene.tsx`, no GSAP / Lenis): `prefers-reduced-motion`. Automatic
+  fallbacks (weak device, start frame rate, scroll watchdog) exist but are off by default
+  (`SCENE_AUTO_FALLBACK`). `?scene=static` / `?scene=pinned` force a mode.

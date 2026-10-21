@@ -177,7 +177,7 @@ test("landing: phones get the light scroll animation (sticky, native scrolling, 
     expect(await page.locator("#scene").evaluate((el) => getComputedStyle(el).position)).toBe("sticky");
     expect(await page.evaluate(() => document.documentElement.classList.contains("lenis"))).toBe(false);
     const screens = await page.evaluate(() => document.querySelector(".scene-track")!.getBoundingClientRect().height / innerHeight);
-    expect(screens).toBeLessThan(3.6); // one screen + the short track (desktop: 7)
+    expect(screens).toBeCloseTo(5, 1); // one screen + MOBILE_PIN_SCREENS (4; desktop: 1 + 6)
 
     // the scene plays while scrolling: the services cards come in mid-way
     const card = page.locator("[data-card]").first();
@@ -201,9 +201,10 @@ test("landing: phones get the light scroll animation (sticky, native scrolling, 
   await expect(page.locator("section#services")).toBeAttached();
 });
 
-test("landing: a scene that keeps stuttering while scrolled falls back to the static one, without a reload, at the same chapter", async ({ page }, info) => {
+test("landing: with the fallbacks switched on, a scene that keeps stuttering falls back to the static one, without a reload, at the same chapter", async ({ page }, info) => {
   const { lang } = variant(info);
-  await page.goto(`/${lang}`);
+  // the automatic fallbacks are off by default (site.config SCENE_AUTO_FALLBACK); on for this visit
+  await page.goto(`/${lang}?fallback=on`);
   await page.locator("[data-preloader]").waitFor({ state: "detached", timeout: 60_000 });
   await expect(page.locator("canvas[data-turntable]")).toBeAttached();
   await page.evaluate(() => ((window as unknown as { sameDocument: boolean }).sameDocument = true));

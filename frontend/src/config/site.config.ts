@@ -117,6 +117,35 @@ export type FooterColumn = { titleKey: string; links: NavItem[] };
 
 // ────────────────────────────────────────────────────────────── config ──
 
+// ──────────────────────────── landing scene on phones: the knobs ──
+/**
+ * Phones and touch devices (light scene variant): length of the animated scroll in screen
+ * heights. The speed is inversely proportional — the desktop scene's 6 screens are "speed 100":
+ * 6 → 100, 5 → 120, 4 → 150, 3 → 200, 2.2 → ≈ 270. Every chapter scales along (their ranges
+ * are fractions of the whole). Details: docs/PERFORMANCE.md → "Landing on phones: tempo".
+ */
+export const MOBILE_PIN_SCREENS = 4;
+
+/**
+ * Phones and touch devices: how long the animation trails the finger, in seconds (ScrollTrigger
+ * scrub). 0 = locked to the finger (felt hectic), desktop: 1 (felt sluggish on phones).
+ */
+export const MOBILE_SCRUB_SECONDS = 0.4;
+
+/**
+ * Automatic switches to the static scene. Off: they switched the animation off unexpectedly.
+ * Always on, regardless: prefers-reduced-motion. For a test: ?fallback=on turns all three on
+ * for one visit; ?scene=static / ?scene=pinned force a mode. Details: docs/PERFORMANCE.md.
+ */
+export const SCENE_AUTO_FALLBACK = {
+  /** 2 cores and ≤ 2 GB memory, or the data saver → static from the start */
+  weakDevice: false,
+  /** median frame time > 40 ms in the first seconds → static */
+  startFrameRate: false,
+  /** ≥ 12 of the last 60 scroll frames > 50 ms → static, without a reload (lib/sceneWatchdog) */
+  watchdog: false,
+};
+
 export const siteConfig = {
   brand: {
     name: "THE BARBER NEWS",
@@ -180,11 +209,11 @@ export const siteConfig = {
     /** ScrollTrigger scrub smoothing in seconds (true = no smoothing). */
     scrub: 1,
     /**
-     * Light variant (phones, touch devices; lib/sceneMode): a much shorter track, in svh (the
-     * address bar showing / hiding never changes it), and the scene follows the finger
-     * (scrub without smoothing).
+     * Light variant (phones, touch devices; lib/sceneMode): a shorter track, in svh (the address
+     * bar showing / hiding never changes it), and a short trail behind the finger. The knobs
+     * are MOBILE_PIN_SCREENS and MOBILE_SCRUB_SECONDS above.
      */
-    lite: { scrollLengthSvh: 220 },
+    lite: { scrollLengthSvh: MOBILE_PIN_SCREENS * 100, scrub: MOBILE_SCRUB_SECONDS },
 
     backdrop: {
       src: "/scene/backdrop.webp",
@@ -226,7 +255,7 @@ export const siteConfig = {
         // chapter 1 → 2: the chair turns away while the products fly in
         { from: 0.035, to: 0.155, frames: [0, 1] },
         // chapter 5 → 6: the chair turns back to face you and settles in the gold ring
-        { from: 0.79, to: 0.9, frames: [1, 0] },
+        { from: 0.81, to: 0.92, frames: [1, 0] },
       ] satisfies TurntableSegment[],
     },
 
@@ -282,15 +311,15 @@ export const siteConfig = {
     },
     { id: "signature", messageKey: "chapters.signature", stage: "products", accentLine: 1, range: [0.14, 0.32] },
     { id: "services", messageKey: "chapters.services", anchor: "services", stage: "services", accentLine: 1, range: [0.32, 0.5] },
-    { id: "craft", messageKey: "chapters.craft", anchor: "about", stage: "feature", accentLine: 1, range: [0.5, 0.66] },
-    { id: "premium", messageKey: "chapters.premium", stage: "orbit", accentLine: 1, range: [0.66, 0.84] },
+    { id: "craft", messageKey: "chapters.craft", anchor: "about", stage: "feature", accentLine: 1, range: [0.5, 0.68] },
+    { id: "premium", messageKey: "chapters.premium", stage: "orbit", accentLine: 1, range: [0.68, 0.86] },
     {
       id: "cta",
       messageKey: "chapters.cta",
       stage: "cta",
       accentLine: 1,
       ctas: [{ labelKey: "cta.book", action: "book", variant: "primary" }],
-      range: [0.84, 1],
+      range: [0.86, 1],
     },
   ] satisfies Chapter[],
 

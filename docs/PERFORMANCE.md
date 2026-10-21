@@ -100,6 +100,74 @@ The same pages were measured with the app's JavaScript chunks blocked (Lighthous
      score 65, LCP 4.7 s, TBT 650 ms, CLS 0. It includes ≈ 750 KB of scene images and chair frames that are
      now loaded right after the first screen, so the first swipe never waits for them.
 
+## Landing on phones: tempo, smoothing, fallbacks
+
+The knobs are three constants at the top of the scene settings in
+`frontend/src/config/site.config.ts` (a new frontend build is needed after a change).
+
+### `MOBILE_PIN_SCREENS` — how fast the animation runs (default 4)
+
+The animated part of the landing page on phones and touch devices is this many screen heights of
+scrolling. The whole story (chair turns, products, service cards, scissors, orbit, gold ring with
+the book button) plays over that distance, so the speed is inversely proportional to the number.
+"Speed 100" is the desktop scene's 6 screens:
+
+| `MOBILE_PIN_SCREENS` | Speed | Feel (feedback) |
+|---|---|---|
+| 6 | 100 | too slow on phones (the first version) |
+| 5 | 120 | |
+| **4** | **150** | **chosen** |
+| 3 | 200 | |
+| 2.2 | ≈ 270 | far too fast (October 2026, first light variant) |
+
+Speed = 600 / (`MOBILE_PIN_SCREENS` × 100). The page below the scene (footer) follows right after.
+
+Chapters are fractions of the distance (`chapters[].range`), so they all scale along. At 4 screens the
+chapter text stands fully visible for ≈ 0.26 screens each (≈ 220 px at 390 × 844); the first screen
+(chair) and the last (gold ring, book button) a bit longer. The ranges were evened out for this:
+scissors and orbit 0.18 each, the last chapter 0.14 (before, the scissors' text stood only ≈ 150 px).
+
+### `MOBILE_SCRUB_SECONDS` — how long the animation trails the finger (default 0.4)
+
+ScrollTrigger scrub on phones and touch devices: 0 = locked to the finger (felt hectic at
+2.2 screens), 1 = the desktop's value (felt sluggish). 0.3–0.5 is the sensible range. Desktops keep
+`scene.scrub` (1 s, with Lenis).
+
+### `SCENE_AUTO_FALLBACK` — automatic switches to the static page (default: all off)
+
+| Switch | Turns the static page on when … |
+|---|---|
+| `weakDevice` | the device has 2 cores and ≤ 2 GB memory, or the data saver is on (from the start) |
+| `startFrameRate` | the median frame time in the first seconds is above 40 ms |
+| `watchdog` | 12 of the last 60 frames while scrolling take longer than 50 ms (switches without a reload and continues at the same chapter) |
+
+They are off because they switched the animation off unexpectedly. Set a switch to `true` to use
+it. Independent of them:
+
+- `prefers-reduced-motion` always gets the static page;
+- `?scene=static` / `?scene=pinned` force a mode for one visit (no fallback then);
+- `?fallback=on` switches all three on for one visit (testing; the e2e test of the watchdog uses it).
+
+### Measured (October 2026)
+
+Chromium, phone emulation, 4× CPU throttling, scrolled from the top to the footer by setting the
+scroll position (40 px per frame, and 120 px per frame for a fast swipe), at 360 × 740, 390 × 844,
+412 × 915, 430 × 932 and 390 × 640 (smoothing 0.4 s in both cases):
+
+| Distance | Frames over 50 ms | p95 frame time (median of the 10 runs) |
+|---|---|---|
+| 6 screens | 27 of 1049 (2.6 %) | 41 ms (28–66 ms) |
+| 4 screens (two runs) | 5 of 778 (0.6 %), 9 of 778 (1.2 %) | 37 ms / 35 ms (27–45 ms) |
+
+The shorter distance does not stutter more; the differences are within the run-to-run noise.
+
+- **Firefox** (no CPU throttling possible): all six chapters correct, footer reached; 0–27 frames over
+  50 ms per run (the most at 430 × 932), p95 40–72 ms.
+- **WebKit** (Safari's engine, iPhone 13 / SE / 14 Pro Max emulation): all six chapters correct, the
+  sticky scene ends, footer reached. Its frame times are not meaningful on Windows: Playwright's
+  WebKit renders without a GPU there — even the plain imprint page takes ≈ 130 ms per frame while
+  idle at the iPhone 13's 3× density. Real iPhones have to be checked on the device.
+
 ## Changes in this round (kept)
 
 | Change | Why |

@@ -6,9 +6,9 @@ import { siteConfig } from "@/config/site.config";
 import { frameUrl, loadFrame, loadRemainingFramesLazily } from "@/lib/frames";
 import {
   currentSceneMode,
+  autoFallback,
   downgradeScene,
   isLiteScene,
-  isSceneForced,
   useLiteScene,
   useSceneMode,
   whenPinnedSceneMounted,
@@ -74,8 +74,9 @@ function deviceIsTooSlow(maxMs: number): Promise<boolean> {
  * hydration — the first screen shows at once; the scene's timeline is built and its other
  * pictures load right after the first screen (lib/sceneReady).
  *
- * Either way the frame rate is checked at the start; a device that is far too slow gets the
- * static scene before it scrolls much (lib/sceneMode, not when ?scene= forces a mode).
+ * When switched on (site.config SCENE_AUTO_FALLBACK.startFrameRate, off by default), the frame
+ * rate is checked at the start; a device that is far too slow gets the static scene before it
+ * scrolls much (lib/sceneMode).
  */
 export function Preloader() {
   const t = useTranslations("scene");
@@ -105,7 +106,7 @@ export function Preloader() {
       whenPinnedSceneMounted().then(() =>
         afterFirstScreen(() => {
           markSceneReady();
-          if (!isSceneForced()) deviceIsTooSlow(2500).then((isSlow) => isSlow && downgradeScene());
+          if (autoFallback("startFrameRate")) deviceIsTooSlow(2500).then((isSlow) => isSlow && downgradeScene());
         }),
       );
       return;
@@ -120,7 +121,7 @@ export function Preloader() {
     // a frame rate this low → static scene; the preloader finishes right away then
     let slow: () => void = () => undefined;
     const tooSlow = new Promise<void>((r) => (slow = r));
-    if (!isSceneForced()) {
+    if (autoFallback("startFrameRate")) {
       deviceIsTooSlow(1500).then((isSlow) => {
         if (!isSlow) return;
         downgradeScene();

@@ -4,8 +4,8 @@ import type { Dispatch, RefObject, SetStateAction } from "react";
 import { siteConfig } from "@/config/site.config";
 import { gsap, ScrollTrigger } from "@/lib/gsap";
 import {
+  autoFallback,
   downgradeScene,
-  isSceneForced,
   LITE_SCENE_QUERY,
   PIN_PLACEHOLDER_ID,
   reportChapterJump,
@@ -70,7 +70,7 @@ export function buildPinnedScene(el: SceneElements): () => void {
               trigger: track,
               start: "top top",
               end: () => `+=${track.offsetHeight - root.offsetHeight}`,
-              scrub: true,
+              scrub: scene.lite.scrub || true, // 0 = locked to the finger
               onUpdate,
             }
           : {
@@ -131,8 +131,9 @@ export function buildPinnedScene(el: SceneElements): () => void {
       // Refreshes render the timeline with callbacks suppressed: re-sync the chair frame.
       ScrollTrigger.addEventListener("refresh", syncTurntable);
 
-      // Keeps stuttering while scrolled → the static scene, at the chapter on screen.
-      const stopWatchdog = isSceneForced() ? () => undefined : watchSceneFrames(downgradeScene);
+      // Keeps stuttering while scrolled → the static scene, at the chapter on screen (off by
+      // default: site.config SCENE_AUTO_FALLBACK).
+      const stopWatchdog = autoFallback("watchdog") ? watchSceneFrames(downgradeScene) : () => undefined;
 
       // Let nav links like "#services" jump to a chapter inside the pin.
       const unregister = registerChapterResolver((anchor) => {

@@ -1,13 +1,15 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import { SCENE_AUTO_FALLBACK } from "@/config/site.config";
 
 /**
  * Which landing scene a device gets:
  * - "pinned": the scroll-scrubbed GSAP scene — on desktops the full variant (pin, scrub
  *   smoothing, Lenis), on phones and touch devices the light one ({@link LITE_SCENE_QUERY});
- * - "static": stacked sections with light reveal effects and native scrolling — only for
- *   prefers-reduced-motion, very weak devices, and as the automatic fallback
+ * - "static": stacked sections with light reveal effects and native scrolling — for
+ *   prefers-reduced-motion; and, only when switched on (site.config SCENE_AUTO_FALLBACK, off by
+ *   default, or ?fallback=on), for very weak devices and as the automatic fallback
  *   ({@link downgradeScene}): a frame rate that collapses at the start (preloader / first
  *   seconds) or a scene that keeps stuttering while it is scrolled (lib/sceneWatchdog).
  *
@@ -54,10 +56,17 @@ export function isSceneForced() {
   return forcedScene() !== null;
 }
 
+/** Is this automatic switch to the static scene on? (site.config, or ?fallback=on for one visit) */
+export function autoFallback(kind: keyof typeof SCENE_AUTO_FALLBACK) {
+  if (isSceneForced()) return false;
+  return SCENE_AUTO_FALLBACK[kind] || new URLSearchParams(window.location.search).get("fallback") === "on";
+}
+
 export function currentSceneMode(): SceneMode {
   const forced = forcedScene();
   if (forced) return forced;
-  if (downgraded || window.matchMedia(STATIC_SCENE_QUERY).matches || weakDevice()) return "static";
+  if (downgraded || window.matchMedia(STATIC_SCENE_QUERY).matches) return "static";
+  if (autoFallback("weakDevice") && weakDevice()) return "static";
   return "pinned";
 }
 

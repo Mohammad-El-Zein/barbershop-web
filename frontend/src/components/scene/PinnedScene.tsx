@@ -49,11 +49,13 @@ const CHAIR_FILTER = objectFilter("0 30px 50px rgb(0 0 0 / 0.75)");
  * - light (phones, touch devices): no pin — the section is position: sticky inside a track of
  *   scene.lite.scrollLengthSvh (globals.css .scene-track), so the browser itself holds and
  *   releases it: it always ends and the page scrolls on natively, the address bar never moves
- *   it (svh), and there is no pin spacer to measure. Scrub without lag (follows the finger),
- *   no filters on moving layers, a small chair frame set, no preloader overlay.
+ *   it (svh), and there is no pin spacer to measure. A short trail behind the finger
+ *   (site.config MOBILE_PIN_SCREENS, MOBILE_SCRUB_SECONDS), no filters on moving layers, a
+ *   small chair frame set, no preloader overlay.
  *
- * Both: a watchdog (lib/sceneWatchdog) switches to the static scene without a reload when the
- * scene keeps stuttering while it is scrolled.
+ * Both, when switched on (site.config SCENE_AUTO_FALLBACK, off by default): a watchdog
+ * (lib/sceneWatchdog) switches to the static scene without a reload when the scene keeps
+ * stuttering while it is scrolled.
  */
 export function PinnedScene() {
   const t = useTranslations();
