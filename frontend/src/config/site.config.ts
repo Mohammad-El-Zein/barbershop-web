@@ -179,6 +179,12 @@ export const siteConfig = {
     scrollLengthVh: 600,
     /** ScrollTrigger scrub smoothing in seconds (true = no smoothing). */
     scrub: 1,
+    /**
+     * Light variant (phones, touch devices; lib/sceneMode): a much shorter track, in svh (the
+     * address bar showing / hiding never changes it), and the scene follows the finger
+     * (scrub without smoothing).
+     */
+    lite: { scrollLengthSvh: 220 },
 
     backdrop: {
       src: "/scene/backdrop.webp",

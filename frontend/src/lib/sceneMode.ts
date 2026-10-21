@@ -4,45 +4,83 @@ import { useSyncExternalStore } from "react";
 
 /**
  * Which landing scene a device gets:
- * - "pinned": the scroll-scrubbed GSAP scene (pin, turntable canvas, Lenis) — desktops only;
- * - "static": stacked sections with light reveal effects and native scrolling — phones,
- *   small or touch tablets, landscape phones, prefers-reduced-motion, weak devices, and any
- *   device whose frame rate collapses while the preloader runs ({@link downgradeScene}).
+ * - "pinned": the scroll-scrubbed GSAP scene — on desktops the full variant (pin, scrub
+ *   smoothing, Lenis), on phones and touch devices the light one ({@link LITE_SCENE_QUERY});
+ * - "static": stacked sections with light reveal effects and native scrolling — only for
+ *   prefers-reduced-motion, very weak devices, and as the automatic fallback
+ *   ({@link downgradeScene}): a frame rate that collapses at the start (preloader / first
+ *   seconds) or a scene that keeps stuttering while it is scrolled (lib/sceneWatchdog).
  *
- * The server renders "static" (fast first paint, no layout jump on phones); a desktop switches
- * to "pinned" right after hydration, under the preloader. ?scene=static|pinned forces a mode
- * (testing and support).
+ * The server renders "pinned" (what almost every visitor gets). ?scene=static|pinned forces a
+ * mode (testing and support); a forced mode is never downgraded.
  */
 export type SceneMode = "pinned" | "static";
 
-/** Keep in sync with the [data-preloader] rule in globals.css (no overlay where the scene is static). */
-export const STATIC_SCENE_QUERY =
-  "(max-width: 767px), (max-height: 500px), (prefers-reduced-motion: reduce), (pointer: coarse) and (max-width: 1024px)";
+export const STATIC_SCENE_QUERY = "(prefers-reduced-motion: reduce)";
+
+/**
+ * Phones and touch devices: the light pinned variant — a short sticky track instead of a pin,
+ * scrub without lag, native scrolling (no Lenis), no filters on moving layers, no preloader
+ * overlay. Keep in sync with globals.css (.scene-track, [data-preloader]).
+ */
+export const LITE_SCENE_QUERY = "(max-width: 767px), (pointer: coarse)";
 
 /** Element (rendered by Experience) that reserves the pinned scroll length until the pin spacer exists. */
 export const PIN_PLACEHOLDER_ID = "scene-pin-placeholder";
 
 let downgraded = false;
+/** The chapter the pinned scene shows (reported by it); the static scene continues there after a downgrade. */
+let pinnedChapter = 0;
+let resumeChapter: number | null = null;
 const listeners = new Set<() => void>();
 
-/** 2 cores, ≤ 2 GB memory (Chromium only) or the data saver: not worth the heavy scene. */
+/**
+ * 2 cores and ≤ 2 GB memory, or the data saver. Browsers without deviceMemory (Safari,
+ * Firefox) are judged by their cores alone.
+ */
 function weakDevice() {
   const n = navigator as Navigator & { deviceMemory?: number; connection?: { saveData?: boolean } };
-  return (n.hardwareConcurrency ?? 8) <= 2 || (n.deviceMemory ?? 8) <= 2 || n.connection?.saveData === true;
+  if (n.connection?.saveData === true) return true;
+  return (n.hardwareConcurrency ?? 8) <= 2 && (n.deviceMemory ?? 2) <= 2;
+}
+
+function forcedScene(): SceneMode | null {
+  const forced = new URLSearchParams(window.location.search).get("scene");
+  return forced === "static" || forced === "pinned" ? forced : null;
+}
+
+/** ?scene=… forces the mode: no frame-rate probe, no watchdog, no downgrade. */
+export function isSceneForced() {
+  return forcedScene() !== null;
 }
 
 export function currentSceneMode(): SceneMode {
-  const forced = new URLSearchParams(window.location.search).get("scene");
-  if (forced === "static" || forced === "pinned") return forced;
+  const forced = forcedScene();
+  if (forced) return forced;
   if (downgraded || window.matchMedia(STATIC_SCENE_QUERY).matches || weakDevice()) return "static";
   return "pinned";
 }
 
-/** The safe fallback: switch to the static scene for the rest of the visit (never back). */
+export function reportPinnedChapter(index: number) {
+  pinnedChapter = index;
+}
+
+/**
+ * The safe fallback: switch to the static scene for the rest of the visit (never back), without
+ * a reload; the static scene continues at the chapter that was on screen.
+ */
 export function downgradeScene() {
-  if (downgraded) return;
+  if (downgraded || isSceneForced()) return;
   downgraded = true;
+  resumeChapter = pinnedChapter;
   listeners.forEach((l) => l());
+}
+
+/** The chapter the pinned scene showed when it was downgraded (once; null otherwise). */
+export function takeResumeChapter() {
+  const i = resumeChapter;
+  resumeChapter = null;
+  return i;
 }
 
 function subscribe(cb: () => void) {
@@ -55,12 +93,26 @@ function subscribe(cb: () => void) {
   };
 }
 
-/** {@code serverMode}: what the server HTML assumed (the scene: "static"; the preloader overlay: "pinned"). */
-export function useSceneMode(serverMode: SceneMode = "static"): SceneMode {
-  return useSyncExternalStore(subscribe, currentSceneMode, () => serverMode);
+export function useSceneMode(): SceneMode {
+  return useSyncExternalStore(subscribe, currentSceneMode, () => "pinned");
 }
 
-// ── the pinned scene tells the preloader when its images are in the DOM (it loads lazily) ──
+export function isLiteScene() {
+  return window.matchMedia(LITE_SCENE_QUERY).matches;
+}
+
+function subscribeLite(cb: () => void) {
+  const mql = window.matchMedia(LITE_SCENE_QUERY);
+  mql.addEventListener("change", cb);
+  return () => mql.removeEventListener("change", cb);
+}
+
+/** The server assumes a desktop (its CSS already hides the preloader on phones). */
+export function useLiteScene(): boolean {
+  return useSyncExternalStore(subscribeLite, isLiteScene, () => false);
+}
+
+// ── the pinned scene tells the preloader when it is in the DOM ──
 
 let mountedResolve: () => void = () => undefined;
 const pinnedMounted = new Promise<void>((r) => (mountedResolve = r));

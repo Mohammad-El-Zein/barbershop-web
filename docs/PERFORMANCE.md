@@ -94,12 +94,17 @@ The same pages were measured with the app's JavaScript chunks blocked (Lighthous
    - Behaviour change: no scroll animation on phones.
    - A smaller step without behaviour change: load GSAP / Lenis dynamically once the preloader is done. This
      needs a refactor of the scene's `useGSAP` context; the expected gain is ≈ 5 points.
+   - **Decision (2026-10):** phones keep the scroll animation, as a light variant (README → scroll scene
+     architecture); the static scene is the automatic fallback. The smaller step is done: GSAP and the
+     timeline load once the scene is ready (phones: after the first screen). Landing, mobile, median of 5:
+     score 65, LCP 4.7 s, TBT 650 ms, CLS 0. It includes ≈ 750 KB of scene images and chair frames that are
+     now loaded right after the first screen, so the first swipe never waits for them.
 
 ## Changes in this round (kept)
 
 | Change | Why |
 |---|---|
-| Landing on phones: no turntable frames in the preloader; frames, product and object images load on the first interaction (touch / scroll / key) | 15 images / 520 KB were loaded during the first seconds; the first screen needs 2. Desktop unchanged |
+| Landing on phones: no turntable frames in the preloader; frames, product and object images load after the first screen (load event + idle, or the first touch / scroll) | 15 images / 520 KB were loaded during the first seconds; the first screen needs 2. Desktop unchanged |
 | Translation payload: the staff area's texts (largest namespace) only under `/admin` | Every page carried all 532 keys inline in the HTML |
 | `next/image` serves AVIF (WebP fallback); the ad page's hero is sized to the real rendered width | Hero 26 → 17 KB |
 | Favicon 15 KB (3 BMP icons) → 1.4 KB (PNG entries), `scripts/assets/favicon-compact.mjs` | It is fetched early with high priority |

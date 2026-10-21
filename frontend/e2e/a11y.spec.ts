@@ -165,22 +165,72 @@ test("keyboard only: staff login and tab navigation", async ({ page }, info) => 
   await expect(sections.getByRole("link", { name: lang === "de" ? "Buchungen" : "Bookings" })).toHaveAttribute("aria-current", "page");
 });
 
-test("landing: phones get the static scene (native scrolling, no pin), desktops the pinned one", async ({ page }, info) => {
+test("landing: phones get the light scroll animation (sticky, native scrolling, never stuck), desktops the full one", async ({ page }, info) => {
   const { lang } = variant(info);
   const phone = info.project.name.startsWith("mobile");
   await page.goto(`/${lang}`);
   await page.locator("[data-preloader]").waitFor({ state: "detached", timeout: 60_000 });
+  await expect(page.locator("canvas[data-turntable]")).toBeAttached(); // the animated scene, not the static one
   if (phone) {
+    // no ScrollTrigger pin and no Lenis: the scene is sticky in a short track, the browser scrolls
     await expect(page.locator(".pin-spacer")).toHaveCount(0);
-    await expect(page.locator("canvas[data-turntable]")).toHaveCount(0);
+    expect(await page.locator("#scene").evaluate((el) => getComputedStyle(el).position)).toBe("sticky");
     expect(await page.evaluate(() => document.documentElement.classList.contains("lenis"))).toBe(false);
-    // every chapter is an ordinary section; the services cards are reachable by plain scrolling
-    await page.locator("section#services").scrollIntoViewIfNeeded();
-    await expect(page.locator("section#services article").first()).toBeInViewport();
+    const screens = await page.evaluate(() => document.querySelector(".scene-track")!.getBoundingClientRect().height / innerHeight);
+    expect(screens).toBeLessThan(3.6); // one screen + the short track (desktop: 7)
+
+    // the scene plays while scrolling: the services cards come in mid-way
+    const card = page.locator("[data-card]").first();
+    await expect(card).toBeHidden();
+    await page.evaluate(() => document.querySelector<HTMLAnchorElement>('a[href$="#services"]')?.click());
+    await expect(card).toBeVisible();
+
+    // and it ends: plain scrolling reaches the footer, the scene has scrolled away
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    await expect(page.locator("footer")).toBeInViewport();
+    expect(await page.locator("#scene").evaluate((el) => el.getBoundingClientRect().bottom)).toBeLessThanOrEqual(0);
   } else {
     await expect(page.locator(".pin-spacer")).toHaveCount(1);
     await expect.poll(() => page.evaluate(() => document.documentElement.classList.contains("lenis"))).toBe(true);
   }
+
+  // ?scene=static forces the fallback (the same one reduced motion and weak devices get)
+  await page.goto(`/${lang}?scene=static`);
+  await expect(page.locator("canvas[data-turntable]")).toHaveCount(0);
+  await expect(page.locator(".pin-spacer")).toHaveCount(0);
+  await expect(page.locator("section#services")).toBeAttached();
+});
+
+test("landing: a scene that keeps stuttering while scrolled falls back to the static one, without a reload, at the same chapter", async ({ page }, info) => {
+  const { lang } = variant(info);
+  await page.goto(`/${lang}`);
+  await page.locator("[data-preloader]").waitFor({ state: "detached", timeout: 60_000 });
+  await expect(page.locator("canvas[data-turntable]")).toBeAttached();
+  await page.evaluate(() => ((window as unknown as { sameDocument: boolean }).sameDocument = true));
+  await page.evaluate(() => document.querySelector<HTMLAnchorElement>('a[href$="#services"]')?.click());
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(200);
+  await page.waitForTimeout(2000); // the smooth jump has ended
+  // The chapter on screen (section dots) — normally the services. A headless desktop without a
+  // GPU may stutter through the smooth jump and fall back already (then: -1, see below).
+  const active = await page.evaluate(() =>
+    [...document.querySelectorAll("#scene nav li button")].findIndex((b) => b.getAttribute("aria-current") === "step"),
+  );
+
+  // a device that can't keep up: every frame while scrolling takes ~70 ms
+  await page.evaluate(async () => {
+    for (let i = 0; i < 30 && document.querySelector("canvas[data-turntable]"); i++) {
+      window.scrollBy(0, 2);
+      const t = performance.now();
+      while (performance.now() - t < 70);
+      await new Promise((r) => requestAnimationFrame(r));
+    }
+  });
+  await expect(page.locator("canvas[data-turntable]")).toHaveCount(0);
+  await expect(page.locator(".pin-spacer")).toHaveCount(0);
+  expect(await page.evaluate(() => (window as unknown as { sameDocument?: boolean }).sameDocument)).toBe(true);
+  // the static scene continues at that chapter (fell back during the jump: at the one it was passing)
+  if (active >= 0) await expect(page.locator("[data-chapter-section]").nth(active)).toBeInViewport();
+  else expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
 });
 
 test("prefers-reduced-motion: static landing page, native scrolling, no pin", async ({ browser }, info) => {

@@ -62,5 +62,12 @@ Asset specs: `frontend/public/scene/README.md`.
   is normalized to 1, so timeline time == chapter `range` values in the config.
 - Choreography per stage preset (`hero`, `products`, `services`, `feature`, `orbit`, `cta`)
   is in `components/scene/timeline.ts`.
-- Lenis drives smooth scrolling from `gsap.ticker`; `lenis.on('scroll', ScrollTrigger.update)`.
-- `prefers-reduced-motion` → static stacked sections (`StaticScene.tsx`), no Lenis.
+- Desktops: ScrollTrigger pin, scrub smoothing; Lenis drives smooth scrolling from `gsap.ticker`
+  (`lenis.on('scroll', ScrollTrigger.update)`).
+- Phones and touch devices (`lib/sceneMode`): a light variant of the same scene — a short sticky
+  track (`scene.lite.scrollLengthSvh`) instead of a pin, scrub without lag, native scrolling (no
+  Lenis), no filters on moving layers, a small chair frame set kept as decoded bitmaps.
+- Static stacked sections (`StaticScene.tsx`, no GSAP / Lenis): `prefers-reduced-motion`, very weak
+  devices (2 cores and ≤ 2 GB, or the data saver), and automatically when the frame rate collapses
+  at the start or the scene keeps stuttering while scrolled (`lib/sceneWatchdog`, no reload).
+  `?scene=static` / `?scene=pinned` force a mode.

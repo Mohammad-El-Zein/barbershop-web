@@ -4,8 +4,16 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { siteConfig } from "@/config/site.config";
 import { frameUrl, loadFrame, loadRemainingFramesLazily } from "@/lib/frames";
-import { currentSceneMode, downgradeScene, useSceneMode, whenPinnedSceneMounted } from "@/lib/sceneMode";
-import { markSceneReady } from "@/lib/sceneReady";
+import {
+  currentSceneMode,
+  downgradeScene,
+  isLiteScene,
+  isSceneForced,
+  useLiteScene,
+  useSceneMode,
+  whenPinnedSceneMounted,
+} from "@/lib/sceneMode";
+import { afterFirstScreen, markSceneReady } from "@/lib/sceneReady";
 import { lockScroll, unlockScroll } from "@/lib/scroll";
 import { estimateChairCssHeight, isSmallScreen, pickSet, preloadEagerFrames } from "@/lib/turntable";
 
@@ -26,22 +34,25 @@ function criticalImages(): Promise<void>[] {
 }
 
 /**
- * The safety net for the pinned scene: the median frame time over ~45 frames while the
- * preloader runs. A device below ~25 fps even here would stutter through the scrubbed scene,
- * so it gets the static one (lib/sceneMode). Gaps of a hidden tab (paused rAF) don't count.
+ * The start check of the pinned scene: the median frame time over ~45 frames (at most
+ * {@code maxMs}; a slow device then has fewer, but the median of what came in counts). A
+ * device below ~25 fps even here would stutter through the scrubbed scene, so it gets the
+ * static one (lib/sceneMode). Gaps of a hidden tab (paused rAF) don't count.
  */
-function deviceIsTooSlow(): Promise<boolean> {
+function deviceIsTooSlow(maxMs: number): Promise<boolean> {
   return new Promise((resolve) => {
     const times: number[] = [];
-    let last = performance.now();
+    const startedAt = performance.now();
+    let last = startedAt;
     const step = (now: number) => {
       const d = now - last;
       last = now;
       if (d < 250) times.push(d);
-      if (times.length < 45) {
+      if (times.length < 45 && now - startedAt < maxMs) {
         requestAnimationFrame(step);
         return;
       }
+      if (times.length < 10) return resolve(false); // too few frames to judge (hidden tab)
       times.sort((a, b) => a - b);
       resolve(times[Math.floor(times.length / 2)] > 40);
     };
@@ -57,9 +68,14 @@ function deviceIsTooSlow(): Promise<boolean> {
  * is locked until it finishes; then
  * the scene timeline is built (lib/sceneReady), so its pin is measured once with the final font metrics.
  *
- * Only for the pinned scene (desktops). Where the scene is static (phones, reduced motion, weak
- * devices) there is no overlay at all: the server HTML hides it with CSS (globals.css, same
- * media query as lib/sceneMode) and it is gone after hydration — the first screen shows at once.
+ * Only for the full pinned scene (desktops). Phones and touch devices (the light pinned variant)
+ * and the static scene (reduced motion, weak devices) have no overlay at all: the server HTML
+ * hides it with CSS (globals.css, same media queries as lib/sceneMode) and it is gone after
+ * hydration — the first screen shows at once; the scene's timeline is built and its other
+ * pictures load right after the first screen (lib/sceneReady).
+ *
+ * Either way the frame rate is checked at the start; a device that is far too slow gets the
+ * static scene before it scrolls much (lib/sceneMode, not when ?scene= forces a mode).
  */
 export function Preloader() {
   const t = useTranslations("scene");
@@ -67,8 +83,9 @@ export function Preloader() {
   const [done, setDone] = useState(false);
   const [gone, setGone] = useState(false);
   const started = useRef(false);
-  // the server always renders the overlay (CSS hides it on phones); gone once the scene is static
-  const mode = useSceneMode("pinned");
+  // the server always renders the overlay (CSS hides it on phones); gone where it isn't needed
+  const mode = useSceneMode();
+  const lite = useLiteScene();
 
   useEffect(() => {
     if (started.current) return; // StrictMode double-invoke guard
@@ -77,6 +94,20 @@ export function Preloader() {
     if (currentSceneMode() === "static") {
       unlockScroll();
       markSceneReady();
+      return;
+    }
+
+    if (isLiteScene()) {
+      // No overlay, no scroll lock. The timeline is built right after the first screen (load
+      // event + idle, or the first touch / scroll) instead of during hydration, where it
+      // delayed the first screen; the server HTML already shows the scene's first state.
+      unlockScroll();
+      whenPinnedSceneMounted().then(() =>
+        afterFirstScreen(() => {
+          markSceneReady();
+          if (!isSceneForced()) deviceIsTooSlow(2500).then((isSlow) => isSlow && downgradeScene());
+        }),
+      );
       return;
     }
 
@@ -89,11 +120,13 @@ export function Preloader() {
     // a frame rate this low → static scene; the preloader finishes right away then
     let slow: () => void = () => undefined;
     const tooSlow = new Promise<void>((r) => (slow = r));
-    Promise.race([deviceIsTooSlow(), new Promise<boolean>((r) => setTimeout(() => r(false), 1500))]).then((isSlow) => {
-      if (!isSlow) return;
-      downgradeScene();
-      slow();
-    });
+    if (!isSceneForced()) {
+      deviceIsTooSlow(1500).then((isSlow) => {
+        if (!isSlow) return;
+        downgradeScene();
+        slow();
+      });
+    }
 
     const tasks: Promise<void>[] = [
       // the pinned scene is loaded lazily: its critical images exist once it has mounted
@@ -130,7 +163,7 @@ export function Preloader() {
     });
   }, []);
 
-  if (gone || mode === "static") return null;
+  if (gone || mode === "static" || lite) return null;
 
   const pct = Math.round(progress * 100);
 

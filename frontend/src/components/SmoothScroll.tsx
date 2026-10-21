@@ -1,20 +1,22 @@
 "use client";
 
 import { useEffect } from "react";
-import { useSceneMode } from "@/lib/sceneMode";
+import { useLiteScene, useSceneMode } from "@/lib/sceneMode";
 import { scrollToTarget, setLenis } from "@/lib/scroll";
 
 /**
- * Lenis smooth scrolling for the pinned scene only (desktops), driven by GSAP's ticker so
+ * Lenis smooth scrolling for the full pinned scene only (desktops), driven by GSAP's ticker so
  * Lenis and ScrollTrigger update in the same frame (no jitter between smoothed scroll and
- * pinned scene). Lenis and GSAP are loaded on demand: the static scene (phones, reduced
- * motion, weak devices) scrolls natively and never downloads them.
+ * pinned scene). Lenis is loaded on demand: phones and touch devices (light scene variant) and
+ * the static scene scroll natively and never download it.
  */
 export function SmoothScroll() {
   const mode = useSceneMode();
+  const lite = useLiteScene();
+  const smooth = mode === "pinned" && !lite;
 
   useEffect(() => {
-    if (mode !== "pinned") return;
+    if (!smooth) return;
     let cleanup: (() => void) | undefined;
     let cancelled = false;
 
@@ -41,7 +43,7 @@ export function SmoothScroll() {
       cancelled = true;
       cleanup?.();
     };
-  }, [mode]);
+  }, [smooth]);
 
   // Any in-page "#anchor" link (footer etc.) goes through the scroll controller,
   // so anchors that point at chapters inside the pinned scene work too.

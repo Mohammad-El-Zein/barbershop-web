@@ -1,8 +1,10 @@
 "use client";
 /* eslint-disable @next/next/no-img-element -- plain images keep this scene dependency-free */
 
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import { siteConfig, type Chapter } from "@/config/site.config";
+import { takeResumeChapter } from "@/lib/sceneMode";
+import { loadLateSceneImages } from "@/lib/sceneReady";
 import { NAV_SURFACE_EVENT } from "../Nav";
 import { ChapterText } from "./ChapterText";
 import { ServiceCard } from "./ServiceCard";
@@ -10,8 +12,9 @@ import { ServiceCard } from "./ServiceCard";
 const { scene, chapters, services } = siteConfig;
 
 /**
- * The landing scene without pinning or scrubbing (lib/sceneMode: phones, small / touch tablets,
- * reduced motion, weak devices): the chapters as ordinary stacked sections with static imagery,
+ * The landing scene without pinning or scrubbing (lib/sceneMode: reduced motion, weak devices,
+ * and the automatic fallback when the pinned scene is too slow — then it continues at the
+ * chapter that was on screen): the chapters as ordinary stacked sections with static imagery,
  * native scrolling, and a light entrance for what scrolls into view (opacity / transform only,
  * IntersectionObserver, nothing per scroll frame). Always dark, like the animated scene.
  *
@@ -24,7 +27,9 @@ const { scene, chapters, services } = siteConfig;
  */
 export function StaticScene() {
   const rootRef = useRef<HTMLDivElement>(null);
+  useResume(rootRef);
   useReveal(rootRef);
+  useEffect(() => loadLateSceneImages(), []);
   useNavSurface();
 
   return (
@@ -35,6 +40,7 @@ export function StaticScene() {
           <section
             key={c.id}
             id={c.anchor}
+            data-chapter-section={c.id}
             className={`relative overflow-hidden border-b border-line md:flex md:min-h-svh md:items-center md:py-28 ${
               hero ? "pb-12 pt-[calc(var(--nav-h)+0.25rem)]" : "py-12 sm:py-16"
             }`}
@@ -159,6 +165,17 @@ function ChairImage({ className, eager = false }: { className: string; eager?: b
       className={`object-contain ${className}`}
     />
   );
+}
+
+/** After a downgrade from the pinned scene: scroll to the chapter that was on screen. */
+function useResume(rootRef: React.RefObject<HTMLElement | null>) {
+  useLayoutEffect(() => {
+    const i = takeResumeChapter();
+    if (i === null) return;
+    const section = rootRef.current?.querySelector(`[data-chapter-section="${chapters[i].id}"]`);
+    const navH = document.querySelector("header")?.getBoundingClientRect().height ?? 72;
+    window.scrollTo(0, i > 0 && section ? Math.max(0, section.getBoundingClientRect().top + window.scrollY - navH) : 0);
+  }, [rootRef]);
 }
 
 /**

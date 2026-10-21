@@ -1,5 +1,6 @@
 import { gsap } from "@/lib/gsap";
 import type { Chapter, Product, StagePreset, TurntableSegment } from "@/config/site.config";
+import { T } from "./settled";
 
 /**
  * Builds the master scroll timeline for the pinned scene.
@@ -25,9 +26,6 @@ import type { Chapter, Product, StagePreset, TurntableSegment } from "@/config/s
  * immediateRender:false so building the timeline never disturbs the start state.
  */
 
-/** Length of a chapter transition, as a fraction of the total pinned scroll. */
-const T = 0.045;
-
 /**
  * How far headline lines travel (yPercent) to be fully hidden by their mask.
  * More than 100% because the mask has extra room above for umlaut dots.
@@ -40,6 +38,8 @@ export type SceneRefs = {
   chapters: Chapter[];
   products: Product[];
   isMobile: boolean;
+  /** Light variant (phones, touch): fewer simultaneous tweens on the product cluster. */
+  lite: boolean;
   /** Optional chair image sequence; onFrame receives a fractional frame index. */
   turntable?: { frameCount: number; segments: TurntableSegment[]; onFrame: (frame: number) => void };
 };
@@ -92,7 +92,7 @@ const same = (a: Pose, b: Pose) =>
   a.autoAlpha === b.autoAlpha && a.xPercent === b.xPercent && a.yPercent === b.yPercent && a.scale === b.scale;
 
 export function buildSceneTimeline(tl: gsap.core.Timeline, refs: SceneRefs) {
-  const { root, stageBox, chapters, products, isMobile } = refs;
+  const { root, stageBox, chapters, products, isMobile, lite } = refs;
   const q = gsap.utils.selector(root);
   const one = (sel: string) => q(sel)[0] as HTMLElement;
 
@@ -222,8 +222,8 @@ export function buildSceneTimeline(tl: gsap.core.Timeline, refs: SceneRefs) {
         },
         s + (i % 2) * T * 0.3,
       );
-      // Gentle sideways sway at a different rate gives a subtle orbiting feel.
-      tl.fromTo(
+      // Gentle sideways sway at a different rate gives a subtle orbiting feel (full variant only).
+      if (!lite) tl.fromTo(
         floaters[i],
         { xPercent: 0 },
         { xPercent: (i % 2 ? -1 : 1) * 3, duration: len / 3, repeat: 2, yoyo: true, ease: "sine.inOut", immediateRender: false },
@@ -287,11 +287,12 @@ export function buildSceneTimeline(tl: gsap.core.Timeline, refs: SceneRefs) {
   // ORBIT: products sit in slots on an ellipse around the chair (config: orbitAngle)
   // and sweep slowly along it. Slots stay at the chair's sides, so nothing ever
   // covers the seat; the lower half is in front (z 30), the upper half behind (z 5).
+  // The radii are measured once (and on resize: placeOrbit), not on every scrubbed frame of
+  // the sweep — a layout read after the timeline's style writes would force a layout each frame.
   const orbit = { sweep: 0 };
-  const placeOrbit = () => {
-    const b = stageBox.getBoundingClientRect();
-    const rx = b.width * 0.38;
-    const ry = b.height * 0.28;
+  let rx = 0;
+  let ry = 0;
+  const positionOrbiters = () => {
     orbiters.forEach((el, i) => {
       const a = ((products[i].orbitAngle + orbit.sweep) * Math.PI) / 180;
       const sin = Math.sin(a);
@@ -302,6 +303,12 @@ export function buildSceneTimeline(tl: gsap.core.Timeline, refs: SceneRefs) {
         zIndex: sin > 0 ? 30 : 5,
       });
     });
+  };
+  const placeOrbit = () => {
+    const b = stageBox.getBoundingClientRect();
+    rx = b.width * 0.38;
+    ry = b.height * 0.28;
+    positionOrbiters();
   };
   placeOrbit();
   enter.orbit = (at) => {
@@ -314,7 +321,7 @@ export function buildSceneTimeline(tl: gsap.core.Timeline, refs: SceneRefs) {
   };
   hold.orbit = (_, ch) => {
     const [s, e] = ch.range;
-    tl.fromTo(orbit, { sweep: 0 }, { sweep: ORBIT_SWEEP, duration: e - s, ease: "none", onUpdate: placeOrbit, immediateRender: false }, s);
+    tl.fromTo(orbit, { sweep: 0 }, { sweep: ORBIT_SWEEP, duration: e - s, ease: "none", onUpdate: positionOrbiters, immediateRender: false }, s);
   };
   exit.orbit = (at) => {
     tl.to(orbiterInners, { autoAlpha: 0, scale: 0.3, duration: T * 0.8, stagger: T * 0.08, ease: "power2.in" }, at);
@@ -388,12 +395,4 @@ export function buildSceneTimeline(tl: gsap.core.Timeline, refs: SceneRefs) {
   if (tl.duration() < 1) tl.set({}, {}, 1);
 
   return { placeOrbit, syncTurntable };
-}
-
-/**
- * Scroll fraction at which a chapter's text is fully revealed — used by
- * the section dots and nav links to land on a "settled" frame.
- */
-export function settledProgress(ch: Chapter, index: number) {
-  return index === 0 ? 0 : Math.min(ch.range[1] - 0.001, ch.range[0] + T * 1.7);
 }

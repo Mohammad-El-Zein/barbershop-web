@@ -6,7 +6,6 @@ import {
   getFrame,
   isFailed,
   isLoaded,
-  isSmallScreen,
   loadAllFrames,
   loadFrame,
   pickSet,
@@ -14,14 +13,18 @@ import {
   turntableFrameCount,
   type FrameSet,
 } from "@/lib/turntable";
-import { whenSceneReady } from "@/lib/sceneReady";
+import { isLiteScene } from "@/lib/sceneMode";
+import { afterFirstScreen, whenSceneReady } from "@/lib/sceneReady";
 
 export type TurntableController = {
   /** Fractional frame index (0 .. frameCount-1), driven by the scroll timeline. */
   setFrame: (frame: number) => void;
 };
 
-/** Per-frame easing toward the target frame (on top of ScrollTrigger's scrub smoothing). */
+/**
+ * Per-frame easing toward the target frame (on top of ScrollTrigger's scrub smoothing).
+ * Light variant (phones, touch): none, the chair follows the finger.
+ */
 const LERP = 0.3;
 
 /**
@@ -59,6 +62,8 @@ export function ChairSequence({
     let drawnKey = "";
     let raf = 0;
     let ready = false;
+    const lite = isLiteScene();
+    const lerp = lite ? 1 : LERP;
 
     const request = () => {
       if (!raf) raf = requestAnimationFrame(draw);
@@ -66,7 +71,7 @@ export function ChairSequence({
 
     function draw() {
       raf = 0;
-      current += (target - current) * LERP;
+      current += (target - current) * lerp;
       if (Math.abs(target - current) < 0.002) current = target;
 
       const i0 = turntableCrossfade ? Math.floor(current) : Math.round(current);
@@ -84,10 +89,10 @@ export function ChairSequence({
       if (key !== drawnKey) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.globalAlpha = 1;
-        ctx.drawImage(a, 0, 0, canvas.width, canvas.height);
+        ctx.drawImage(a.image, 0, 0, canvas.width, canvas.height);
         if (b && b !== a) {
           ctx.globalAlpha = t;
-          ctx.drawImage(b, 0, 0, canvas.width, canvas.height);
+          ctx.drawImage(b.image, 0, 0, canvas.width, canvas.height);
           ctx.globalAlpha = 1;
         }
         drawnKey = key;
@@ -134,10 +139,21 @@ export function ChairSequence({
     // The frames never compete with the first screen's images:
     // - desktop: the first frame now, the rest once the first screen is in (preloader done)
     //   and the visitor starts interacting — or after a few seconds of idle;
-    // - phones (lighter variant): nothing until the first interaction — the static chair
-    //   poster is shown until then, the rotation only matters once the visitor scrolls.
-    const phone = isSmallScreen();
-    if (!phone) loadFrame(set, 0).then(request);
+    // - light variant (phones, touch; small frame set): all of them right after the first
+    //   screen (lib/sceneReady), so the first swipe never waits for a decode; the chair
+    //   poster is shown until then.
+    if (lite) {
+      afterFirstScreen(() => {
+        loadFrame(set, 0).then(request);
+        loadAllFrames(set);
+      });
+      return () => {
+        ro.disconnect();
+        cancelAnimationFrame(raf);
+        controlRef.current = null;
+      };
+    }
+    loadFrame(set, 0).then(request);
     let streaming = false;
     let timer = 0;
     const INTERACT = ["scroll", "wheel", "touchstart", "pointerdown", "keydown"] as const;
@@ -146,14 +162,11 @@ export function ChairSequence({
       streaming = true;
       INTERACT.forEach((e) => window.removeEventListener(e, stream));
       window.clearTimeout(timer);
-      if (phone) loadFrame(set, 0).then(request);
       loadAllFrames(set);
     };
     const stopReady = whenSceneReady(() => {
       INTERACT.forEach((e) => window.addEventListener(e, stream, { passive: true, once: true }));
-      if (!phone) {
-        timer = window.setTimeout(() => (window.requestIdleCallback ?? ((cb: () => void) => cb()))(stream), 4000);
-      }
+      timer = window.setTimeout(() => (window.requestIdleCallback ?? ((cb: () => void) => cb()))(stream), 4000);
     });
 
     return () => {

@@ -1,28 +1,43 @@
 "use client";
 
 import { siteConfig } from "@/config/site.config";
+import { isLiteScene } from "./sceneMode";
 
 /**
  * Frame loading for the chair turntable (image sequence from
  * scripts/assets/turntable.py). Shared by the preloader (eager frames) and the
  * canvas (everything else), so each frame is fetched and decoded only once.
+ *
+ * Light scene variant (phones, touch; lib/sceneMode): every 4th frame of a set of at most
+ * 540 px, kept as decoded ImageBitmaps (~13 MB on phones). An <img> may lose its decoded
+ * pixels again, and drawing it then decodes on the main thread — in the middle of a swipe.
  */
 
 const tt = siteConfig.scene.turntable;
 const manifest = tt.manifest;
 
 export type FrameSet = (typeof manifest.sets)[number];
+/** A decoded frame; `src` identifies it (the canvas redraws when it changes). */
+export type Frame = { src: string; image: CanvasImageSource };
 export const turntableFrameCount = manifest.frames;
 export const turntableCrossfade = manifest.crossfade;
 
-const loaded = new Map<string, HTMLImageElement>();
+const loaded = new Map<string, Frame>();
 const pending = new Map<string, Promise<void>>();
 /** Frames that failed (404 / decode error) are never requested again. */
 const failed = new Set<string>();
 
-/** Sets with "step" (the phone set) only contain every n-th frame (+ the last one). */
+/** Light variant: frames used (a multiple of every set's step). */
+const LITE_STEP = 4;
+const LITE_MAX_SET_HEIGHT = 540;
+
+/**
+ * Sets with "step" (the phone set) only contain every n-th frame (+ the last one);
+ * the light variant uses every 4th.
+ */
 function stepOf(set: FrameSet) {
-  return "step" in set && typeof set.step === "number" ? set.step : 1;
+  const step = "step" in set && typeof set.step === "number" ? set.step : 1;
+  return isLiteScene() ? Math.max(step, LITE_STEP) : step;
 }
 
 /** The frame of the set that is actually on disk for this index (the nearest one for stepped sets). */
@@ -45,11 +60,12 @@ export function isSmallScreen() {
 /**
  * Smallest set that still covers the needed device pixels (>= 90%),
  * else the largest. Phones get the small set (density capped at 1.5x for the
- * moving chair), desktops the big one.
+ * moving chair, also on touch tablets: light scene variant), desktops the big one.
  */
 export function pickSet(cssHeight: number): FrameSet {
-  const need = cssHeight * Math.min(window.devicePixelRatio || 1, isSmallScreen() ? 1.5 : 2);
-  const asc = [...manifest.sets].sort((a, b) => a.height - b.height);
+  const need = cssHeight * Math.min(window.devicePixelRatio || 1, isLiteScene() ? 1.5 : 2);
+  const sets = isLiteScene() ? manifest.sets.filter((s) => s.height <= LITE_MAX_SET_HEIGHT) : manifest.sets;
+  const asc = [...sets].sort((a, b) => a.height - b.height);
   return asc.find((s) => s.height >= need * 0.9) ?? asc[asc.length - 1];
 }
 
@@ -70,8 +86,9 @@ export function loadFrame(set: FrameSet, index: number): Promise<void> {
   img.src = url;
   const p = img
     .decode()
-    .then(() => {
-      loaded.set(url, img);
+    .then(async () => {
+      const image = isLiteScene() && "createImageBitmap" in window ? await createImageBitmap(img) : img;
+      loaded.set(url, { src: url, image });
     })
     .catch(() => {
       // missing frame: remembered so it is not retried; the canvas falls back
@@ -84,7 +101,7 @@ export function loadFrame(set: FrameSet, index: number): Promise<void> {
 }
 
 /** Exact frame if loaded, else the nearest loaded neighbour (null if none yet). */
-export function getFrame(set: FrameSet, index: number): HTMLImageElement | null {
+export function getFrame(set: FrameSet, index: number): Frame | null {
   const exact = loaded.get(frameUrl(set, index));
   if (exact) return exact;
   for (let d = 1; d < turntableFrameCount; d++) {

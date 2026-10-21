@@ -1,5 +1,7 @@
 "use client";
 
+import { isLiteScene } from "./sceneMode";
+
 /**
  * "The landing scene's first screen is in" — fired by the preloader.
  *
@@ -17,32 +19,63 @@ function loadDeferredImages() {
     if (img.getAttribute("src")) continue;
     if (img.dataset.srcset) img.srcset = img.dataset.srcset; // before src: the browser picks once
     img.src = img.dataset.src!;
+    // decoded now, not in the middle of the first swipe
+    img.decode().catch(() => undefined);
   }
 }
 
+const INTERACT = ["scroll", "wheel", "touchstart", "pointerdown", "keydown"] as const;
+
 /**
- * Phones (lighter variant): the deferred images only start on the first interaction —
- * they appear further down the scroll scene, the first screen doesn't need them.
+ * Phones and touch devices (no preloader there): runs `fn` once the first screen is in — after
+ * the load event, in an idle moment (at most 1.5 s later) — or at the first touch / scroll,
+ * whichever comes first. So the scene's images and chair frames are loaded and decoded before
+ * the scene needs them, without competing with the first screen (LCP).
  */
-function loadDeferredImagesOnFirstInteraction() {
-  const events = ["scroll", "wheel", "touchstart", "pointerdown", "keydown"] as const;
+export function afterFirstScreen(fn: () => void) {
+  let done = false;
+  let timer = 0;
   const go = () => {
-    events.forEach((e) => window.removeEventListener(e, go));
-    loadDeferredImages();
+    if (done) return;
+    done = true;
+    INTERACT.forEach((e) => window.removeEventListener(e, go));
+    window.removeEventListener("load", onLoad);
+    window.clearTimeout(timer);
+    fn();
   };
-  events.forEach((e) => window.addEventListener(e, go, { passive: true, once: true }));
+  const idle = () => (window.requestIdleCallback ? window.requestIdleCallback(go, { timeout: 1500 }) : (timer = window.setTimeout(go, 200)));
+  const onLoad = () => idle();
+  INTERACT.forEach((e) => window.addEventListener(e, go, { passive: true, once: true }));
+  if (document.readyState === "complete") idle();
+  else window.addEventListener("load", onLoad, { once: true });
+}
+
+let deferredStarted = false;
+
+function startDeferredImages() {
+  deferredStarted = true;
+  loadDeferredImages();
 }
 
 export function markSceneReady() {
   if (ready) return;
   ready = true;
-  if (window.innerWidth < 768) loadDeferredImagesOnFirstInteraction();
-  else loadDeferredImages();
+  if (isLiteScene()) afterFirstScreen(startDeferredImages);
+  else startDeferredImages();
   window.dispatchEvent(new Event(EVENT));
 }
 
+/**
+ * A scene mounted after that (the static one, after hydration or as the fallback) loads its
+ * deferred images the same way; before the first screen is in, they simply wait for it.
+ */
+export function loadLateSceneImages() {
+  if (deferredStarted) loadDeferredImages();
+}
+
+/** Only markSceneReady counts: on phones the preloader element is gone long before (no overlay). */
 export function isSceneReady() {
-  return ready || !document.querySelector("[data-preloader]");
+  return ready;
 }
 
 /** Runs `fn` once the scene is ready (immediately if it already is). */
