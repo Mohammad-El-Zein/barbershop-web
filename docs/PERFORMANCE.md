@@ -127,6 +127,34 @@ chapter text stands fully visible for ≈ 0.26 screens each (≈ 220 px at 390 �
 (chair) and the last (gold ring, book button) a bit longer. The ranges were evened out for this:
 scissors and orbit 0.18 each, the last chapter 0.14 (before, the scissors' text stood only ≈ 150 px).
 
+### Chapter lengths: `CHAPTER_WEIGHTS` and `MOBILE_SCISSORS`
+
+`CHAPTER_WEIGHTS` (same file) sets how much of the scroll each chapter gets; the ranges are
+computed from it, and the chair's two turns stay tied to the chapter boundaries. It applies to
+desktop and phones alike. With the defaults (14 / 18 / 18 / 18 / 18 / 14) and 4 screens:
+
+| Chapter | Weight | Screens on phones | ≈ seconds at 1 screen / s |
+|---|---|---|---|
+| hero (chair) | 14 | 0.56 | 0.6 |
+| signature (products) | 18 | 0.72 | 0.7 |
+| services (cards) | 18 | 0.72 | 0.7 |
+| craft (scissors, "about us") | 18 | 0.72 | 0.7 |
+| premium (orbit) | 18 | 0.72 | 0.7 |
+| cta (gold ring) | 14 | 0.56 | 0.6 |
+
+Screens of a chapter = weight / sum of weights × `MOBILE_PIN_SCREENS`. To make one chapter longer,
+raise its weight (it takes the share from the others; the total distance stays
+`MOBILE_PIN_SCREENS`). The text of each middle chapter stands fully readable for ≈ 0.4 screens.
+
+`MOBILE_SCISSORS` (phones and touch devices only): the scissors of the "about us" chapter appear at
+`startScale` (default 0.7; 1 = 80 % of the screen width) and reach their full size (1.12) within
+`growShare` of the chapter (default 0.3), strongly eased; afterwards they only turn a little.
+Before (and still on desktop), they started at 0.35 and grew across the whole chapter, finishing
+only as the text left — it felt like scrolling on just to wait for them. Measured at 4 screens
+(Chromium, 360–430 px wide and 390 × 640, all the same): growing to 95 % of full size took
+0.52 screens before (of the chapter's 0.72) and takes ≈ 0.08 screens now; the text stands fully
+readable for ≈ 0.4 screens, before and after.
+
 ### `MOBILE_SCRUB_SECONDS` — how long the animation trails the finger (default 0.4)
 
 ScrollTrigger scrub on phones and touch devices: 0 = locked to the finger (felt hectic at

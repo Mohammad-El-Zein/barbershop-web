@@ -84,7 +84,7 @@ export type Chapter = {
   /** Index of the headline line rendered with the gold gradient (optional). */
   accentLine?: number;
   ctas?: Cta[];
-  /** [start, end] as fractions (0..1) of the pinned scroll length. Must be contiguous. */
+  /** [start, end] as fractions (0..1) of the pinned scroll length. Must be contiguous (from CHAPTER_WEIGHTS). */
   range: [number, number];
 };
 
@@ -145,6 +145,38 @@ export const SCENE_AUTO_FALLBACK = {
   /** ≥ 12 of the last 60 scroll frames > 50 ms → static, without a reload (lib/sceneWatchdog) */
   watchdog: false,
 };
+
+/**
+ * How much of the scene's scroll each chapter gets (desktop and phones alike: shares of the
+ * whole, so on phones 18 = 0.18 × MOBILE_PIN_SCREENS = 0.72 screens). Any scale; the chapter
+ * ranges below are computed from these in this order. The chair's turns stay tied to the
+ * chapter boundaries. Details: docs/PERFORMANCE.md → "Chapter lengths".
+ */
+export const CHAPTER_WEIGHTS = {
+  hero: 14, // the chair
+  signature: 18, // products
+  services: 18, // service cards
+  craft: 18, // scissors ("about us")
+  premium: 18, // orbit
+  cta: 14, // gold ring + book button
+};
+
+/**
+ * Phones and touch devices: the big scissors of the "about us" chapter. They appear at
+ * `startScale` (1 = 80 % of the screen width) and reach full size (1.12) within `growShare` of
+ * the chapter, strongly eased; for the rest of the chapter they only turn a little.
+ * Was: 0.35 and growing across the whole chapter (desktop still does that).
+ */
+export const MOBILE_SCISSORS = { startScale: 0.7, growShare: 0.3 };
+
+type ChapterId = keyof typeof CHAPTER_WEIGHTS;
+const WEIGHT_TOTAL = Object.values(CHAPTER_WEIGHTS).reduce((a, b) => a + b, 0);
+/** [start, end] of a chapter as fractions of the scene's scroll, from CHAPTER_WEIGHTS. */
+function chapterRange(id: ChapterId): [number, number] {
+  const ids = Object.keys(CHAPTER_WEIGHTS) as ChapterId[];
+  const before = ids.slice(0, ids.indexOf(id)).reduce((a, k) => a + CHAPTER_WEIGHTS[k], 0);
+  return [before / WEIGHT_TOTAL, (before + CHAPTER_WEIGHTS[id]) / WEIGHT_TOTAL];
+}
 
 export const siteConfig = {
   brand: {
@@ -253,9 +285,9 @@ export const siteConfig = {
       eagerFramesSmall: 4,
       segments: [
         // chapter 1 → 2: the chair turns away while the products fly in
-        { from: 0.035, to: 0.155, frames: [0, 1] },
+        { from: chapterRange("hero")[1] - 0.105, to: chapterRange("hero")[1] + 0.015, frames: [0, 1] },
         // chapter 5 → 6: the chair turns back to face you and settles in the gold ring
-        { from: 0.81, to: 0.92, frames: [1, 0] },
+        { from: chapterRange("cta")[0] - 0.05, to: chapterRange("cta")[0] + 0.06, frames: [1, 0] },
       ] satisfies TurntableSegment[],
     },
 
@@ -307,19 +339,19 @@ export const siteConfig = {
         { labelKey: "cta.book", action: "book", variant: "primary" },
         { labelKey: "cta.explore", action: "#services", variant: "ghost" },
       ],
-      range: [0, 0.14],
+      range: chapterRange("hero"),
     },
-    { id: "signature", messageKey: "chapters.signature", stage: "products", accentLine: 1, range: [0.14, 0.32] },
-    { id: "services", messageKey: "chapters.services", anchor: "services", stage: "services", accentLine: 1, range: [0.32, 0.5] },
-    { id: "craft", messageKey: "chapters.craft", anchor: "about", stage: "feature", accentLine: 1, range: [0.5, 0.68] },
-    { id: "premium", messageKey: "chapters.premium", stage: "orbit", accentLine: 1, range: [0.68, 0.86] },
+    { id: "signature", messageKey: "chapters.signature", stage: "products", accentLine: 1, range: chapterRange("signature") },
+    { id: "services", messageKey: "chapters.services", anchor: "services", stage: "services", accentLine: 1, range: chapterRange("services") },
+    { id: "craft", messageKey: "chapters.craft", anchor: "about", stage: "feature", accentLine: 1, range: chapterRange("craft") },
+    { id: "premium", messageKey: "chapters.premium", stage: "orbit", accentLine: 1, range: chapterRange("premium") },
     {
       id: "cta",
       messageKey: "chapters.cta",
       stage: "cta",
       accentLine: 1,
       ctas: [{ labelKey: "cta.book", action: "book", variant: "primary" }],
-      range: [0.86, 1],
+      range: chapterRange("cta"),
     },
   ] satisfies Chapter[],
 

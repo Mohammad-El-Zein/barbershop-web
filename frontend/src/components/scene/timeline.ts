@@ -1,5 +1,5 @@
 import { gsap } from "@/lib/gsap";
-import type { Chapter, Product, StagePreset, TurntableSegment } from "@/config/site.config";
+import { MOBILE_SCISSORS, type Chapter, type Product, type StagePreset, type TurntableSegment } from "@/config/site.config";
 import { T } from "./settled";
 
 /**
@@ -265,8 +265,23 @@ export function buildSceneTimeline(tl: gsap.core.Timeline, refs: SceneRefs) {
     tl.to(cards, { autoAlpha: 0, yPercent: -50, duration: T * 0.8, stagger: T * 0.12, ease: "power2.in" }, at);
   };
 
-  // FEATURE: big scissors scale up and rotate slowly across the stage
-  enter.feature = (at) => {
+  // FEATURE: big scissors scale up and rotate slowly across the stage.
+  // Light variant (phones): they appear at a visible size and reach full size early in the
+  // chapter (site.config MOBILE_SCISSORS), then only turn — no scrolling on to "wait" for them.
+  const FEATURE_FULL = { scale: 1.12, rotate: 18, xPercent: -6 };
+  const liteGrow = (ch: Chapter) => (ch.range[1] - ch.range[0]) * MOBILE_SCISSORS.growShare;
+  enter.feature = (at, ch) => {
+    if (lite) {
+      const grow = liteGrow(ch);
+      tl.fromTo(feature, { autoAlpha: 0 }, { autoAlpha: 1, duration: Math.min(grow, T * 0.6), ease: "power1.out", immediateRender: false }, at);
+      tl.fromTo(
+        feature,
+        { x: 0, y: 0, scale: MOBILE_SCISSORS.startScale, rotate: -45, xPercent: 10 },
+        { scale: FEATURE_FULL.scale, rotate: -10, xPercent: 0, duration: grow, ease: "power3.out", immediateRender: false },
+        at,
+      );
+      return;
+    }
     tl.fromTo(
       feature,
       { autoAlpha: 0, x: 0, y: 0, scale: 0.35, rotate: -70, xPercent: 18 },
@@ -276,9 +291,15 @@ export function buildSceneTimeline(tl: gsap.core.Timeline, refs: SceneRefs) {
   };
   hold.feature = (_, ch) => {
     const [s, e] = ch.range;
+    if (lite) {
+      const from = s + liteGrow(ch);
+      const { rotate, xPercent } = FEATURE_FULL;
+      tl.to(feature, { rotate, xPercent, duration: Math.max(0.01, e - T * 0.9 - from), ease: "none" }, from);
+      return;
+    }
     const from = s + T * 1.1;
     const to = e - T * 0.9;
-    tl.to(feature, { scale: 1.12, rotate: 18, xPercent: -6, duration: Math.max(0.01, to - from), ease: "none" }, from);
+    tl.to(feature, { ...FEATURE_FULL, duration: Math.max(0.01, to - from), ease: "none" }, from);
   };
   exit.feature = (at) => {
     tl.to(feature, { autoAlpha: 0, scale: 1.6, rotate: 40, duration: T * 0.9, ease: "power2.in" }, at);
