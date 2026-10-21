@@ -61,18 +61,31 @@ export function currentSceneMode(): SceneMode {
   return "pinned";
 }
 
+/** A chapter jump (nav link, section dot) in progress: its target, and since when. */
+let jump: { chapter: number; at: number } | null = null;
+/** Longer than any smooth jump (lib/scroll: 1.6 s); after that the chapter on screen counts again. */
+const JUMP_MS = 3000;
+
 export function reportPinnedChapter(index: number) {
   pinnedChapter = index;
+  if (jump?.chapter === index) jump = null;
+}
+
+/** The scene scrolls to this chapter (passing others on the way). */
+export function reportChapterJump(index: number) {
+  jump = { chapter: index, at: performance.now() };
 }
 
 /**
  * The safe fallback: switch to the static scene for the rest of the visit (never back), without
- * a reload; the static scene continues at the chapter that was on screen.
+ * a reload; the static scene continues at the chapter that was on screen — or, in the middle of
+ * a chapter jump, at the chapter the visitor asked for.
  */
 export function downgradeScene() {
   if (downgraded || isSceneForced()) return;
   downgraded = true;
-  resumeChapter = pinnedChapter;
+  resumeChapter = jump && performance.now() - jump.at < JUMP_MS ? jump.chapter : pinnedChapter;
+  jump = null;
   listeners.forEach((l) => l());
 }
 

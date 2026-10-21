@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { siteConfig } from "@/config/site.config";
 import type { ScrollTrigger } from "gsap/ScrollTrigger";
-import { currentSceneMode, notifyPinnedSceneMounted } from "@/lib/sceneMode";
+import { currentSceneMode, notifyPinnedSceneMounted, reportChapterJump } from "@/lib/sceneMode";
 import { whenSceneReady } from "@/lib/sceneReady";
 import { expectChapterResolver, scrollToY } from "@/lib/scroll";
 import { PlaceholderBadge } from "../PlaceholderBadge";
@@ -107,6 +107,7 @@ export function PinnedScene() {
   const goToChapter = (i: number) => {
     const st = triggerRef.current;
     if (!st) return;
+    reportChapterJump(i);
     scrollToY(st.start + settledProgress(chapters[i], i) * (st.end - st.start));
   };
 

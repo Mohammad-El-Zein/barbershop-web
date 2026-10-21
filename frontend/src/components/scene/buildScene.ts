@@ -3,7 +3,14 @@
 import type { Dispatch, RefObject, SetStateAction } from "react";
 import { siteConfig } from "@/config/site.config";
 import { gsap, ScrollTrigger } from "@/lib/gsap";
-import { downgradeScene, isSceneForced, LITE_SCENE_QUERY, PIN_PLACEHOLDER_ID, reportPinnedChapter } from "@/lib/sceneMode";
+import {
+  downgradeScene,
+  isSceneForced,
+  LITE_SCENE_QUERY,
+  PIN_PLACEHOLDER_ID,
+  reportChapterJump,
+  reportPinnedChapter,
+} from "@/lib/sceneMode";
 import { watchSceneFrames } from "@/lib/sceneWatchdog";
 import { registerChapterResolver } from "@/lib/scroll";
 import { turntableFrameCount } from "@/lib/turntable";
@@ -132,6 +139,7 @@ export function buildPinnedScene(el: SceneElements): () => void {
         const i = chapters.findIndex((c) => c.anchor === anchor);
         const st = el.triggerRef.current;
         if (i === -1 || !st) return null;
+        reportChapterJump(i);
         return st.start + settledProgress(chapters[i], i) * (st.end - st.start);
       });
 
