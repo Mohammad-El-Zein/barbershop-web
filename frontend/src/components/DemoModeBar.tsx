@@ -10,10 +10,11 @@ import { getTranslations } from "next-intl/server";
  */
 
 /**
- * Build-time switch for the strip: NEXT_PUBLIC_SHOW_DEMO_BANNER=false hides it (production
- * builds); anything else, or unset, keeps it. The payment page keeps its own demo notice.
+ * Build-time switch for the strip: only NEXT_PUBLIC_SHOW_DEMO_BANNER=true shows it (a public demo
+ * site, infra: public_demo); unset or anything else hides it. The payment page always keeps its
+ * own demo notice, so nobody thinks real money moves.
  */
-export const SHOW_DEMO_BANNER = process.env.NEXT_PUBLIC_SHOW_DEMO_BANNER !== "false";
+export const SHOW_DEMO_BANNER = process.env.NEXT_PUBLIC_SHOW_DEMO_BANNER === "true";
 
 export async function DemoModeBar({ locale }: { locale: string }) {
   const t = await getTranslations({ locale, namespace: "pay" });

@@ -14,7 +14,7 @@
 #   NEXT_PUBLIC_SITE_URL, NEXT_PUBLIC_API_URL, NEXT_PUBLIC_TENANT, optional
 #   NEXT_PUBLIC_GA4_ID / _GOOGLE_ADS_ID / _GOOGLE_ADS_CONVERSION_LABEL / _META_PIXEL_ID /
 #   _TURNSTILE_SITE_KEY / _SHOW_DEMO_BANNER (frontend images bake these in at build time;
-#   the DEMO strip defaults to off for release tags v*, on otherwise).
+#   the site-wide DEMO strip is off unless the variable is "true").
 # Image tags: sha-<7>, branch name, and on a vX.Y.Z git tag: X.Y.Z and X.Y.
 # Actions are pinned to commit SHAs (tag in the comment) — update them deliberately.
 # ─────────────────────────────────────────────────────────────────────────────
@@ -165,8 +165,8 @@ jobs:
           ADS_LABEL: ${{ vars.NEXT_PUBLIC_GOOGLE_ADS_CONVERSION_LABEL }}
           META_ID: ${{ vars.NEXT_PUBLIC_META_PIXEL_ID }}
           TURNSTILE: ${{ vars.NEXT_PUBLIC_TURNSTILE_SITE_KEY }}
-          # production builds (release tags) hide the DEMO strip unless the variable says otherwise
-          DEMO_BANNER: ${{ vars.NEXT_PUBLIC_SHOW_DEMO_BANNER || (startsWith(github.ref, 'refs/tags/v') && 'false' || 'true') }}
+          # the site-wide DEMO strip only for a public demo site
+          DEMO_BANNER: ${{ vars.NEXT_PUBLIC_SHOW_DEMO_BANNER || 'false' }}
         run: |
           {
             echo "list<<EOF"

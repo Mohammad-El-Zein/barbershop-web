@@ -101,7 +101,7 @@ Details: `backend/README.md` → Configuration and Production hardening.
 | `NEXT_PUBLIC_API_URL` | **build** | `https://api.example-barber.de` |
 | `NEXT_PUBLIC_TENANT` | **build** | Shop slug |
 | `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | **build** | Turnstile site key (also widens the CSP) |
-| `NEXT_PUBLIC_SHOW_DEMO_BANNER` | **build** | Site-wide DEMO strip while the backend runs demo payments. Unset = shown (local, e2e, dev); `false` = hidden. Production builds set `false`: CI on release tags `v*`, `infra/.env.prod`, and `terraform output ci_variables` for prod. A [public demo](#11-public-demo-deployment) keeps `true`. The payment page always shows its own demo notice |
+| `NEXT_PUBLIC_SHOW_DEMO_BANNER` | **build** | Site-wide DEMO strip while the backend runs demo payments. Only `true` shows it — a [public demo](#11-public-demo-deployment) (`terraform output ci_variables` sets it there); unset = hidden (local, e2e, dev, prod). The payment page always shows its own demo notice |
 | `NEXT_PUBLIC_GA4_ID`, `NEXT_PUBLIC_GOOGLE_ADS_ID`, `NEXT_PUBLIC_GOOGLE_ADS_CONVERSION_LABEL`, `NEXT_PUBLIC_META_PIXEL_ID` | **build** | Optional; loaded only after consent |
 | `API_URL_INTERNAL` | runtime (and optionally build) | Backend address for server-side requests (structured data, legal pages) |
 
@@ -525,7 +525,7 @@ A public demo (portfolio, sales) shows the full flow with simulated payments:
   `ci_variables` sets `NEXT_PUBLIC_SHOW_DEMO_BANNER=true`.
 - VPS: `SPRING_PROFILES_ACTIVE=prod,demo`, `PAYMENT_DEMO_ALLOW_IN_PROD=true` and `NEXT_PUBLIC_SHOW_DEMO_BANNER=true`
   in `infra/.env.prod`.
-- CI release builds (`v*` tags) hide the strip by default: set the variable `NEXT_PUBLIC_SHOW_DEMO_BANNER=true`.
+- CI builds hide the strip by default: set the variable `NEXT_PUBLIC_SHOW_DEMO_BANNER=true`.
 
 Every page then shows a striped **DEMO bar** (server-rendered, above everything). The payment page has its own
 banner, and payment emails say "DEMO MODE". No card fields exist, and no money moves.

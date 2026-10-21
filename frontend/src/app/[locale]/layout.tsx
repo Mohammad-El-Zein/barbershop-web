@@ -55,7 +55,7 @@ export default async function LocaleLayout({ children, params }: LayoutProps<"/[
   const allMessages = await getMessages();
   const messages = Object.fromEntries(Object.entries(allMessages).filter(([ns]) => ns !== "staff"));
   // only when the backend confirms it (unknown → no strip; the payment page shows its own),
-  // and not in builds with NEXT_PUBLIC_SHOW_DEMO_BANNER=false
+  // and only in builds with NEXT_PUBLIC_SHOW_DEMO_BANNER=true (a public demo site)
   const { shop } = await loadShopData(locale);
   const demo = SHOW_DEMO_BANNER && shop?.bookingRules?.demoPayments === true;
 

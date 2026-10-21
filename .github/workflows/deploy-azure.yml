@@ -112,8 +112,8 @@ jobs:
           ADS_LABEL: ${{ vars.NEXT_PUBLIC_GOOGLE_ADS_CONVERSION_LABEL }}
           META_ID: ${{ vars.NEXT_PUBLIC_META_PIXEL_ID }}
           TURNSTILE: ${{ vars.NEXT_PUBLIC_TURNSTILE_SITE_KEY }}
-          # unset: shown everywhere except prod
-          DEMO_BANNER: ${{ vars.NEXT_PUBLIC_SHOW_DEMO_BANNER || (inputs.environment == 'prod' && 'false' || 'true') }}
+          # the site-wide DEMO strip only for a public demo site ("true")
+          DEMO_BANNER: ${{ vars.NEXT_PUBLIC_SHOW_DEMO_BANNER || 'false' }}
         run: |
           {
             echo "list<<EOF"

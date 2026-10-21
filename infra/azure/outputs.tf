@@ -90,7 +90,7 @@ output "ci_variables" {
     NEXT_PUBLIC_SITE_URL = local.site_url
     NEXT_PUBLIC_API_URL  = local.api_url
     NEXT_PUBLIC_TENANT   = var.tenant_slug
-    # site-wide DEMO strip: off in prod, except on a public demo
-    NEXT_PUBLIC_SHOW_DEMO_BANNER = tostring(var.environment != "prod" || var.public_demo)
+    # site-wide DEMO strip: only on a public demo site (the payment page has its own notice)
+    NEXT_PUBLIC_SHOW_DEMO_BANNER = tostring(var.public_demo)
   }
 }

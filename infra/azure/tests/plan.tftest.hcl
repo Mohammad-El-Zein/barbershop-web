@@ -105,6 +105,10 @@ run "dev_defaults_are_private_and_safe" {
     condition     = output.ci_variables.API_URL == output.api_url && output.ci_variables.NEXT_PUBLIC_API_URL == output.api_url && output.ci_variables.NEXT_PUBLIC_SITE_URL == output.site_url
     error_message = "ci_variables carry the default URLs."
   }
+  assert {
+    condition     = output.ci_variables.NEXT_PUBLIC_SHOW_DEMO_BANNER == "false"
+    error_message = "dev: no site-wide DEMO strip (only a public demo shows it)."
+  }
 }
 
 # Container Apps rewrites "$$" → "$" and "$(NAME)" in commands, args and env values (like

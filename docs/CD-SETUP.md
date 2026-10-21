@@ -64,7 +64,7 @@ Bei dir sieht das für dev so aus. Prüfe die Werte trotzdem immer mit dem Befeh
 | `NEXT_PUBLIC_API_URL` | gleicher Wert wie `API_URL` |
 | `NEXT_PUBLIC_SITE_URL` | `https://barbershop.elzein.dev` |
 | `NEXT_PUBLIC_TENANT` | `the-barber-news` |
-| `NEXT_PUBLIC_SHOW_DEMO_BANNER` | `true` |
+| `NEXT_PUBLIC_SHOW_DEMO_BANNER` | `false` (nur eine öffentliche Demo-Seite zeigt den Streifen) |
 
 Die URLs sind die eigenen Domains (`web_domain` / `api_domain`, siehe [DOMAIN.md](DOMAIN.md)). Ändern sich die
 Domains, trägst du die neuen Werte hier in GitHub ein. Der nächste Deploy baut das Frontend dann damit neu.
@@ -228,7 +228,7 @@ Rollen brauchen bis zu 5–10 Minuten, bis sie wirken.
 | `NEXT_PUBLIC_API_URL` | aus `ci_variables` |
 | `NEXT_PUBLIC_SITE_URL` | aus `ci_variables` |
 | `NEXT_PUBLIC_TENANT` | aus `ci_variables` |
-| `NEXT_PUBLIC_SHOW_DEMO_BANNER` | aus `ci_variables` (`true`) |
+| `NEXT_PUBLIC_SHOW_DEMO_BANNER` | aus `ci_variables` (`false`) |
 
 Diese Variablen sind optional. Lass sie weg, wenn du sie nicht brauchst:
 
