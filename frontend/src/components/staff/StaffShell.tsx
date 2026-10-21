@@ -1,9 +1,9 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
-import { useAuth } from "@/lib/auth/AuthProvider";
+import { useAuth, useLogout } from "@/lib/auth/AuthProvider";
 import { LoginForm } from "../account/AuthForms";
 import { Alert, Skeleton } from "../ui/Feedback";
 
@@ -19,12 +19,17 @@ const TABS = [
 
 /**
  * Staff area frame: login for barbers/admins, role-based tabs. Barbers see their
- * own calendar and requests; admins everything of their shop.
+ * own calendar and requests; admins everything of their shop. Reached only at /admin
+ * directly (no link in the account menu).
+ *
+ * "Log out" in the header goes to the login page. The content is keyed by the user: after a
+ * logout or an account switch (also in another tab) nothing of the previous account stays.
  */
 export function StaffShell({ children }: { children: React.ReactNode }) {
   const t = useTranslations("staff");
   const { status, user } = useAuth();
   const pathname = usePathname();
+  const logout = useLogout("/account/login?as=barber");
 
   if (status === "loading") return <Skeleton className="h-96" />;
   if (status === "anonymous")
@@ -45,6 +50,9 @@ export function StaffShell({ children }: { children: React.ReactNode }) {
         <Link href="/account" className="underline">
           {t("toAccount")}
         </Link>
+        <span className="mt-3 block">
+          <LogoutButton onLogout={logout} label={t("logout")} />
+        </span>
       </Alert>
     );
 
@@ -67,9 +75,12 @@ export function StaffShell({ children }: { children: React.ReactNode }) {
           <p className="eyebrow">{t(role === "ADMIN" ? "adminArea" : "barberArea")}</p>
           <p className="mt-1 text-sm text-muted">{user?.name} · {user?.email}</p>
         </div>
-        <Link href="/account/profile" className="btn btn-ghost btn-sm">
-          {t("profile")}
-        </Link>
+        <div className="flex gap-2">
+          <Link href="/account/profile" className="btn btn-ghost btn-sm">
+            {t("profile")}
+          </Link>
+          <LogoutButton onLogout={logout} label={t("logout")} />
+        </div>
       </div>
       {tabs.length > 1 && (
         <nav aria-label={t("sections")} className="-mx-4 mb-8 overflow-x-auto px-4">
@@ -95,8 +106,30 @@ export function StaffShell({ children }: { children: React.ReactNode }) {
           </ul>
         </nav>
       )}
-      {children}
+      <div key={user?.id}>{children}</div>
     </div>
+  );
+}
+
+function LogoutButton({ onLogout, label }: { onLogout: () => Promise<void>; label: string }) {
+  const [busy, setBusy] = useState(false);
+  return (
+    <button
+      type="button"
+      className="btn btn-ghost btn-sm"
+      disabled={busy}
+      aria-busy={busy}
+      onClick={async () => {
+        setBusy(true);
+        try {
+          await onLogout();
+        } finally {
+          setBusy(false);
+        }
+      }}
+    >
+      {label}
+    </button>
   );
 }
 

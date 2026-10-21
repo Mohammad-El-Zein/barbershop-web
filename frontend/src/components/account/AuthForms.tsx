@@ -21,7 +21,10 @@ import { Checkbox, Field, Select } from "../ui/Field";
 export function LoginChooser() {
   const t = useTranslations("account.login");
   const search = useSearchParams();
+  const { status } = useAuth();
   const [mode, setMode] = useState<"customer" | "barber">(search.get("as") === "barber" ? "barber" : "customer");
+  // already logged in (e.g. an admin opening the customer login): show that, not a second login
+  if (status === "authenticated") return <SignedIn />;
   return (
     <div>
       <div role="tablist" aria-label={t("as")} className="mb-4 inline-flex rounded-full border border-line p-1">
@@ -42,6 +45,45 @@ export function LoginChooser() {
       </div>
       {mode === "barber" && <p className="mb-4 text-sm text-muted">{t("barberHint")}</p>}
       <LoginForm staff={mode === "barber"} />
+    </div>
+  );
+}
+
+/** The account this browser is logged in with, "to my account" and "log out" (to switch accounts). */
+function SignedIn() {
+  const t = useTranslations("account.login");
+  const tRole = useTranslations("account.roles");
+  const { user, logout } = useAuth();
+  const [busy, setBusy] = useState(false);
+  const staff = user?.role === "BARBER" || user?.role === "ADMIN";
+  return (
+    <div className="card space-y-4 p-6 sm:p-8" data-signed-in>
+      <h2 className="display text-2xl">{t("signedInTitle")}</h2>
+      <p className="text-sm text-muted">
+        {t("signedInText", { name: user?.name ?? "", email: user?.email ?? "", role: tRole(user?.role ?? "CUSTOMER") })}
+      </p>
+      <div className="flex flex-wrap gap-3">
+        <Link href={staff ? "/account/profile" : "/account"} className="btn btn-primary btn-sm">
+          {t("toAccount")}
+        </Link>
+        {/* stays on this page: the login form appears for the other account */}
+        <button
+          type="button"
+          className="btn btn-ghost btn-sm"
+          disabled={busy}
+          aria-busy={busy}
+          onClick={async () => {
+            setBusy(true);
+            try {
+              await logout();
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          {t("logoutToSwitch")}
+        </button>
+      </div>
     </div>
   );
 }

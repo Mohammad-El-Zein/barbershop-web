@@ -7,7 +7,7 @@ import { openBooking } from "@/lib/booking";
 import { scrollToTarget } from "@/lib/scroll";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { Logo } from "./Logo";
-import { AccountLink } from "./AccountLink";
+import { AccountMenu } from "./AccountMenu";
 import { ThemeToggle } from "./ThemeToggle";
 
 /**
@@ -112,7 +112,7 @@ export function Nav({ hasScene = true }: { hasScene?: boolean }) {
             {/* phones: the language switcher lives in the mobile menu (bar width) */}
             <LanguageSwitcher className="hidden sm:flex" />
             <ThemeToggle />
-            <AccountLink />
+            <AccountMenu />
           </div>
           <button type="button" className="btn btn-outline-gold hidden md:inline-flex" onClick={() => openBooking("nav")}>
             {t(siteConfig.bookCta.labelKey)}

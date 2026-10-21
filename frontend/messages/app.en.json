@@ -4,9 +4,11 @@
     "back": "Back"
   },
   "nav": {
-    "account": "My account",
-    "staffArea": "Staff area",
-    "login": "Log in"
+    "login": "Log in",
+    "accountMenu": "Account menu of {name}",
+    "myAccount": "My account",
+    "logout": "Log out",
+    "loggingOut": "Logging out …"
   },
   "errors": {
     "network": "Can’t reach the server. Please check your connection and try again.",
@@ -306,7 +308,11 @@
       "as": "Log in as",
       "asCustomer": "Customer",
       "asBarber": "Barber",
-      "barberHint": "For barbers and admins. The shop’s admin creates your login – there is no self-registration here."
+      "barberHint": "For barbers and admins. The shop’s admin creates your login – there is no self-registration here.",
+      "signedInTitle": "You are already logged in",
+      "signedInText": "Logged in as {name} ({email}) · {role}. To use another account, log out first.",
+      "toAccount": "To my account",
+      "logoutToSwitch": "Log out and use another account"
     },
     "register": {
       "eyebrow": "Account",
@@ -385,6 +391,16 @@
       "deleteTitle": "Delete your account for good?",
       "deleteConfirm": "Delete for good",
       "deleteWarning": "This can’t be undone. Open appointments are cancelled – less than 24 hours before, the deposit is kept."
+    },
+    "roles": {
+      "CUSTOMER": "Customer account",
+      "BARBER": "Barber",
+      "ADMIN": "Admin"
+    },
+    "wrongRole": {
+      "customerTitle": "This area is for customer accounts",
+      "customerText": "You are logged in as {name} ({role}). Customer bookings and loyalty points belong to a customer account.",
+      "toProfile": "To my profile"
     }
   },
   "staff": {
@@ -725,7 +741,8 @@
       "irreversible": "This can’t be undone.",
       "done": "Deleted: {deleted}, anonymised: {anonymised}.",
       "delete": "Delete for good"
-    }
+    },
+    "logout": "Log out"
   },
   "errorPages": {
     "retry": "Try again",

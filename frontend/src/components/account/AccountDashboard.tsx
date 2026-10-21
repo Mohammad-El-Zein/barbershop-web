@@ -7,7 +7,7 @@ import { siteConfig } from "@/config/site.config";
 import { api, call } from "@/lib/api/client";
 import type { Booking, Loyalty } from "@/lib/api/types";
 import { useErrorText } from "@/lib/api/useErrorText";
-import { useAuth } from "@/lib/auth/AuthProvider";
+import { useAuth, useLogout } from "@/lib/auth/AuthProvider";
 import { openBooking } from "@/lib/booking";
 import { dateTime, dateTimeRange } from "@/lib/format";
 import { LoyaltyBar } from "../booking/SummaryStep";
@@ -17,8 +17,8 @@ import { ConfirmDialog } from "../ui/Dialog";
 /** /account — loyalty progress + my bookings (upcoming / past) with pay, cancel and rebook. */
 export function AccountDashboard() {
   const t = useTranslations("account.dashboard");
-  const { user, logout } = useAuth();
-  const router = useRouter();
+  const { user } = useAuth();
+  const logout = useLogout("/");
   const [scope, setScope] = useState<"upcoming" | "past">("upcoming");
   const [bookings, setBookings] = useState<Booking[] | null>(null);
   const [loyalty, setLoyalty] = useState<Loyalty | null>(null);
@@ -49,10 +49,7 @@ export function AccountDashboard() {
           <button
             type="button"
             className="btn btn-ghost btn-sm"
-            onClick={async () => {
-              await logout();
-              router.push("/");
-            }}
+            onClick={logout}
           >
             {t("logout")}
           </button>

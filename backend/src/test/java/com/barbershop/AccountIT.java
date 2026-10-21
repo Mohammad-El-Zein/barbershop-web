@@ -87,6 +87,63 @@ class AccountIT extends AbstractIntegrationTest {
     }
 
     @Test
+    void logoutRevokesTheWholeSessionInTheDatabaseAndAnotherAccountCanLogInRightAway() throws Exception {
+        String email = registerAndVerify();
+        // two sessions of the same person (two devices); the first one was refreshed once
+        String deviceA = cookieValue(loginResponse(email, PASSWORD).getHeaders().getFirst(HttpHeaders.SET_COOKIE));
+        String deviceB = cookieValue(loginResponse(email, PASSWORD).getHeaders().getFirst(HttpHeaders.SET_COOKIE));
+        String deviceA2 = cookieValue(refresh(deviceA).getHeaders().getFirst(HttpHeaders.SET_COOKIE));
+        UUID userId = jdbc.queryForObject("select id from app_user where email = ?", UUID.class, email);
+        UUID familyA = jdbc.queryForObject("""
+                select family_id from refresh_token where user_id = ? and revoked_at is null
+                order by created_at desc limit 1""", UUID.class, userId);
+
+        // logout with the current cookie of device A: 204, the cookie is cleared in the browser …
+        ResponseEntity<Map<String, Object>> out = withCookie(HttpMethod.POST, "/api/auth/logout", deviceA2,
+                "http://localhost:3000");
+        assertThat(out.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        assertThat(out.getHeaders().getFirst(HttpHeaders.SET_COOKIE))
+                .startsWith("bs_refresh=;").contains("Max-Age=0", "Path=/api/auth", "HttpOnly");
+        // … and every token of that session (also the rotated predecessor) is revoked in the database
+        assertThat(jdbc.queryForObject(
+                "select count(*) from refresh_token where family_id = ? and revoked_at is null", Long.class, familyA))
+                .isZero();
+        assertThat(refresh(deviceA2).getBody()).containsEntry("code", "auth.session_expired");
+        assertThat(refresh(deviceA).getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        // the other device's session stays (logout ends this session, not every session of the person)
+        ResponseEntity<Map<String, Object>> stillIn = refresh(deviceB);
+        assertThat(stillIn.getStatusCode()).isEqualTo(HttpStatus.OK);
+        String deviceB2 = cookieValue(stillIn.getHeaders().getFirst(HttpHeaders.SET_COOKIE));
+
+        // idempotent: again, or without any cookie → still 204 and a clearing cookie
+        assertThat(withCookie(HttpMethod.POST, "/api/auth/logout", deviceA2, null).getStatusCode())
+                .isEqualTo(HttpStatus.NO_CONTENT);
+        ResponseEntity<Map<String, Object>> noCookie = rest.exchange("/api/auth/logout", HttpMethod.POST,
+                new HttpEntity<>(null, headers("de", null)), JSON);
+        assertThat(noCookie.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+        assertThat(noCookie.getHeaders().getFirst(HttpHeaders.SET_COOKIE)).contains("Max-Age=0");
+        // a foreign site cannot log anybody out
+        HttpHeaders evil = headers("de", null);
+        evil.add(HttpHeaders.COOKIE, "bs_refresh=" + deviceB2);
+        evil.setOrigin("https://evil.example");
+        assertThat(rest.exchange("/api/auth/logout", HttpMethod.POST, new HttpEntity<>(null, evil), String.class)
+                .getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(refresh(deviceB2).getStatusCode()).isEqualTo(HttpStatus.OK);
+
+        // account switch in one browser: admin out → customer in → admin in again, each a fresh session
+        String admin = cookieValue(loginResponse(ADMIN_EMAIL, ADMIN_PASSWORD).getHeaders().getFirst(HttpHeaders.SET_COOKIE));
+        assertThat(withCookie(HttpMethod.POST, "/api/auth/logout", admin, null).getStatusCode())
+                .isEqualTo(HttpStatus.NO_CONTENT);
+        assertThat(refresh(admin).getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        ResponseEntity<Map<String, Object>> customer = loginResponse(email, PASSWORD);
+        assertThat(customer.getStatusCode()).isEqualTo(HttpStatus.OK);
+        String customerAccess = (String) customer.getBody().get("accessToken");
+        assertThat(get("/api/me", "de", customerAccess).getBody()).containsEntry("email", email);
+        assertThat(get("/api/admin/stats", "de", customerAccess).getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(loginResponse(ADMIN_EMAIL, ADMIN_PASSWORD).getStatusCode()).isEqualTo(HttpStatus.OK);
+    }
+
+    @Test
     void registrationNeedsConsentAndAStrongPassword() {
         Map<String, Object> noConsent = registration(uniqueEmail(), "en");
         noConsent.put("consent", false);

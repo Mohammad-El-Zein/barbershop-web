@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useLocale } from "next-intl";
+import { useRouter } from "@/i18n/navigation";
 import { api, call, setAccessToken, setApiLanguage, setRefreshHandler } from "@/lib/api/client";
 import { TENANT } from "@/lib/api/config";
 import type { Session, User } from "@/lib/api/types";
@@ -15,6 +16,12 @@ import type { Session, User } from "@/lib/api/types";
  *   expires it is refreshed again in the background.
  * - Concurrent refreshes are de-duplicated (the backend rotates the cookie on every
  *   refresh and treats a second use of an old cookie as theft).
+ * - Logout is complete: the backend revokes the refresh token family and clears the cookie;
+ *   here the access token, the user, the refresh timer, the session hint and the booking
+ *   status link of the session go. Other tabs follow at once (BroadcastChannel): a logout
+ *   there ends the session here too, a login with another account there switches this tab
+ *   to that account. Views keyed by the user id (StaffShell, RequireAuth) remount, so
+ *   nothing of the previous account stays on screen.
  */
 
 type Status = "loading" | "anonymous" | "authenticated";
@@ -58,10 +65,16 @@ function hasHint() {
   }
 }
 
-/** One refresh at a time, app-wide. */
+const refreshCall = () => call(() => api.POST("/api/auth/refresh")).then((s) => s as Session);
+
+/**
+ * One refresh at a time per tab. Tabs share the cookie: when another tab rotated it a moment
+ * earlier, our request still carried the old one and is refused — the browser has the new
+ * cookie by then, so one retry a moment later succeeds.
+ */
 function refreshOnce(): Promise<Session | null> {
-  inflight ??= call(() => api.POST("/api/auth/refresh"))
-    .then((s) => s as Session)
+  inflight ??= refreshCall()
+    .catch(() => new Promise<void>((r) => setTimeout(r, 300 + Math.random() * 300)).then(refreshCall))
     .catch(() => null)
     .finally(() => {
       inflight = null;
@@ -69,11 +82,45 @@ function refreshOnce(): Promise<Session | null> {
   return inflight;
 }
 
+/**
+ * Set by a logout started in this tab (useLogout), until the next login: the protected page it
+ * was started on (RequireAuth) then doesn't send the visitor to the login — the logout leads
+ * to its own target.
+ */
+let leavingAfterLogout = false;
+export function isLeavingAfterLogout() {
+  return leavingAfterLogout;
+}
+
+/** Tells the other tabs of this browser about a login or logout. */
+type TabMessage = { type: "logout" } | { type: "login"; userId: string };
+const CHANNEL = "auth";
+
+function tellOtherTabs(msg: TabMessage) {
+  try {
+    const ch = new BroadcastChannel(CHANNEL);
+    ch.postMessage(msg);
+    ch.close();
+  } catch {
+    /* very old browser: the other tabs notice at their next refresh */
+  }
+}
+
+/** Data that belongs to the session, not to the device (theme, language and consent stay). */
+function forgetSessionData() {
+  try {
+    sessionStorage.removeItem("booking:status"); // the status link of the last booking
+  } catch {
+    /* storage blocked */
+  }
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const locale = useLocale();
   const [status, setStatus] = useState<Status>("loading");
   const [user, setUserState] = useState<User | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
 
   // the UI language goes along with every request
   setApiLanguage(locale);
@@ -88,9 +135,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // the background refresh re-applies the next session through this ref (no self-reference in the callback)
   const applyRef = useRef<(s: Session) => void>(() => undefined);
+  const userIdRef = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    userIdRef.current = user?.id;
+  }, [user]);
 
   const applySession = useCallback(
     (s: Session) => {
+      leavingAfterLogout = false;
       setAccessToken(s.accessToken ?? null);
       setUserState(s.user ?? null);
       setStatus("authenticated");
@@ -143,7 +195,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const s = (await call(() =>
         api.POST("/api/auth/{tenant}/login", { params: { path: { tenant: TENANT } }, body: { email, password } }),
       )) as Session;
+      if (userIdRef.current && userIdRef.current !== s.user?.id) forgetSessionData();
       applySession(s);
+      tellOtherTabs({ type: "login", userId: s.user!.id! });
       return s.user!;
     },
     [applySession],
@@ -151,11 +205,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(async () => {
     try {
+      // revokes the refresh token family and clears the cookie; locally we end the session
+      // either way (offline: the cookie stays, but without the hint it is not used again)
       await call(() => api.POST("/api/auth/logout"));
+    } catch {
+      /* see above */
     } finally {
       clear();
+      forgetSessionData();
+      tellOtherTabs({ type: "logout" });
     }
   }, [clear]);
+
+  // the other tabs: a logout there ends the session here; a login with another account there
+  // switches this tab to it (the cookie is shared, so this tab's next refresh would anyway)
+  useEffect(() => {
+    let ch: BroadcastChannel;
+    try {
+      ch = new BroadcastChannel(CHANNEL);
+    } catch {
+      return;
+    }
+    ch.onmessage = async (e: MessageEvent<TabMessage>) => {
+      if (e.data.type === "logout") {
+        clear();
+        forgetSessionData();
+      } else if (e.data.type === "login" && e.data.userId !== userIdRef.current) {
+        forgetSessionData();
+        const s = await refreshOnce();
+        if (s) applySession(s);
+        else clear();
+      }
+    };
+    return () => ch.close();
+  }, [applySession, clear]);
 
   const value = useMemo<AuthContextValue>(
     () => ({ status, user, login, logout, applySession, setUser: setUserState, clear }),
@@ -168,4 +251,15 @@ export function useAuth() {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error("useAuth outside <AuthProvider>");
   return ctx;
+}
+
+/** Log out, then go to {@code to} (replace: "back" does not return to the signed-in view). */
+export function useLogout(to: string) {
+  const { logout } = useAuth();
+  const router = useRouter();
+  return useCallback(async () => {
+    leavingAfterLogout = true;
+    await logout();
+    router.replace(to);
+  }, [logout, router, to]);
 }

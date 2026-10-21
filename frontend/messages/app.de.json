@@ -4,9 +4,11 @@
     "back": "Zurück"
   },
   "nav": {
-    "account": "Mein Konto",
-    "staffArea": "Team-Bereich",
-    "login": "Anmelden"
+    "login": "Anmelden",
+    "accountMenu": "Konto-Menü von {name}",
+    "myAccount": "Mein Konto",
+    "logout": "Abmelden",
+    "loggingOut": "Wird abgemeldet …"
   },
   "errors": {
     "network": "Keine Verbindung zum Server. Prüf bitte deine Internetverbindung und versuch es noch einmal.",
@@ -306,7 +308,11 @@
       "as": "Anmelden als",
       "asCustomer": "Kunde",
       "asBarber": "Barber",
-      "barberHint": "Für Barber und Admins. Den Zugang legt der Admin des Shops an – eine Registrierung gibt es hier nicht."
+      "barberHint": "Für Barber und Admins. Den Zugang legt der Admin des Shops an – eine Registrierung gibt es hier nicht.",
+      "signedInTitle": "Du bist bereits angemeldet",
+      "signedInText": "Angemeldet als {name} ({email}) · {role}. Um ein anderes Konto zu nutzen, melde dich zuerst ab.",
+      "toAccount": "Zu meinem Konto",
+      "logoutToSwitch": "Abmelden und anderes Konto nutzen"
     },
     "register": {
       "eyebrow": "Konto",
@@ -385,6 +391,16 @@
       "deleteTitle": "Konto endgültig löschen?",
       "deleteConfirm": "Endgültig löschen",
       "deleteWarning": "Das kann nicht rückgängig gemacht werden. Offene Termine werden storniert – weniger als 24 Stunden vorher wird die Anzahlung einbehalten."
+    },
+    "roles": {
+      "CUSTOMER": "Kundenkonto",
+      "BARBER": "Barber",
+      "ADMIN": "Admin"
+    },
+    "wrongRole": {
+      "customerTitle": "Dieser Bereich ist für Kundenkonten",
+      "customerText": "Du bist als {name} ({role}) angemeldet. Kundenbuchungen und Treuepunkte gehören zu einem Kundenkonto.",
+      "toProfile": "Zu meinem Profil"
     }
   },
   "staff": {
@@ -725,7 +741,8 @@
       "irreversible": "Das lässt sich nicht rückgängig machen.",
       "done": "Gelöscht: {deleted}, anonymisiert: {anonymised}.",
       "delete": "Endgültig löschen"
-    }
+    },
+    "logout": "Abmelden"
   },
   "errorPages": {
     "retry": "Nochmal versuchen",
