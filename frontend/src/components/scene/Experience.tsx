@@ -1,14 +1,17 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { siteConfig } from "@/config/site.config";
-import { useReducedMotion } from "@/lib/useReducedMotion";
-import { PIN_PLACEHOLDER_ID, PinnedScene } from "./PinnedScene";
+import { PIN_PLACEHOLDER_ID, useSceneMode } from "@/lib/sceneMode";
 import { StaticScene } from "./StaticScene";
 
-/** Picks the animated pinned scene or the static fallback for reduced-motion users. */
+// GSAP, ScrollTrigger and the turntable only load where the pinned scene runs (desktops)
+const PinnedScene = dynamic(() => import("./PinnedScene").then((m) => m.PinnedScene), { ssr: false });
+
+/** Picks the animated pinned scene (desktops) or the static, phone-friendly scene (lib/sceneMode). */
 export function Experience() {
-  const reduced = useReducedMotion();
-  if (reduced) return <StaticScene />;
+  const mode = useSceneMode();
+  if (mode === "static") return <StaticScene />;
   return (
     <>
       <PinnedScene />

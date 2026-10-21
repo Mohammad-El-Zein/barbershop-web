@@ -1,10 +1,11 @@
 "use client";
 /* eslint-disable @next/next/no-img-element -- scene assets are preloaded manually; next/image lazy-loading would fight the preloader */
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { siteConfig } from "@/config/site.config";
 import { gsap, ScrollTrigger, useGSAP } from "@/lib/gsap";
+import { notifyPinnedSceneMounted, PIN_PLACEHOLDER_ID } from "@/lib/sceneMode";
 import { whenSceneReady } from "@/lib/sceneReady";
 import { registerChapterResolver, scrollToY } from "@/lib/scroll";
 import { turntableFrameCount } from "@/lib/turntable";
@@ -43,12 +44,6 @@ const CHAIR_FILTER = objectFilter("0 30px 50px rgb(0 0 0 / 0.75)");
  * text at the bottom. Objects are centered with zero-size flex anchors, never
  * with CSS transforms, so GSAP fully owns every animated transform.
  */
-/**
- * Element (rendered by Experience) that reserves the pinned scroll length until the
- * timeline is built after the preloader; hidden in the same task the pin spacer appears.
- */
-export const PIN_PLACEHOLDER_ID = "scene-pin-placeholder";
-
 export function PinnedScene() {
   const t = useTranslations();
   const rootRef = useRef<HTMLElement>(null);
@@ -62,6 +57,8 @@ export function PinnedScene() {
   // directly in the DOM: a state update here re-rendered the whole scene on phones.
   const posterRef = useRef<HTMLImageElement>(null);
   const onChairReady = useCallback(() => posterRef.current?.classList.add("invisible"), []);
+  // loaded lazily (desktops only): the preloader waits for this before it collects the critical images
+  useEffect(() => notifyPinnedSceneMounted(), []);
 
   useGSAP(
     (_, contextSafe) => {

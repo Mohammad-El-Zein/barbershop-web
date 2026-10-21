@@ -165,6 +165,24 @@ test("keyboard only: staff login and tab navigation", async ({ page }, info) => 
   await expect(sections.getByRole("link", { name: lang === "de" ? "Buchungen" : "Bookings" })).toHaveAttribute("aria-current", "page");
 });
 
+test("landing: phones get the static scene (native scrolling, no pin), desktops the pinned one", async ({ page }, info) => {
+  const { lang } = variant(info);
+  const phone = info.project.name.startsWith("mobile");
+  await page.goto(`/${lang}`);
+  await page.locator("[data-preloader]").waitFor({ state: "detached", timeout: 60_000 });
+  if (phone) {
+    await expect(page.locator(".pin-spacer")).toHaveCount(0);
+    await expect(page.locator("canvas[data-turntable]")).toHaveCount(0);
+    expect(await page.evaluate(() => document.documentElement.classList.contains("lenis"))).toBe(false);
+    // every chapter is an ordinary section; the services cards are reachable by plain scrolling
+    await page.locator("section#services").scrollIntoViewIfNeeded();
+    await expect(page.locator("section#services article").first()).toBeInViewport();
+  } else {
+    await expect(page.locator(".pin-spacer")).toHaveCount(1);
+    await expect.poll(() => page.evaluate(() => document.documentElement.classList.contains("lenis"))).toBe(true);
+  }
+});
+
 test("prefers-reduced-motion: static landing page, native scrolling, no pin", async ({ browser }, info) => {
   const ctx = await browser.newContext({ ...info.project.use, reducedMotion: "reduce" });
   const page = await ctx.newPage();

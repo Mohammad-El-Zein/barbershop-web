@@ -131,12 +131,13 @@ test("service card Book button (desktop and phone) opens the booking with that s
   await page.locator("[data-preloader]").waitFor({ state: "detached", timeout: 60_000 });
   // jump to the services chapter the way the nav does
   await page.evaluate(() => document.querySelector<HTMLAnchorElement>('a[href$="#services"]')?.click());
-  const beardCard = page.locator("[data-card]").filter({ hasText: t.beard });
+  // the card in the scene: the pinned one (desktop) or the static section (phones)
+  const beardCard = page.locator("#scene article").filter({ hasText: t.beard });
   const book = beardCard.getByRole("button", { name: lang === "de" ? "Buchen" : "Book", exact: true });
   await expect(book).toBeVisible();
   await expect(book).toBeInViewport();
   await page.waitForTimeout(800); // let the cards finish their entrance
-  await page.screenshot({ path: shotFile(info, "55-service-cards") }); // the scroll scene: this screen only
+  await page.screenshot({ path: shotFile(info, "55-service-cards") }); // this screen only
   await book.click();
 
   // the preselected service skips step 1; going back shows exactly that one ticked

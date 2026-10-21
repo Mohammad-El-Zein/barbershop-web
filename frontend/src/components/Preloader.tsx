@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { siteConfig } from "@/config/site.config";
 import { frameUrl, loadFrame, loadRemainingFramesLazily } from "@/lib/frames";
+import { currentSceneMode, downgradeScene, useSceneMode, whenPinnedSceneMounted } from "@/lib/sceneMode";
 import { markSceneReady } from "@/lib/sceneReady";
 import { lockScroll, unlockScroll } from "@/lib/scroll";
 import { estimateChairCssHeight, isSmallScreen, pickSet, preloadEagerFrames } from "@/lib/turntable";
@@ -25,12 +26,40 @@ function criticalImages(): Promise<void>[] {
 }
 
 /**
+ * The safety net for the pinned scene: the median frame time over ~45 frames while the
+ * preloader runs. A device below ~25 fps even here would stutter through the scrubbed scene,
+ * so it gets the static one (lib/sceneMode). Gaps of a hidden tab (paused rAF) don't count.
+ */
+function deviceIsTooSlow(): Promise<boolean> {
+  return new Promise((resolve) => {
+    const times: number[] = [];
+    let last = performance.now();
+    const step = (now: number) => {
+      const d = now - last;
+      last = now;
+      if (d < 250) times.push(d);
+      if (times.length < 45) {
+        requestAnimationFrame(step);
+        return;
+      }
+      times.sort((a, b) => a - b);
+      resolve(times[Math.floor(times.length / 2)] > 40);
+    };
+    requestAnimationFrame(step);
+  });
+}
+
+/**
  * Full-screen loading screen shown while the first screen's assets load (always
  * dark: it opens the dark cinematic scene). Waits for the critical images, the
  * first turntable frames (coarse coverage of the whole rotation; none on phones),
  * optional frame-sequence frames and the fonts — then marks the scene ready. Scroll
  * is locked until it finishes; then
  * the scene timeline is built (lib/sceneReady), so its pin is measured once with the final font metrics.
+ *
+ * Only for the pinned scene (desktops). Where the scene is static (phones, reduced motion, weak
+ * devices) there is no overlay at all: the server HTML hides it with CSS (globals.css, same
+ * media query as lib/sceneMode) and it is gone after hydration — the first screen shows at once.
  */
 export function Preloader() {
   const t = useTranslations("scene");
@@ -38,10 +67,18 @@ export function Preloader() {
   const [done, setDone] = useState(false);
   const [gone, setGone] = useState(false);
   const started = useRef(false);
+  // the server always renders the overlay (CSS hides it on phones); gone once the scene is static
+  const mode = useSceneMode("pinned");
 
   useEffect(() => {
     if (started.current) return; // StrictMode double-invoke guard
     started.current = true;
+
+    if (currentSceneMode() === "static") {
+      unlockScroll();
+      markSceneReady();
+      return;
+    }
 
     // Always start at the top: the pinned scene reads best from the beginning.
     if ("scrollRestoration" in history) history.scrollRestoration = "manual";
@@ -49,8 +86,18 @@ export function Preloader() {
     lockScroll();
 
     const { frames, turntable } = siteConfig.scene;
+    // a frame rate this low → static scene; the preloader finishes right away then
+    let slow: () => void = () => undefined;
+    const tooSlow = new Promise<void>((r) => (slow = r));
+    Promise.race([deviceIsTooSlow(), new Promise<boolean>((r) => setTimeout(() => r(false), 1500))]).then((isSlow) => {
+      if (!isSlow) return;
+      downgradeScene();
+      slow();
+    });
+
     const tasks: Promise<void>[] = [
-      ...criticalImages(),
+      // the pinned scene is loaded lazily: its critical images exist once it has mounted
+      whenPinnedSceneMounted().then(() => Promise.all(criticalImages())).then(() => undefined),
       // phones: no turntable frames at all here (the static chair poster is critical instead)
       ...(turntable.enabled && !isSmallScreen() ? preloadEagerFrames(pickSet(estimateChairCssHeight())) : []),
       ...(frames.enabled
@@ -68,7 +115,7 @@ export function Preloader() {
     );
 
     const startedAt = performance.now();
-    const all = Promise.race([Promise.all(tasks), new Promise((r) => setTimeout(r, maxWaitMs()))]);
+    const all = Promise.race([Promise.all(tasks), tooSlow, new Promise((r) => setTimeout(r, maxWaitMs()))]);
 
     all.then(() => {
       const wait = Math.max(0, MIN_VISIBLE_MS - (performance.now() - startedAt));
@@ -83,7 +130,7 @@ export function Preloader() {
     });
   }, []);
 
-  if (gone) return null;
+  if (gone || mode === "static") return null;
 
   const pct = Math.round(progress * 100);
 

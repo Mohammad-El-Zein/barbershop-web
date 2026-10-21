@@ -14,7 +14,9 @@ let ready = false;
 
 function loadDeferredImages() {
   for (const img of document.querySelectorAll<HTMLImageElement>("img[data-src]")) {
-    if (!img.getAttribute("src")) img.src = img.dataset.src!;
+    if (img.getAttribute("src")) continue;
+    if (img.dataset.srcset) img.srcset = img.dataset.srcset; // before src: the browser picks once
+    img.src = img.dataset.src!;
   }
 }
 

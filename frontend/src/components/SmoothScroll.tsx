@@ -1,40 +1,47 @@
 "use client";
 
 import { useEffect } from "react";
-import Lenis from "lenis";
-import { gsap, ScrollTrigger } from "@/lib/gsap";
+import { useSceneMode } from "@/lib/sceneMode";
 import { scrollToTarget, setLenis } from "@/lib/scroll";
-import { useReducedMotion } from "@/lib/useReducedMotion";
 
 /**
- * Lenis smooth scrolling, driven by GSAP's ticker so Lenis and ScrollTrigger
- * update in the same frame (no jitter between smoothed scroll and pinned scene).
- * Disabled entirely for prefers-reduced-motion users (native scrolling).
+ * Lenis smooth scrolling for the pinned scene only (desktops), driven by GSAP's ticker so
+ * Lenis and ScrollTrigger update in the same frame (no jitter between smoothed scroll and
+ * pinned scene). Lenis and GSAP are loaded on demand: the static scene (phones, reduced
+ * motion, weak devices) scrolls natively and never downloads them.
  */
 export function SmoothScroll() {
-  const reduced = useReducedMotion();
+  const mode = useSceneMode();
 
   useEffect(() => {
-    if (reduced) return;
+    if (mode !== "pinned") return;
+    let cleanup: (() => void) | undefined;
+    let cancelled = false;
 
-    const lenis = new Lenis({
-      lerp: 0.1,
-      wheelMultiplier: 1,
-      autoRaf: false, // we drive it from gsap.ticker below
+    Promise.all([import("lenis"), import("@/lib/gsap")]).then(([{ default: Lenis }, { gsap, ScrollTrigger }]) => {
+      if (cancelled) return;
+      const lenis = new Lenis({
+        lerp: 0.1,
+        wheelMultiplier: 1,
+        autoRaf: false, // we drive it from gsap.ticker below
+      });
+      lenis.on("scroll", ScrollTrigger.update);
+      const tick = (time: number) => lenis.raf(time * 1000);
+      gsap.ticker.add(tick);
+      gsap.ticker.lagSmoothing(0);
+      setLenis(lenis);
+      cleanup = () => {
+        gsap.ticker.remove(tick);
+        setLenis(null);
+        lenis.destroy();
+      };
     });
 
-    lenis.on("scroll", ScrollTrigger.update);
-    const tick = (time: number) => lenis.raf(time * 1000);
-    gsap.ticker.add(tick);
-    gsap.ticker.lagSmoothing(0);
-    setLenis(lenis);
-
     return () => {
-      gsap.ticker.remove(tick);
-      setLenis(null);
-      lenis.destroy();
+      cancelled = true;
+      cleanup?.();
     };
-  }, [reduced]);
+  }, [mode]);
 
   // Any in-page "#anchor" link (footer etc.) goes through the scroll controller,
   // so anchors that point at chapters inside the pinned scene work too.
