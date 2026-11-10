@@ -48,11 +48,13 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -88,6 +90,8 @@ public class BookingService {
 
     private static final Logger log = LoggerFactory.getLogger(BookingService.class);
     private static final String EXCLUSION_VIOLATION = "23P01";
+    /** How often an insert that lost a deadlock is tried in total. */
+    private static final int INSERT_ATTEMPTS = 3;
     private static final Set<String> ADMIN_SORTABLE = Set.of("startTime", "createdAt", "customerName", "status");
     /** Walk-ins may be entered right after they happened. */
     private static final Duration MANUAL_BACKDATE = Duration.ofHours(12);
@@ -202,8 +206,8 @@ public class BookingService {
         // 3) insert; the exclusion constraint is the final word under concurrency
         for (Staff staff : free) {
             try {
-                Inserted inserted = writeTx.execute(tx -> insertRequest(tenant, staff, account, start, services,
-                        customer, req.note(), req.attribution()));
+                Inserted inserted = insertWithDeadlockRetry(() -> insertRequest(tenant, staff, account, start,
+                        services, customer, req.note(), req.attribution()));
                 Booking saved = inserted.booking();
                 log.info("Booking request {} created: tenant={} staff={} start={} services={}", saved.getId(),
                         tenant.getSlug(), staff.getId(), start, services.size());
@@ -214,6 +218,24 @@ public class BookingService {
             }
         }
         throw ApiException.conflict("booking.slot_taken");
+    }
+
+    /**
+     * Runs the insert in its own transaction. Inserts for the same slot at the same instant wait for each
+     * other in the exclusion constraint, and PostgreSQL ends such a cycle by aborting some of them with
+     * "deadlock detected" (40P01) instead of the constraint violation. Nothing was written then, so the
+     * insert is simply repeated: the winner has committed by now, and the repeat gets the overlap (or the
+     * slot, if the winner rolled back).
+     */
+    private Inserted insertWithDeadlockRetry(Supplier<Inserted> insert) {
+        for (int attempt = 1; ; attempt++) {
+            try {
+                return writeTx.execute(tx -> insert.get());
+            } catch (PessimisticLockingFailureException e) {
+                if (attempt == INSERT_ATTEMPTS) throw e;
+                log.info("Booking insert hit a lock conflict (attempt {}), repeating", attempt);
+            }
+        }
     }
 
     /** The new booking plus its read-only status link token (raw, only in the creation response). */
