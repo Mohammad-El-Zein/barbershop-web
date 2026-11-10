@@ -29,8 +29,8 @@ docker compose -f infra/docker-compose.yml up -d --build
 **Tests** (need Docker for Testcontainers):
 
 ```bash
-./mvnw test      # 62 unit tests: state machine, pricing/loyalty/deposit, refund rule, deadlines, availability, .ics
-./mvnw verify    # + 62 integration tests against Postgres + GreenMail (full flows, races, jobs, accounts …)
+./mvnw test      # 61 unit tests: state machine, pricing/loyalty/deposit, refund rule, deadlines, availability, .ics
+./mvnw verify    # + 119 integration tests against Postgres + GreenMail (full flows, races, jobs, accounts …)
 ```
 
 ---

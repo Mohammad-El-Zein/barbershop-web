@@ -1,7 +1,8 @@
-# Azure infrastructure (Terraform) — not applied
+# Azure infrastructure (Terraform)
 
-Everything the production setup needs on Azure, as code. **Nothing here has been applied to a real subscription.**
-It is formatted, validated and tested offline (`terraform test` with mocked providers). The step-by-step rollout is
+Everything the setup needs on Azure, as code. The **dev** environment runs on it and is updated automatically
+from `main` ([`docs/CD-SETUP.md`](../../docs/CD-SETUP.md)); **prod** is prepared, not applied.
+The code is formatted, validated and tested offline (`terraform test` with mocked providers). The step-by-step rollout is
 in [`docs/DEPLOYMENT.md`](../../docs/DEPLOYMENT.md).
 
 ```
